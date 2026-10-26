@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>डेयरी मित्र - दूध और पशु बहीखाता</title>
+  
+  <!-- PWA & Mobile Meta -->
+  <meta name="theme-color" content="#065f46">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥛</text></svg>">
+  
+  <!-- Google Fonts: Outfit & Noto Sans Devanagari -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css?v=4.0">
+  <script>
+    // Force clear old cached SW assets so updates appear immediately
+    if ('caches' in window) {
+      caches.keys().then(keys => {
+        keys.forEach(k => {
+          if (k === 'dairymitra-cache-v1') caches.delete(k);
+        });
+      });
+    }
+  </script>
+</head>
+<body>
+  <!-- App Container (Mobile viewport friendly) -->
+  <div class="mobile-app" id="app">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-main">
+        <div class="brand">
+          <span class="brand-logo">🥛</span>
+          <div>
+            <h1 class="brand-name">डेयरी मित्र</h1>
+            <p class="brand-tagline" id="farmNameDisplay">श्री कृष्णा डेयरी फार्म</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="fat-calc-pill-btn" id="openFatCalcBtn" title="फैट व SNF कैलकुलेटर">
+            <span>🧪 फैट टेस्ट</span>
+          </button>
+          <button class="icon-btn audio-toggle-btn" id="audioToggleBtn" title="आवाज़ चालू/बंद" aria-label="Audio Feedback">
+            <span id="audioIcon">🔊</span>
+          </button>
+          <button class="icon-btn settings-btn" id="settingsBtn" title="सेटिंग्स" aria-label="Settings">
+            ⚙️
+          </button>
+        </div>
+      </div>
+
+      <!-- Date & Shift Bar -->
+      <div class="shift-bar">
+        <div class="date-display" id="currentDateDisplay">
+          📅 आज, 21 अक्टूबर
+        </div>
+        <div class="shift-toggle-group">
+          <button class="shift-pill active" id="shiftMorningBtn" data-shift="morning">
+            🌅 सुबह
+          </button>
+          <button class="shift-pill" id="shiftEveningBtn" data-shift="evening">
+            🌇 शाम
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Numbers Strip -->
+      <div class="quick-stats-strip">
+        <div class="stat-cell">
+          <span class="stat-label">दूध निकला</span>
+          <span class="stat-val highlight" id="statProduced">0.0 <small>L</small></span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-cell">
+          <span class="stat-label">दूध बिका</span>
+          <span class="stat-val" id="statDelivered">0.0 <small>L</small></span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-cell">
+          <span class="stat-label">घर में बचा</span>
+          <span class="stat-val" id="statRemaining">0.0 <small>L</small></span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-cell">
+          <span class="stat-label">आज का हिसाब</span>
+          <span class="stat-val rupee" id="statEarnings">₹0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Global Voice Bar (Tap to Speak) -->
+    <section class="voice-assistant-card" id="voiceCard">
+      <div class="voice-btn-wrap">
+        <button class="voice-mic-btn" id="globalMicBtn" aria-label="बोलकर दर्ज करें">
+          <span class="mic-icon">🎙️</span>
+          <span class="mic-waves"></span>
+        </button>
+      </div>
+      <div class="voice-text-wrap">
+        <div class="voice-status" id="voiceStatus">माइक दबाकर बोलें (उदा. "लाली 6 लीटर")</div>
+        <div class="voice-result" id="voiceResult">बोलकर एंट्री करना सबसे तेज़ है...</div>
+      </div>
+      <button class="voice-help-btn" id="voiceHelpBtn" title="मदद">❓</button>
+    </section>
+
+    <!-- Audio Speech Feedback Toast -->
+    <div class="audio-toast hidden" id="audioToast">
+      <span class="audio-toast-icon">📢</span>
+      <span class="audio-toast-text" id="audioToastText">लाली का 6 लीटर दर्ज हो गया!</span>
+    </div>
+
+    <!-- MAIN VIEWS CONTAINER -->
+    <main class="main-content">
+
+      <!-- ================= TAB 1: MILKING SHIFT (दूध निकाला) ================= -->
+      <section class="view-tab active" id="viewMilking">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">🥛 पशुओं का दूध</h2>
+            <p class="view-subtitle" id="milkingShiftLabel">सुबह की शिफ्ट की एंट्री करें</p>
+          </div>
+          <div class="view-header-btns">
+            <button class="action-btn-small btn-animal-cal-header" id="openAnimalCalFromMilkingBtn" title="पशुओं का 30-दिन दूध कैलेंडर व AI औसत देखें">
+              📅 पशु दूध कैलेंडर
+            </button>
+            <button class="action-btn-small btn-fat-header" id="openFatCalcFromMilkingBtn" title="फैट व SNF कैलकुलेटर">
+              🧪 फैट पर्ची
+            </button>
+            <button class="action-btn-small" id="openAddAnimalModalBtn">
+              ➕ नया पशु
+            </button>
+          </div>
+        </div>
+
+        <!-- Animal Milking Cards Grid -->
+        <div class="cards-list" id="milkingCardsList">
+          <!-- Rendered dynamically via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ================= TAB 2: MILK DELIVERY (दूध बांटा) ================= -->
+      <section class="view-tab" id="viewDelivery">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">🛵 दूध वितरण (घर-घर)</h2>
+            <p class="view-subtitle" id="deliveryShiftLabel">आज के ग्राहकों की सप्लाई लिस्ट</p>
+          </div>
+          <button class="action-btn-small" id="openAddCustomerModalBtn">
+            ➕ नया ग्राहक
+          </button>
+        </div>
+
+        <!-- Delivery Progress Card -->
+        <div class="delivery-progress-card">
+          <div class="progress-info">
+            <span id="deliveryCountLabel">कुल 0 में से 0 को दिया गया</span>
+            <span class="progress-pct" id="deliveryPctLabel">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="deliveryProgressBar" style="width: 0%"></div>
+          </div>
+          <div class="bulk-actions">
+            <button class="chip-btn" id="markAllDeliveredBtn">⚡ सबको दिया (All OK)</button>
+          </div>
+        </div>
+
+        <!-- Customers Delivery List -->
+        <div class="cards-list" id="deliveryCardsList">
+          <!-- Rendered dynamically via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ================= TAB 3: KHATA & BILLING (ग्राहक खाता) ================= -->
+      <section class="view-tab" id="viewKhata">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">📒 ग्राहक खाता व बिलिंग</h2>
+            <p class="view-subtitle">30-दिन कैलेंडर, हाज़िरी व Excel रिपोर्ट</p>
+          </div>
+          <div class="view-header-btns">
+            <button class="action-btn-small btn-excel-top" id="exportAllMonthlyExcelBtn" title="पूरे माह की Excel (.xls) शीट डाउनलोड करें">
+              📊 पूरे माह का Excel (.xls)
+            </button>
+          </div>
+        </div>
+
+        <!-- Month Navigation & Excel Download Bar -->
+        <div class="khata-quick-bar">
+          <div class="khata-month-selector">
+            <button class="month-nav-btn" id="khataPrevMonthBtn" title="पिछला महीना">◀</button>
+            <span class="khata-current-month" id="khataCurrentMonthLabel">अक्टूबर 2026</span>
+            <button class="month-nav-btn" id="khataNextMonthBtn" title="अगला महीना">▶</button>
+          </div>
+          <button class="btn-khata-excel" id="exportAllMonthlyExcelBtn2" title="पूरे महीने का दूध व बिल एक्सेल (.xls) में डाउनलोड करें">
+            📊 Excel (.xls) डाउनलोड
+          </button>
+        </div>
+
+        <!-- Outstanding Dues Banner -->
+        <div class="dues-banner">
+          <div class="dues-icon">💰</div>
+          <div class="dues-details">
+            <span class="dues-title">मार्केट में कुल बकाया राशि</span>
+            <span class="dues-amount" id="totalPendingDues">₹0</span>
+          </div>
+          <button class="dues-btn" id="filterPendingOnlyBtn">सिर्फ बकाया देखें</button>
+        </div>
+
+        <!-- Customer Ledger Cards List -->
+        <div class="cards-list" id="customerKhataList">
+          <!-- Rendered dynamically via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ================= TAB 4: CATTLE REGISTER (पशु व गर्भाधान डायरी) ================= -->
+      <section class="view-tab" id="viewCattle">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">🐄 फार्म के पशु व गर्भाधान</h2>
+            <p class="view-subtitle">गाय-भैंसों का रिकॉर्ड और डिलीवरी ट्रैकर</p>
+          </div>
+          <div class="view-header-btns">
+            <button class="action-btn-small btn-animal-cal-header" id="openAnimalCalFromCattleBtn" title="पशु दूध कैलेंडर व AI औसत देखें">
+              📅 दूध कैलेंडर
+            </button>
+            <button class="action-btn-small btn-ai-primary" id="openAddBreedingModalBtn" title="नया सीमन या गर्भाधान दर्ज करें">
+              🤰 सीमन / AI
+            </button>
+            <button class="action-btn-small" id="addCattleFromTabBtn" title="नया पशु जोड़ें">
+              ➕ नया पशु
+            </button>
+          </div>
+        </div>
+
+        <!-- Breeding Urgent Alerts Banner (हीट चेक, पीडी चेक, ड्राई-ऑफ, डिलीवरी अलर्ट) -->
+        <div class="breeding-alerts-container hidden" id="breedingAlertsContainer">
+          <div class="breeding-alerts-header">
+            <span class="breeding-alert-badge">🔔 जरूरी गर्भाधान अलर्ट्स</span>
+            <span class="breeding-alert-count" id="breedingAlertCount">0</span>
+          </div>
+          <div class="breeding-alerts-list" id="breedingAlertsList">
+            <!-- Rendered dynamically via JavaScript -->
+          </div>
+        </div>
+
+        <!-- Cattle Filter Tabs -->
+        <div class="pill-filter-bar">
+          <button class="filter-pill active" data-filter="all">सभी (<span id="countAllCattle">0</span>)</button>
+          <button class="filter-pill" data-filter="milking">दूध दे रही (<span id="countMilkingCattle">0</span>)</button>
+          <button class="filter-pill" data-filter="pregnant">🤰 गाभिन व AI (<span id="countPregnantCattle">0</span>)</button>
+          <button class="filter-pill" data-filter="dry">सूखी (<span id="countDryCattle">0</span>)</button>
+        </div>
+
+        <!-- Cattle Cards List -->
+        <div class="cards-list" id="cattleRegisterList">
+          <!-- Rendered dynamically via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ================= TAB 5: AI PASHU MITRA (पशु मित्र) ================= -->
+      <section class="view-tab" id="viewDoctor">
+        <div class="view-header">
+          <div>
+            <h2 class="view-title">🤖 पशु मित्र AI सलाहकार</h2>
+            <p class="view-subtitle">रोग, खुराक और दूध बढ़ाने की मुफ्त सलाह</p>
+          </div>
+        </div>
+
+        <!-- Question Input Card -->
+        <div class="ai-query-box">
+          <label for="aiQuestionInput" class="ai-input-label">अपनी भाषा में कोई भी सवाल पूछें या बोलें:</label>
+          <div class="ai-input-row">
+            <textarea id="aiQuestionInput" placeholder="जैसे: 'गाय का दूध कैसे बढ़ाएं?' या 'भैंस के खुर में घाव है क्या करें?'" rows="2"></textarea>
+            <button class="ai-mic-btn" id="aiMicBtn" title="बोलकर पूछें">🎙️</button>
+          </div>
+          <button class="primary-btn ai-ask-btn" id="aiAskBtn">
+            ✨ सलाह पाएं (Ask AI)
+          </button>
+        </div>
+
+        <!-- AI Response Box -->
+        <div class="ai-answer-card hidden" id="aiAnswerCard">
+          <div class="ai-answer-header">
+            <span class="ai-badge">💡 पशु मित्र की सलाह</span>
+            <button class="speak-answer-btn" id="speakAnswerBtn" title="सुनें">🔊 बोलकर सुनाओ</button>
+          </div>
+          <div class="ai-answer-body" id="aiAnswerBody">
+            <!-- Dynamic answer -->
+          </div>
+        </div>
+
+        <!-- Quick Help Topics Chips -->
+        <div class="quick-topics-section">
+          <h3 class="section-heading">अक्सर पूछे जाने वाले सवाल (1-टैप में जानें):</h3>
+          <div class="quick-topic-chips">
+            <button class="topic-chip" data-query="दूध का फैट और मात्रा कैसे बढ़ाएं?">🥛 दूध और फैट बढ़ाने के उपाय</button>
+            <button class="topic-chip" data-query="गाभिन गाय को क्या खुराक देनी चाहिए?">🤰 गाभिन पशु का संतुलित आहार</button>
+            <button class="topic-chip" data-query="थनैल (Mastitis) रोग के लक्षण और घरेलू उपचार">🩺 थनैल (Mastitis) से बचाव</button>
+            <button class="topic-chip" data-query="हरा चारा और दाने का सही अनुपात क्या होना चाहिए?">🌾 दाना और चारे का सही हिसाब</button>
+            <button class="topic-chip" data-query="खुरपका-मुंहपका (FMD) का टीका कब लगाना चाहिए?">💉 टीकाकरण का सही समय</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="viewMilking">
+        <span class="nav-icon">🥛</span>
+        <span class="nav-label">दूध निकाला</span>
+      </button>
+      <button class="nav-item" data-tab="viewDelivery">
+        <span class="nav-icon">🛵</span>
+        <span class="nav-label">दूध बांटा</span>
+      </button>
+      <button class="nav-item" data-tab="viewKhata">
+        <span class="nav-icon">📒</span>
+        <span class="nav-label">खाता-बिल</span>
+      </button>
+      <button class="nav-item" data-tab="viewCattle">
+        <span class="nav-icon">🐄</span>
+        <span class="nav-label">पशु</span>
+      </button>
+      <button class="nav-item" data-tab="viewDoctor">
+        <span class="nav-icon">🤖</span>
+        <span class="nav-label">सलाहकार</span>
+      </button>
+    </nav>
+
+  </div> <!-- End Mobile App -->
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Modal: Add / Edit Animal -->
+  <div class="modal-backdrop hidden" id="animalModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="animalModalTitle">🐄 नया पशु जोड़ें</h3>
+        <button class="modal-close-btn" id="closeAnimalModalBtn">✕</button>
+      </div>
+      <form id="animalForm" class="modal-body">
+        <input type="hidden" id="animalId">
+        <input type="hidden" id="animalPhotoData">
+
+        <!-- Photo Picker -->
+        <div class="photo-picker-section">
+          <div class="photo-preview-box" id="animalPhotoBox">
+            <span class="photo-placeholder-icon" id="animalPlaceholderIcon">🐄</span>
+            <img src="" id="animalPhotoPreview" class="photo-preview-img hidden" alt="पशु फोटो">
+          </div>
+          <div class="photo-picker-actions">
+            <label class="btn-choose-photo" for="animalPhotoInput">
+              📸 कैमरा या गैलरी से फोटो लगाएं
+            </label>
+            <input type="file" id="animalPhotoInput" accept="image/*" class="hidden-file-input">
+            <button type="button" class="btn-remove-photo hidden" id="removeAnimalPhotoBtn">❌ फोटो हटाएं</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>पशु का प्रकार चुनिए:</label>
+          <div class="radio-pill-group">
+            <label class="radio-pill">
+              <input type="radio" name="animalType" value="cow" checked>
+              <span>🐄 गाय (Cow)</span>
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="animalType" value="buffalo">
+              <span>🐃 भैंस (Buffalo)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="animalName">पशु का नाम या टैग नंबर *</label>
+          <input type="text" id="animalName" placeholder="जैसे: लाली, भूरी, टैग 101" required>
+        </div>
+
+        <div class="form-group">
+          <label for="animalBreed">नस्ल (Breed)</label>
+          <select id="animalBreed">
+            <option value="मुर्रा">मुर्रा (Murrah)</option>
+            <option value="गिर">गिर (Gir)</option>
+            <option value="साहीवाल">साहीवाल (Sahiwal)</option>
+            <option value="HF / संकर">HF / संकर (Cross)</option>
+            <option value="जर्सी">जर्सी (Jersey)</option>
+            <option value="देसी">देसी (Desi)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>वर्तमान स्थिति:</label>
+          <div class="radio-pill-group">
+            <label class="radio-pill">
+              <input type="radio" name="animalStatus" value="milking" checked>
+              <span>🥛 दूध दे रही</span>
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="animalStatus" value="pregnant">
+              <span>🤰 गाभिन</span>
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="animalStatus" value="dry">
+              <span>🍂 सूखी (ड्राई)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Smart AI Average Milk Note (Manual input removed as requested) -->
+        <input type="hidden" id="animalExpectedYield" value="0">
+        <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1.5px solid #86efac; border-radius: 8px; padding: 10px 12px; margin-top: 6px; margin-bottom: 8px;">
+          <div style="font-weight: 700; color: #166534; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+            <span>🤖</span> <span>AI स्मार्ट औसत दूध ट्रैकर</span>
+          </div>
+          <p style="margin: 4px 0 0 0; font-size: 11px; color: #15803d; line-height: 1.4;">
+            औसत दूध भरने की ज़रूरत नहीं है! ऐप हर रोज़ के दूध दोहन (सुबह + शाम) के वास्तविक रिकॉर्ड से खुद-ब-खुद इस पशु का सटीक लाइव औसत दूध और ट्रेंड निकालेगा।
+          </p>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-danger-outline hidden" id="deleteAnimalBtn">🗑️ हटाएं</button>
+          <button type="button" class="btn-secondary" id="cancelAnimalModalBtn">रद्द करें</button>
+          <button type="submit" class="btn-primary" id="saveAnimalBtn">💾 सुरक्षित करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add / Edit Customer -->
+  <div class="modal-backdrop hidden" id="customerModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="customerModalTitle">👤 नया ग्राहक जोड़ें</h3>
+        <button class="modal-close-btn" id="closeCustomerModalBtn">✕</button>
+      </div>
+      <form id="customerForm" class="modal-body">
+        <input type="hidden" id="customerId">
+        <input type="hidden" id="custPhotoData">
+
+        <!-- Photo Picker -->
+        <div class="photo-picker-section">
+          <div class="photo-preview-box" id="custPhotoBox">
+            <span class="photo-placeholder-icon" id="custPlaceholderIcon">👤</span>
+            <img src="" id="custPhotoPreview" class="photo-preview-img hidden" alt="ग्राहक फोटो">
+          </div>
+          <div class="photo-picker-actions">
+            <label class="btn-choose-photo" for="custPhotoInput">
+              📸 ग्राहक की फोटो लगाएं
+            </label>
+            <input type="file" id="custPhotoInput" accept="image/*" class="hidden-file-input">
+            <button type="button" class="btn-remove-photo hidden" id="removeCustPhotoBtn">❌ फोटो हटाएं</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="custName">ग्राहक का नाम *</label>
+          <input type="text" id="custName" placeholder="जैसे: रमेश जी, शर्मा जी" required>
+        </div>
+
+        <div class="form-group">
+          <label for="custPhone">मोबाइल नंबर (WhatsApp के लिए) *</label>
+          <input type="tel" id="custPhone" placeholder="10 अंकों का नंबर (उदा. 9876543210)" required pattern="[0-9]{10}">
+        </div>
+
+        <div class="form-group">
+          <label for="custAddress">पता या मकान नंबर</label>
+          <input type="text" id="custAddress" placeholder="जैसे: गली नं 2, मकान 45">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="custQuotaMorning">सुबह का दूध (L)</label>
+            <input type="number" step="0.5" id="custQuotaMorning" value="1.0" min="0">
+          </div>
+          <div class="form-group flex-1">
+            <label for="custQuotaEvening">शाम का दूध (L)</label>
+            <input type="number" step="0.5" id="custQuotaEvening" value="1.0" min="0">
+          </div>
+        </div>
+
+        <div class="form-group" id="custSyncMonthQuotaGroup" style="margin-top: 2px; margin-bottom: 12px; background: #f0fdf4; padding: 8px 12px; border-radius: 6px; border: 1px solid #86efac;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #166534; cursor: pointer; margin: 0;">
+            <input type="checkbox" id="custSyncMonthQuota" checked style="width: 16px; height: 16px; accent-color: #16a34a; cursor: pointer;">
+            <span>📅 चालू माह के हाज़िरी कैलेंडर में भी यह नया कोटा लागू करें</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label for="custRate">दूध का भाव (₹ प्रति लीटर)</label>
+          <input type="number" id="custRate" value="60" min="10">
+        </div>
+
+        <div class="form-group">
+          <label for="custInitialDues">पिछला पुराना बकाया (यदि कोई हो तो ₹)</label>
+          <input type="number" id="custInitialDues" value="0" min="0">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-danger-outline hidden" id="deleteCustBtn">🗑️ हटाएं</button>
+          <button type="button" class="btn-secondary" id="cancelCustomerModalBtn">रद्द करें</button>
+          <button type="submit" class="btn-primary" id="saveCustomerBtn">💾 ग्राहक सेव करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Record Payment (पैसे जमा करें) -->
+  <div class="modal-backdrop hidden" id="paymentModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">💵 भुगतान दर्ज करें</h3>
+        <button class="modal-close-btn" id="closePaymentModalBtn">✕</button>
+      </div>
+      <form id="paymentForm" class="modal-body">
+        <input type="hidden" id="payCustomerId">
+        
+        <div class="payment-info-box">
+          <div class="payee-name" id="payCustomerName">रमेश जी</div>
+          <div class="payee-due">वर्तमान बकाया: <strong id="payCustomerDue" class="text-danger">₹1,800</strong></div>
+        </div>
+
+        <div class="form-group">
+          <label for="payAmount">जमा की गई राशि (₹) *</label>
+          <input type="number" id="payAmount" placeholder="रकम लिखें" required min="1">
+        </div>
+
+        <div class="form-group">
+          <label>भुगतान का माध्यम:</label>
+          <div class="radio-pill-group">
+            <label class="radio-pill">
+              <input type="radio" name="payMode" value="cash" checked>
+              <span>💵 नकद (Cash)</span>
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="payMode" value="upi">
+              <span>📱 PhonePe / GPay (UPI)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="payNote">नोट (वैकल्पिक)</label>
+          <input type="text" id="payNote" placeholder="जैसे: 15 तारीख का हिसाब">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelPaymentModalBtn">रद्द करें</button>
+          <button type="submit" class="btn-primary">✅ जमा दर्ज करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: App Settings -->
+  <div class="modal-backdrop hidden" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">⚙️ फार्म सेटिंग्स</h3>
+        <button class="modal-close-btn" id="closeSettingsModalBtn">✕</button>
+      </div>
+      <form id="settingsForm" class="modal-body">
+        <div class="form-group">
+          <label for="settingFarmName">डेयरी / फार्म का नाम</label>
+          <input type="text" id="settingFarmName" value="श्री कृष्णा डेयरी फार्म">
+        </div>
+        <div class="form-group">
+          <label for="settingDefaultRate">डिफ़ॉल्ट दूध का भाव (₹/लीटर)</label>
+          <input type="number" id="settingDefaultRate" value="60">
+        </div>
+        <div class="form-group">
+          <label for="settingUpiId">आपकी UPI ID (QR व WhatsApp बिल में जाने के लिए)</label>
+          <input type="text" id="settingUpiId" placeholder="उदा. 9876543210@paytm या @ybl">
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="settingFatRate">प्रति फैट भाव (₹/Point)</label>
+            <input type="number" step="0.1" id="settingFatRate" value="8.0" min="1">
+          </div>
+          <div class="form-group flex-1">
+            <label for="settingSnfRate">प्रति SNF भाव (₹/Point, 0 = सिर्फ फैट)</label>
+            <input type="number" step="0.1" id="settingSnfRate" value="0.0" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="settingOwnerPhone">आपका मोबाइल नंबर</label>
+          <input type="tel" id="settingOwnerPhone" placeholder="10 अंकों का नंबर">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-danger-outline" id="resetDataBtn">⚠️ डेटा रीसेट</button>
+          <button type="submit" class="btn-primary">💾 सेटिंग्स सेव करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Voice Help Instructions -->
+  <div class="modal-backdrop hidden" id="voiceHelpModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">🎙️ वॉयस असिस्टेंट कैसे बोलें?</h3>
+        <button class="modal-close-btn" id="closeVoiceHelpModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="help-desc">माइक का बटन दबाएं और बिल्कुल साधारण भाषा में बोलें:</p>
+        <ul class="voice-help-list">
+          <li><strong>पशु का दूध भरने के लिए:</strong><br><em>"लाली 6 लीटर"</em> या <em>"भूरी भैंस 5.5 लीटर"</em></li>
+          <li><strong>ग्राहक की डिलीवरी दर्ज करने के लिए:</strong><br><em>"रमेश जी 2 लीटर"</em> या <em>"शर्मा जी को दूध दिया"</em></li>
+          <li><strong>टैब बदलने के लिए:</strong><br><em>"दूध बांटना दिखाओ"</em> या <em>"पशु दिखाओ"</em> या <em>"खाता खोलो"</em></li>
+        </ul>
+        <p class="help-note">💡 ऐप अपने आप आपकी बात समझकर डेटा अपडेट कर देगा और बोलकर सुनाएगा भी!</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-primary" id="gotVoiceHelpBtn">समझ गया, ठीक है 👍</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Record AI / Insemination (सीमन दर्ज करें) -->
+  <div class="modal-backdrop hidden" id="breedingModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="breedingModalTitle">🤰 नया सीमन / AI दर्ज करें</h3>
+        <button class="modal-close-btn" id="closeBreedingModalBtn">✕</button>
+      </div>
+      <form id="breedingForm" class="modal-body">
+        <input type="hidden" id="breedingEditId">
+        
+        <div class="form-group">
+          <label for="breedingAnimalSelect">पशु चुनिए *</label>
+          <select id="breedingAnimalSelect" required>
+            <!-- Options populated dynamically -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="breedingDate">सीमन / गर्भाधान की तारीख *</label>
+          <input type="date" id="breedingDate" required>
+        </div>
+
+        <!-- Live Calculated Timeline Preview Box -->
+        <div class="breeding-calc-preview" id="breedingCalcPreview">
+          <div class="calc-preview-title">📊 संभावित तारीखें (ऑटोमैटिक गणना):</div>
+          <div class="calc-preview-grid">
+            <div class="calc-item">
+              <span class="calc-label">21 दिन हीट चेक:</span>
+              <span class="calc-val" id="prevHeatCheckDate">-</span>
+            </div>
+            <div class="calc-item">
+              <span class="calc-label">गर्भ जांच (PD):</span>
+              <span class="calc-val" id="prevPdDate">-</span>
+            </div>
+            <div class="calc-item">
+              <span class="calc-label">दूध बंद (ड्राई):</span>
+              <span class="calc-val" id="prevDryDate">-</span>
+            </div>
+            <div class="calc-item highlight">
+              <span class="calc-label">🍼 संभावित डिलीवरी:</span>
+              <span class="calc-val" id="prevCalvingDate">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="breedingSemenDetails">सीमन स्ट्रॉ / बुल का नाम (वैकल्पिक)</label>
+          <input type="text" id="breedingSemenDetails" placeholder="जैसे: मुर्रा 4055, साहीवाल A2 बुल">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="breedingDoctorName">डॉक्टर / AI वर्कर का नाम</label>
+            <input type="text" id="breedingDoctorName" placeholder="उदा. डॉ. शर्मा">
+          </div>
+          <div class="form-group flex-1">
+            <label for="breedingDoctorPhone">डॉक्टर का फोन नंबर</label>
+            <input type="tel" id="breedingDoctorPhone" placeholder="10 अंक">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="breedingNotes">विशेष नोट (वैकल्पिक)</label>
+          <input type="text" id="breedingNotes" placeholder="जैसे: सुबह 10 बजे सीमन लगा">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelBreedingModalBtn">रद्द करें</button>
+          <button type="submit" class="btn-primary" id="saveBreedingBtn">💾 सीमन सुरक्षित करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Breeding Timeline & Milestones (गर्भाधान व डिलीवरी टाइमलाइन) -->
+  <div class="modal-backdrop hidden" id="breedingDetailsModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title" id="timelineModalTitle">🤰 गर्भाधान व डिलीवरी टाइमलाइन</h3>
+        <button class="modal-close-btn" id="closeBreedingDetailsBtn">✕</button>
+      </div>
+      <div class="modal-body" id="breedingDetailsContent">
+        <!-- Populated dynamically via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Calving Registration (डिलीवरी दर्ज करें) -->
+  <div class="modal-backdrop hidden" id="calvingModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">🎉 बधाई हो! प्रसव (डिलीवरी) दर्ज करें</h3>
+        <button class="modal-close-btn" id="closeCalvingModalBtn">✕</button>
+      </div>
+      <form id="calvingForm" class="modal-body">
+        <input type="hidden" id="calvingAnimalId">
+        <input type="hidden" id="calvingBreedingId">
+
+        <div class="calving-hero-banner">
+          <span class="calving-hero-icon">🍼</span>
+          <div class="calving-hero-text">
+            <strong id="calvingAnimalName">पशु</strong> ने बच्चे को जन्म दिया!
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="calvingDate">ब्याने की तारीख *</label>
+          <input type="date" id="calvingDate" required>
+        </div>
+
+        <div class="form-group">
+          <label>जन्म लिए बच्चे (Calf) का प्रकार चुनें:</label>
+          <div class="radio-pill-group" id="calfGenderRadioGroup">
+            <!-- Options dynamically populated based on cow / buffalo -->
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="calvingInitialYield">दैनिक अनुमानित दूध (लीटर/दिन) *</label>
+          <input type="number" step="0.5" id="calvingInitialYield" value="8.0" min="0" required>
+        </div>
+
+        <div class="form-group">
+          <label for="calvingNotes">नोट (वैकल्पिक)</label>
+          <input type="text" id="calvingNotes" placeholder="जैसे: जेर 2 घंटे में गिर गई, बच्चा स्वस्थ है">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelCalvingModalBtn">रद्द करें</button>
+          <button type="submit" class="btn-primary">🎉 डिलीवरी दर्ज करें व दूध चालू करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: FAT & SNF Calculator (फैट व SNF कैलकुलेटर) -->
+  <div class="modal-backdrop hidden" id="fatCalcModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">🧪 फैट (FAT) व SNF कैलकुलेटर</h3>
+        <button class="modal-close-btn" id="closeFatCalcModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Animal Selector Dropdown (Only Farm Animals) -->
+        <div class="form-group">
+          <label for="fatCalcSelect">पशु चुनें *</label>
+          <select id="fatCalcSelect" class="form-select">
+            <!-- Populated dynamically via JS with Farm Animals only -->
+          </select>
+        </div>
+
+        <!-- Milk Type & Quantity -->
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>दूध का प्रकार:</label>
+            <div class="radio-pill-group">
+              <label class="radio-pill">
+                <input type="radio" name="fatMilkType" value="buffalo" checked>
+                <span>🐃 भैंस</span>
+              </label>
+              <label class="radio-pill">
+                <input type="radio" name="fatMilkType" value="cow">
+                <span>🐄 गाय</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group flex-1">
+            <label for="fatCalcLitres">दूध मात्रा (लीटर) *</label>
+            <input type="number" step="0.5" id="fatCalcLitres" value="5.0" min="0.1" required>
+          </div>
+        </div>
+
+        <!-- Fat % Input with Quick Chips -->
+        <div class="form-group">
+          <div class="label-row">
+            <label for="fatCalcInput">फैट (FAT %):</label>
+            <span class="value-highlight" id="fatValDisplay">6.5%</span>
+          </div>
+          <div class="stepper-input-row">
+            <button type="button" class="mini-step-btn" id="fatMinusBtn">➖</button>
+            <input type="number" step="0.1" id="fatCalcInput" value="6.5" min="1" max="15">
+            <button type="button" class="mini-step-btn" id="fatPlusBtn">➕</button>
+          </div>
+          <div class="quick-chips-row fat-chips">
+            <button type="button" class="chip-sm" data-fat="3.5">3.5 (गाय)</button>
+            <button type="button" class="chip-sm" data-fat="4.5">4.5</button>
+            <button type="button" class="chip-sm" data-fat="6.0">6.0 (भैंस)</button>
+            <button type="button" class="chip-sm" data-fat="6.5">6.5</button>
+            <button type="button" class="chip-sm" data-fat="7.0">7.0</button>
+            <button type="button" class="chip-sm" data-fat="8.0">8.0</button>
+          </div>
+        </div>
+
+        <!-- Testing Method Toggle: CLR vs Direct SNF -->
+        <div class="form-group">
+          <div class="label-row">
+            <label>परीक्षण विधि (Testing Mode):</label>
+            <div class="test-method-toggles">
+              <button type="button" class="method-pill active" id="methodClrBtn">लैक्टोमीटर (CLR)</button>
+              <button type="button" class="method-pill" id="methodSnfBtn">सीधा SNF %</button>
+            </div>
+          </div>
+
+          <!-- CLR Input -->
+          <div id="clrInputContainer">
+            <div class="stepper-input-row">
+              <button type="button" class="mini-step-btn" id="clrMinusBtn">➖</button>
+              <input type="number" step="0.5" id="clrCalcInput" value="28.5" min="15" max="36">
+              <button type="button" class="mini-step-btn" id="clrPlusBtn">➕</button>
+            </div>
+            <div class="quick-chips-row clr-chips">
+              <button type="button" class="chip-sm" data-clr="26.0">26.0</button>
+              <button type="button" class="chip-sm" data-clr="28.0">28.0</button>
+              <button type="button" class="chip-sm" data-clr="29.0">29.0</button>
+              <button type="button" class="chip-sm" data-clr="30.0">30.0</button>
+            </div>
+          </div>
+
+          <!-- Direct SNF Input (hidden by default) -->
+          <div id="snfInputContainer" class="hidden">
+            <div class="stepper-input-row">
+              <button type="button" class="mini-step-btn" id="snfMinusBtn">➖</button>
+              <input type="number" step="0.05" id="snfCalcInput" value="8.8" min="5" max="12">
+              <button type="button" class="mini-step-btn" id="snfPlusBtn">➕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pricing Rate Setting per Fat Point -->
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label for="fatRateFactorInput">प्रति फैट भाव (₹/Point)</label>
+            <input type="number" step="0.1" id="fatRateFactorInput" value="8.0">
+          </div>
+          <div class="form-group flex-1">
+            <label for="snfRateFactorInput">प्रति SNF भाव (₹/Point)</label>
+            <input type="number" step="0.1" id="snfRateFactorInput" value="0.0">
+          </div>
+        </div>
+
+        <!-- Live Calculation Output Banner -->
+        <div class="fat-result-card" id="fatCalcResultCard">
+          <div class="fat-result-header">
+            <span class="fat-result-title">📊 टेस्टिंग रिपोर्ट व भाव</span>
+            <span class="quality-badge badge-quality-good" id="fatQualityBadge">🟢 शुद्ध दूध</span>
+          </div>
+          <div class="fat-result-grid">
+            <div class="fat-res-cell">
+              <span class="fat-res-lbl">एस.एन.एफ (SNF)</span>
+              <span class="fat-res-val" id="resSnfVal">8.98%</span>
+            </div>
+            <div class="fat-res-cell">
+              <span class="fat-res-lbl">भाव (Rate/L)</span>
+              <span class="fat-res-val rate-green" id="resRateVal">₹52.00</span>
+            </div>
+            <div class="fat-res-cell full-width">
+              <span class="fat-res-lbl">कुल देय राशि (Total Payout)</span>
+              <span class="fat-res-total" id="resTotalVal">₹260.00</span>
+            </div>
+          </div>
+          <div class="adulteration-alert hidden" id="adulterationAlert">
+            ⚠️ <strong>चेतावनी:</strong> SNF सामान्य से कम है! पानी मिलावट की आशंका है।
+          </div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="fat-actions-grid">
+          <button type="button" class="btn-slip-action generate-slip-btn" id="generateSlipBtn">
+            🧾 दूध पर्ची देखें
+          </button>
+          <button type="button" class="btn-slip-action whatsapp-slip-btn" id="sendWhatsAppSlipBtn">
+            💬 WhatsApp पर्ची
+          </button>
+          <button type="button" class="btn-slip-action save-test-btn" id="saveTestRecordBtn">
+            💾 टेस्ट सेव करें
+          </button>
+        </div>
+
+        <!-- Recent Tests Section inside Modal -->
+        <div class="recent-tests-section">
+          <div class="recent-tests-title">
+            <span>📋 आज के टेस्ट रिकॉर्ड (<span id="testCountLabel">0</span>)</span>
+            <button type="button" class="btn-clear-tests" id="clearTestsBtn">साफ करें</button>
+          </div>
+          <div class="recent-tests-list" id="recentTestsList">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thermal Milk Slip Receipt (डिजिटल दूध पर्ची) -->
+  <div class="modal-backdrop hidden" id="milkSlipModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">🧾 डिजिटल दूध संकलन पर्ची</h3>
+        <button class="modal-close-btn" id="closeMilkSlipModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="thermal-receipt" id="thermalReceiptBox">
+          <!-- Populated dynamically via JS -->
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="copySlipTextBtn">📋 पर्ची कॉपी करें</button>
+          <button type="button" class="btn-primary btn-whatsapp" id="shareSlipWaBtn">💬 WhatsApp भेजें</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Customer 30-Day Milk Calendar (ग्राहक 30-दिन दूध कैलेंडर व हाज़िरी) -->
+  <div class="modal-backdrop hidden" id="customerCalendarModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">📅 30-दिन दूध कैलेंडर व हाज़िरी</h3>
+        <button class="modal-close-btn" id="closeCustomerCalendarModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Customer Info Strip -->
+        <div class="calendar-cust-header" id="calendarCustHeader">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <!-- Month Navigation Bar -->
+        <div class="calendar-month-nav">
+          <button class="month-nav-btn" id="calPrevMonthBtn" title="पिछला महीना">◀ पिछला</button>
+          <div class="calendar-month-title-wrap">
+            <span class="calendar-month-title" id="calMonthTitle">अक्टूबर 2026</span>
+          </div>
+          <button class="month-nav-btn" id="calNextMonthBtn" title="अगला महीना">अगला ▶</button>
+        </div>
+
+        <!-- Monthly Stats Highlights -->
+        <div class="cal-stats-grid">
+          <div class="cal-stat-card">
+            <span class="cal-stat-icon">🥛</span>
+            <div class="cal-stat-info">
+              <span class="cal-stat-label">कुल दूध</span>
+              <strong class="cal-stat-val" id="calStatTotalLitres">0.0 L</strong>
+            </div>
+          </div>
+          <div class="cal-stat-card">
+            <span class="cal-stat-icon">🟢</span>
+            <div class="cal-stat-info">
+              <span class="cal-stat-label">दूध दिया</span>
+              <strong class="cal-stat-val text-green" id="calStatDeliveredDays">0 दिन</strong>
+            </div>
+          </div>
+          <div class="cal-stat-card">
+            <span class="cal-stat-icon">🔴</span>
+            <div class="cal-stat-info">
+              <span class="cal-stat-label">नागा (छुट्टी)</span>
+              <strong class="cal-stat-val text-red" id="calStatNagaDays">0 दिन</strong>
+            </div>
+          </div>
+          <div class="cal-stat-card">
+            <span class="cal-stat-icon">💰</span>
+            <div class="cal-stat-info">
+              <span class="cal-stat-label">माह का बिल</span>
+              <strong class="cal-stat-val text-gold" id="calStatMonthBill">₹0</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Naga Alert Highlight (Shows exact dates with zero milk) -->
+        <div class="naga-alert-banner" id="calNagaAlertBanner">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Legend Indicator -->
+        <div class="cal-legend">
+          <span class="legend-item"><span class="legend-dot dot-delivered"></span> दिया (दूध)</span>
+          <span class="legend-item"><span class="legend-dot dot-skipped"></span> नागा (0L)</span>
+          <span class="legend-item"><span class="legend-dot dot-custom"></span> बदला हुआ</span>
+          <span class="legend-item"><span class="legend-dot dot-future"></span> आने वाले दिन</span>
+        </div>
+
+        <!-- 30-Day Grid -->
+        <div class="calendar-grid-container">
+          <div class="calendar-weekdays-row">
+            <span>रवि</span><span>सोम</span><span>मंगल</span><span>बुध</span><span>गुरु</span><span>शुक्र</span><span>शनि</span>
+          </div>
+          <div class="calendar-days-grid" id="calendarDaysGrid">
+            <!-- 1 to 31 day cells populated dynamically -->
+          </div>
+        </div>
+
+        <p class="cal-tip-text">💡 किसी भी तारीख पर टैप करके उस दिन का सुबह/शाम का दूध या नागा तुरंत बदल सकते हैं।</p>
+
+        <!-- Action Buttons -->
+        <div class="modal-actions-stack">
+          <button type="button" class="btn-primary btn-whatsapp" id="sendWaCalendarStatementBtn">
+            💬 WhatsApp 30-दिन हाज़िरी भेजें (विवाद खत्म)
+          </button>
+          <div class="actions-split-row">
+            <button type="button" class="btn-primary" id="openCustomerStatementPdfBtn" style="background: #0284c7; font-weight: 700;" title="फोन में आसानी से खुलने वाली PDF पर्ची देखें">
+              📄 PDF / डिजिटल बिल पर्ची
+            </button>
+            <button type="button" class="btn-secondary" id="downloadSingleCustXlsBtn" style="background: #ecfdf5; border-color: #a7f3d0; color: #065f46; font-weight: 700;" title="असली Excel (.xls) फाइल डाउनलोड करें">
+              📊 Excel (.xls) फाइल
+            </button>
+          </div>
+          <div class="actions-split-row" style="margin-top: 4px;">
+            <button type="button" class="btn-secondary" id="syncCalQuotaBtn" title="माह के सभी दिनों में ग्राहक का तय कोटा भरें" style="font-size: 11px;">
+              ⚡ कोटा अनुसार रीसेट करें
+            </button>
+            <button type="button" class="btn-secondary" id="downloadSingleCustCsvBtn" style="font-size: 11px;">
+              📥 साधारण CSV
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Customer 30-Day Digital & PDF Bill Statement (ग्राहक 30-दिन डिजिटल बिल व PDF पर्ची) -->
+  <div class="modal-backdrop hidden" id="customerStatementModal" style="z-index: 130;">
+    <div class="modal-card modal-lg printable-statement-modal">
+      <div class="modal-header no-print">
+        <h3 class="modal-title">📄 30-दिन डिजिटल बिल व PDF पर्ची</h3>
+        <button class="modal-close-btn" id="closeCustomerStatementModalBtn">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 12px;">
+        <!-- Top Action Bar for mobile -->
+        <div class="statement-top-actions no-print">
+          <button type="button" class="btn-primary" id="statementSavePdfBtn" style="flex: 1; min-width: 140px; background: #0284c7; font-size: 13px;">
+            📥 PDF सेव करें / प्रिंट
+          </button>
+          <button type="button" class="btn-primary btn-whatsapp" id="statementShareWaBtn" style="flex: 1; min-width: 140px; font-size: 13px;">
+            💬 WhatsApp भेजें
+          </button>
+          <button type="button" class="btn-secondary" id="statementDownloadXlsBtn" style="flex: 1; min-width: 130px; font-size: 13px;">
+            📊 Excel (.xls)
+          </button>
+        </div>
+
+        <div class="no-print" style="margin-top: 8px; margin-bottom: 10px; font-size: 11px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 7px 10px; border-radius: 6px; line-height: 1.4;">
+          💡 <strong>WhatsApp पर PDF भेजने का सरल तरीका:</strong> पहले <strong>'📥 PDF सेव करें'</strong> दबाकर फाइल सेव करें, फिर <strong>'💬 WhatsApp भेजें'</strong> दबाएँ और चैट में 📎 (पिन) पर टैप करके PDF चुन लें।
+        </div>
+
+        <!-- The printable invoice container -->
+        <div class="statement-sheet" id="customerStatementSheet">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Quick Day Edit (तारीख का दूध या नागा बदलें) -->
+  <div class="modal-backdrop hidden" id="dayEditModal" style="z-index: 120;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="dayEditModalTitle">✏️ तारीख का दूध बदलें</h3>
+        <button class="modal-close-btn" id="closeDayEditModalBtn">✕</button>
+      </div>
+      <form class="modal-body" id="dayEditForm">
+        <input type="hidden" id="dayEditCustId">
+        <input type="hidden" id="dayEditDateKey">
+
+        <div class="day-edit-section">
+          <div class="day-edit-header">
+            <span>🌅 सुबह का दूध (Morning):</span>
+            <span class="day-edit-current-val" id="dayEditMorningDisplay">2.0 L</span>
+          </div>
+          <div class="radio-pill-group">
+            <label class="radio-pill">
+              <input type="radio" name="dayEditMorningStatus" value="delivered" checked>
+              <span>✔ दिया</span>
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="dayEditMorningStatus" value="skipped">
+              <span>✕ नागा (0L)</span>
+            </label>
+          </div>
+          <div class="form-group" id="dayEditMorningQtyGroup" style="margin-top: 8px;">
+            <label for="dayEditMorningLitres">मात्रा (लीटर):</label>
+            <input type="number" step="0.5" id="dayEditMorningLitres" min="0" value="2.0">
+          </div>
+        </div>
+
+        <div class="day-edit-section" style="margin-top: 12px;">
+          <div class="day-edit-header">
+            <span>🌆 शाम का दूध (Evening):</span>
+            <span class="day-edit-current-val" id="dayEditEveningDisplay">1.0 L</span>
+          </div>
+          <div class="radio-pill-group">
+            <label class="radio-pill">
+              <input type="radio" name="dayEditEveningStatus" value="delivered" checked>
+              <span>✔ दिया</span>
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="dayEditEveningStatus" value="skipped">
+              <span>✕ नागा (0L)</span>
+            </label>
+          </div>
+          <div class="form-group" id="dayEditEveningQtyGroup" style="margin-top: 8px;">
+            <label for="dayEditEveningLitres">मात्रा (लीटर):</label>
+            <input type="number" step="0.5" id="dayEditEveningLitres" min="0" value="1.0">
+          </div>
+        </div>
+
+        <!-- Apply Scope Selection -->
+        <div class="form-group" style="margin-top: 12px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <label for="dayEditApplyScope" style="font-weight: 700; font-size: 12px; color: #334155; margin-bottom: 6px; display: block;">🎯 यह बदलाव कहाँ लागू करें?</label>
+          <select id="dayEditApplyScope" style="width: 100%; height: 38px; padding: 0 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 13px; font-weight: 600; color: #1e293b; background: #ffffff;">
+            <option value="single" selected>📌 सिर्फ चुनी गई तारीख के लिए</option>
+            <option value="from_this_day">⏩ इस तारीख से आगे के सभी दिनों के लिए</option>
+            <option value="entire_month">📅 पूरे महीने के सभी दिनों के लिए</option>
+          </select>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 16px;">
+          <button type="button" class="btn-secondary" id="cancelDayEditBtn">रद्द करें</button>
+          <button type="submit" class="btn-primary">💾 बदलाव सेव करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Animal 30-Day Milk Calendar (पशु 30-दिन दूध कैलेंडर व AI रिकॉर्ड) -->
+  <div class="modal-backdrop hidden" id="animalCalendarModal" style="z-index: 125;">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3 class="modal-title">📅 पशु 30-दिन दूध कैलेंडर व AI रिकॉर्ड</h3>
+        <button class="modal-close-btn" id="closeAnimalCalendarModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Animal Selector & Identity Strip -->
+        <div class="animal-cal-header" id="animalCalHeader">
+          <div class="animal-cal-avatar" id="animalCalAvatar">🐄</div>
+          <div class="animal-cal-info">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+              <select id="animalCalSelect" class="animal-cal-dropdown" title="पशु चुनें">
+                <!-- Populated dynamically via JS -->
+              </select>
+              <span class="cattle-badge badge-milking" id="animalCalStatusBadge">🥛 दूध दे रही</span>
+            </div>
+            <div class="animal-cal-meta" id="animalCalMeta">नस्ल: गिर गाय</div>
+          </div>
+        </div>
+
+        <!-- Month Navigation Bar -->
+        <div class="calendar-month-nav">
+          <button class="month-nav-btn" id="animalCalPrevMonthBtn" title="पिछला महीना">◀ पिछला</button>
+          <div class="calendar-month-title-wrap">
+            <span class="calendar-month-title" id="animalCalMonthTitle">अक्टूबर 2026</span>
+          </div>
+          <button class="month-nav-btn" id="animalCalNextMonthBtn" title="अगला महीना">अगला ▶</button>
+        </div>
+
+        <!-- AI Smart Highlights Grid (6 Cards) -->
+        <div class="cal-stats-grid" style="grid-template-columns: repeat(3, 1fr); gap: 6px;">
+          <div class="cal-stat-card" style="background: #f0fdf4; border-color: #86efac;">
+            <span class="cal-stat-icon">🤖</span>
+            <div class="cal-stat-info">
+              <span class="cal-stat-label">AI औसत दूध</span>
+              <strong class="cal-stat-val text-green" id="animalCalStatAvg" style="font-size: 14px;">0.0 L/दिन</strong>
+            </div>
+          </div>
+          <div class="cal-stat-card">
+            <span class="cal-stat-icon">🥛</span>
+            <div class="cal-stat-info">
+              <span class="cal-stat-label">माह का कुल दूध</span>
+              <strong class="cal-stat-val" id="animalCalStatTotal">0.0 L</strong>
+            </div>
+          </div>
+          <div class="cal-stat-card">
+            <span class="cal-stat-icon">📈</span>
+            <div class="cal-stat-info">
+              <span class="cal-stat-label">दूध ट्रेंड</span>
+              <strong class="cal-stat-val" id="animalCalStatTrend" style="font-size: 11px;">➡️ स्थिर</strong>
+            </div>
+          </div>
+          <div class="cal-stat-card">
+            <span class="cal-stat-icon">🌅/🌆</span>
+            <div class="cal-stat-info">
+              <span class="cal-stat-label">सुबह / शाम कुल</span>
+              <strong class="cal-stat-val" id="animalCalStatShifts" style="font-size: 11px;">0L / 0L</strong>
+            </div>
+          </div>
+          <div class="cal-stat-card">
+            <span class="cal-stat-icon">🟢</span>
+            <div class="cal-stat-info">
+              <span class="cal-stat-label">दोहन के दिन</span>
+              <strong class="cal-stat-val text-green" id="animalCalStatDays">0 दिन</strong>
+            </div>
+          </div>
+          <div class="cal-stat-card" style="background: #fffbeb; border-color: #fcd34d;">
+            <span class="cal-stat-icon">⭐</span>
+            <div class="cal-stat-info">
+              <span class="cal-stat-label">सर्वश्रेष्ठ दिन (Peak)</span>
+              <strong class="cal-stat-val text-gold" id="animalCalStatPeak" style="font-size: 11px;">-</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legend Indicator -->
+        <div class="cal-legend">
+          <span class="legend-item"><span class="legend-dot dot-delivered"></span> दूध निकाला (>0L)</span>
+          <span class="legend-item"><span class="legend-dot dot-skipped"></span> सूखा / नागा (0L)</span>
+          <span class="legend-item"><span class="legend-dot dot-future"></span> आने वाले दिन</span>
+        </div>
+
+        <!-- 30-Day Grid for Animal -->
+        <div class="calendar-grid-container">
+          <div class="calendar-weekdays-row">
+            <span>रवि</span><span>सोम</span><span>मंगल</span><span>बुध</span><span>गुरु</span><span>शुक्र</span><span>शनि</span>
+          </div>
+          <div class="calendar-days-grid" id="animalCalendarDaysGrid">
+            <!-- 1 to 31 day cells populated dynamically -->
+          </div>
+        </div>
+
+        <p class="cal-tip-text">💡 किसी भी तारीख पर टैप करके उस दिन का सुबह या शाम का दूध तुरंत बदल सकते हैं।</p>
+
+        <!-- Action Buttons -->
+        <div class="modal-actions-stack">
+          <div class="actions-split-row">
+            <button type="button" class="btn-primary" id="downloadAnimalCalXlsBtn" style="background: #047857; font-weight: 700;">
+              📊 Excel (.xls) रिपोर्ट डाउनलोड
+            </button>
+            <button type="button" class="btn-secondary" id="printAnimalCalPdfBtn" style="font-weight: 700;">
+              🖨️ पर्ची / PDF प्रिंट
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Quick Animal Day Edit (पशु का तारीख वार दूध बदलें) -->
+  <div class="modal-backdrop hidden" id="animalDayEditModal" style="z-index: 135;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="animalDayEditModalTitle">✏️ पशु का दूध बदलें</h3>
+        <button class="modal-close-btn" id="closeAnimalDayEditModalBtn">✕</button>
+      </div>
+      <form class="modal-body" id="animalDayEditForm">
+        <input type="hidden" id="animalDayEditAnimalId">
+        <input type="hidden" id="animalDayEditDateKey">
+
+        <!-- Morning Section -->
+        <div class="day-edit-section">
+          <div class="day-edit-header">
+            <span>🌅 सुबह का दूध (Morning):</span>
+            <span class="day-edit-current-val" id="animalDayEditMorningDisplay">0.0 L</span>
+          </div>
+          <div class="quantity-stepper" style="margin-top: 8px;">
+            <button type="button" class="step-btn" id="animalDayEditMorningMinus">➖</button>
+            <div class="stepper-value-wrap">
+              <input type="number" step="0.5" id="animalDayEditMorningQty" class="stepper-input" min="0" value="0.0">
+              <span class="stepper-unit">लीटर</span>
+            </div>
+            <button type="button" class="step-btn" id="animalDayEditMorningPlus">➕</button>
+          </div>
+          <div class="quick-chips-row" style="margin-top: 6px;">
+            <button type="button" class="quick-chip" data-target="morning" data-val="0">0L (नागा)</button>
+            <button type="button" class="quick-chip" data-target="morning" data-val="2.5">2.5L</button>
+            <button type="button" class="quick-chip" data-target="morning" data-val="3.5">3.5L</button>
+            <button type="button" class="quick-chip" data-target="morning" data-val="4.0">4.0L</button>
+            <button type="button" class="quick-chip" data-target="morning" data-val="5.0">5.0L</button>
+            <button type="button" class="quick-chip" data-target="morning" data-val="6.0">6.0L</button>
+          </div>
+        </div>
+
+        <!-- Evening Section -->
+        <div class="day-edit-section" style="margin-top: 14px;">
+          <div class="day-edit-header">
+            <span>🌆 शाम का दूध (Evening):</span>
+            <span class="day-edit-current-val" id="animalDayEditEveningDisplay">0.0 L</span>
+          </div>
+          <div class="quantity-stepper" style="margin-top: 8px;">
+            <button type="button" class="step-btn" id="animalDayEditEveningMinus">➖</button>
+            <div class="stepper-value-wrap">
+              <input type="number" step="0.5" id="animalDayEditEveningQty" class="stepper-input" min="0" value="0.0">
+              <span class="stepper-unit">लीटर</span>
+            </div>
+            <button type="button" class="step-btn" id="animalDayEditEveningPlus">➕</button>
+          </div>
+          <div class="quick-chips-row" style="margin-top: 6px;">
+            <button type="button" class="quick-chip" data-target="evening" data-val="0">0L (नागा)</button>
+            <button type="button" class="quick-chip" data-target="evening" data-val="2.5">2.5L</button>
+            <button type="button" class="quick-chip" data-target="evening" data-val="3.5">3.5L</button>
+            <button type="button" class="quick-chip" data-target="evening" data-val="4.0">4.0L</button>
+            <button type="button" class="quick-chip" data-target="evening" data-val="5.0">5.0L</button>
+            <button type="button" class="quick-chip" data-target="evening" data-val="6.0">6.0L</button>
+          </div>
+        </div>
+
+        <!-- Apply Scope Selection -->
+        <div class="form-group" style="margin-top: 12px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <label for="animalDayEditApplyScope" style="font-weight: 700; font-size: 12px; color: #334155; margin-bottom: 6px; display: block;">🎯 यह मात्रा कहाँ लागू करें?</label>
+          <select id="animalDayEditApplyScope" style="width: 100%; height: 38px; padding: 0 10px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 13px; font-weight: 600; color: #1e293b; background: #ffffff;">
+            <option value="single" selected>📌 सिर्फ इस तारीख के लिए</option>
+            <option value="from_this_day">⏩ इस तारीख से आगे के सभी दिनों के लिए</option>
+            <option value="entire_month">📅 पूरे महीने के सभी दिनों के लिए</option>
+          </select>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 16px;">
+          <button type="button" class="btn-secondary" id="cancelAnimalDayEditBtn">रद्द करें</button>
+          <button type="submit" class="btn-primary">💾 बदलाव सेव करें</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="app.js?v=4.0"></script>
+  <script>
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js?v=4.0').then(reg => {
+          reg.update(); // Force check for latest sw.js
+        }).catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
