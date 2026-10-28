@@ -17,13 +17,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=4.0">
+  <link rel="stylesheet" href="styles.css?v=5.2">
   <script>
     // Force clear old cached SW assets so updates appear immediately
     if ('caches' in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k === 'dairymitra-cache-v1') caches.delete(k);
+          if (k !== 'dairymitra-cache-v5.2') caches.delete(k);
         });
       });
     }
@@ -58,8 +58,13 @@
 
       <!-- Date & Shift Bar -->
       <div class="shift-bar">
-        <div class="date-display" id="currentDateDisplay">
-          📅 आज, 21 अक्टूबर
+        <div class="date-display-wrap">
+          <div class="date-display" id="currentDateDisplay">
+            📅 आज, 28 अक्टूबर
+          </div>
+          <button type="button" class="btn-reset-day" id="resetTodayBtn" title="आज के सभी काउंटर 0 करें (नया दिन शुरू)">
+            🔄 0 करें
+          </button>
         </div>
         <div class="shift-toggle-group">
           <button class="shift-pill active" id="shiftMorningBtn" data-shift="morning">
@@ -104,11 +109,21 @@
         </button>
       </div>
       <div class="voice-text-wrap">
-        <div class="voice-status" id="voiceStatus">माइक दबाकर बोलें (उदा. "लाली 6 लीटर")</div>
-        <div class="voice-result" id="voiceResult">बोलकर एंट्री करना सबसे तेज़ है...</div>
+        <div class="voice-status" id="voiceStatus">माइक दबाकर बोलें या कोई भी सवाल पूछें</div>
+        <div class="voice-result" id="voiceResult">उदा. "आज लाली ने कितना दूध दिया" या "लाली 6 लीटर"</div>
       </div>
       <button class="voice-help-btn" id="voiceHelpBtn" title="मदद">❓</button>
     </section>
+
+    <!-- AI Voice Assistant Answer Card (बोलकर पूछे गए सवालों का उत्तर) -->
+    <div class="ai-voice-reply-card hidden" id="aiVoiceReplyCard">
+      <div class="ai-voice-reply-icon">🤖</div>
+      <div class="ai-voice-reply-content">
+        <div class="ai-voice-reply-title" id="aiVoiceReplyTitle">AI मुंशी का उत्तर</div>
+        <div class="ai-voice-reply-text" id="aiVoiceReplyText"></div>
+      </div>
+      <button type="button" class="ai-voice-reply-close" id="closeAiVoiceReplyBtn" title="बंद करें">✕</button>
+    </div>
 
     <!-- Audio Speech Feedback Toast -->
     <div class="audio-toast hidden" id="audioToast">
@@ -609,13 +624,15 @@
         <button class="modal-close-btn" id="closeVoiceHelpModalBtn">✕</button>
       </div>
       <div class="modal-body">
-        <p class="help-desc">माइक का बटन दबाएं और बिल्कुल साधारण भाषा में बोलें:</p>
+        <p class="help-desc">माइक का बटन दबाएं और बिल्कुल अपनी देसी भाषा में सवाल पूछें या एंट्री करें:</p>
         <ul class="voice-help-list">
-          <li><strong>पशु का दूध भरने के लिए:</strong><br><em>"लाली 6 लीटर"</em> या <em>"भूरी भैंस 5.5 लीटर"</em></li>
-          <li><strong>ग्राहक की डिलीवरी दर्ज करने के लिए:</strong><br><em>"रमेश जी 2 लीटर"</em> या <em>"शर्मा जी को दूध दिया"</em></li>
-          <li><strong>टैब बदलने के लिए:</strong><br><em>"दूध बांटना दिखाओ"</em> या <em>"पशु दिखाओ"</em> या <em>"खाता खोलो"</em></li>
+          <li><strong>पशु का दूध पूछने के लिए:</strong><br><em>"आज लाली ने कितना दूध दिया टोटल सुबह-शाम मिला के?"</em> या <em>"लाली का इस महीने का दूध कितना है?"</em></li>
+          <li><strong>कुल दूध व टॉप पशु पूछने के लिए:</strong><br><em>"आज सारे पशुओं को मिलाकर कुल कितना दूध हुआ?"</em> या <em>"किस पशु ने सबसे ज्यादा दूध दिया?"</em></li>
+          <li><strong>ग्राहक का दूध व हिसाब पूछने के लिए:</strong><br><em>"शर्मा जी के यहाँ कल कितना दूध गया?"</em> या <em>"इस महीने वर्मा जी का कितना दूध गया और कितना टोटल हिसाब हो गया?"</em></li>
+          <li><strong>दूध की एंट्री करने के लिए:</strong><br><em>"लाली 6 लीटर"</em> या <em>"रमेश जी 2 लीटर"</em> या <em>"शर्मा जी का नागा"</em></li>
+          <li><strong>डॉक्टर सलाह व गर्भाधान:</strong><br><em>"गाय का फैट कैसे बढ़ाएं?"</em> या <em>"लाली कब ब्याएगी?"</em></li>
         </ul>
-        <p class="help-note">💡 ऐप अपने आप आपकी बात समझकर डेटा अपडेट कर देगा और बोलकर सुनाएगा भी!</p>
+        <p class="help-note">💡 AI मुंशी आपकी भाषा सुनकर तुरंत हिसाब निकालेगा और बोलकर सुनाएगा!</p>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-primary" id="gotVoiceHelpBtn">समझ गया, ठीक है 👍</button>
@@ -1333,12 +1350,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="app.js?v=4.0"></script>
+  <script src="app.js?v=5.2"></script>
   <script>
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=4.0').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=5.2').then(reg => {
           reg.update(); // Force check for latest sw.js
         }).catch(() => {});
       });

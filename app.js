@@ -142,6 +142,27 @@ function loadData() {
         data.farmSettings.defaultFatRate = 8.0;
         data.farmSettings.defaultSnfRate = 0.0;
       }
+      // One-time upgrade to clean 0 counters for today
+      if (!data._v52DailyResetClean) {
+        data._v52DailyResetClean = true;
+        const todayKey = getTodayDateKey();
+        if (data.dailyRecords && data.dailyRecords[todayKey]) {
+          if (data.dailyRecords[todayKey].milking) {
+            data.dailyRecords[todayKey].milking = { morning: {}, evening: {} };
+            (data.animals || []).forEach(a => {
+              data.dailyRecords[todayKey].milking.morning[a.id] = 0;
+              data.dailyRecords[todayKey].milking.evening[a.id] = 0;
+            });
+          }
+          if (data.dailyRecords[todayKey].delivery) {
+            data.dailyRecords[todayKey].delivery = { morning: {}, evening: {} };
+            (data.customers || []).forEach(c => {
+              data.dailyRecords[todayKey].delivery.morning[c.id] = { status: 'pending', litres: 0 };
+              data.dailyRecords[todayKey].delivery.evening[c.id] = { status: 'pending', litres: 0 };
+            });
+          }
+        }
+      }
       return data;
     } catch (e) {
       console.error('Error parsing saved data:', e);
@@ -160,8 +181,13 @@ function getTodayDateKey() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function initTodayRecord() {
-  if (!appData.dailyRecords[currentDateKey]) {
+function initTodayRecord(forceReset = false) {
+  const freshDateKey = getTodayDateKey();
+  if (freshDateKey !== currentDateKey) {
+    currentDateKey = freshDateKey;
+  }
+
+  if (!appData.dailyRecords[currentDateKey] || forceReset) {
     appData.dailyRecords[currentDateKey] = {
       milking: {
         morning: {},
@@ -173,34 +199,35 @@ function initTodayRecord() {
       }
     };
 
-    // Pre-populate milking defaults for lactating animals
+    // On a new day, every animal starts clean at 0.0 L (clean slate for milking)
     appData.animals.forEach(a => {
-      if (a.status === 'milking') {
-        const halfYield = Math.round((a.expectedYield / 2) * 10) / 10;
-        appData.dailyRecords[currentDateKey].milking.morning[a.id] = halfYield;
-        appData.dailyRecords[currentDateKey].milking.evening[a.id] = halfYield;
-      } else {
-        appData.dailyRecords[currentDateKey].milking.morning[a.id] = 0;
-        appData.dailyRecords[currentDateKey].milking.evening[a.id] = 0;
-      }
+      appData.dailyRecords[currentDateKey].milking.morning[a.id] = 0;
+      appData.dailyRecords[currentDateKey].milking.evening[a.id] = 0;
     });
 
-    // Pre-populate delivery defaults
+    // On a new day, all customer deliveries start as 'pending' (0 L delivered until checked)
     appData.customers.forEach(c => {
-      const mQ = (c.quotaMorning !== undefined && c.quotaMorning !== null) ? c.quotaMorning : 1.0;
-      const eQ = (c.quotaEvening !== undefined && c.quotaEvening !== null) ? c.quotaEvening : 1.0;
       appData.dailyRecords[currentDateKey].delivery.morning[c.id] = {
-        status: mQ > 0 ? 'delivered' : 'skipped',
-        litres: mQ
+        status: 'pending',
+        litres: 0
       };
       appData.dailyRecords[currentDateKey].delivery.evening[c.id] = {
-        status: eQ > 0 ? 'delivered' : 'skipped',
-        litres: eQ
+        status: 'pending',
+        litres: 0
       };
     });
 
     saveData();
   }
+}
+
+function resetTodayCounters() {
+  initTodayRecord(true);
+  updateStatsHeader();
+  renderMilkingCards();
+  renderDeliveryCards();
+  speakAudio('आज का नया दिन शुरू हो गया, सभी काउंटर 0 कर दिए गए हैं');
+  showAudioToast('🔄 आज का नया दिन शुरू! सभी काउंटर 0');
 }
 
 // ===================================================================
@@ -365,8 +392,502 @@ function parseHindiNumbers(text) {
   return null;
 }
 
+// Get Yesterday's date string "YYYY-MM-DD"
+function getYesterdayDateKey() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Detect if speech input is a natural question/query
+function isVoiceQuery(text) {
+  const queryTriggers = [
+    'कितना', 'कितने', 'कितनी', 'क्या', 'किस', 'किसने', 'किसका', 'किसकी', 'किसके',
+    'कौन', 'कौनसा', 'कौनसी', 'कौनसे', 'कब', 'कहाँ',
+    'सबसे ज्यादा', 'सबसे अधिक', 'सब से ज्यादा', 'सर्वश्रेष्ठ', 'टॉप', 'best', 'highest',
+    'हिसाब', 'बिल', 'बकाया', 'उधार', 'उधारी', 'बाकी', 'बताओ', 'बताइए', 'दिखाओ', 'दिखाइए',
+    'चेक', 'पूरा दूध', 'टोटल दूध', 'कुल दूध', 'सारे पशु', 'सभी पशु', 'सब पशु',
+    'मिला के', 'मिलाकर', 'कुल बिक्री', 'कमाई', 'गल्ला', 'औसत', 'रिकॉर्ड',
+    'kitna', 'kitne', 'kitni', 'kya', 'kis', 'kisne', 'kiska', 'kaun', 'sabse',
+    'total', 'hisab', 'batao', 'dikhao', 'record', 'avg', 'average', 'highest', 'bill', 'dues',
+    'dudh gya', 'doodh gya', 'kitna gya', 'dudh bika', 'doodh bika', 'kal'
+  ];
+  return queryTriggers.some(t => text.includes(t));
+}
+
+// Extract day range like "1 se 28", "1 से 28 तारीख", "1 to 28"
+function extractDayRange(text) {
+  if (!text) return null;
+  // Normalize devanagari digits: ०-९
+  const normalized = text.replace(/[\u0966-\u096F]/g, d => d.charCodeAt(0) - 0x0966);
+  const match = normalized.match(/(\d{1,2})\s*(?:तारीख\s*)?(?:से|to|se|-)\s*(\d{1,2})/i);
+  if (match) {
+    const s = parseInt(match[1], 10);
+    const e = parseInt(match[2], 10);
+    if (s >= 1 && e <= 31 && s <= e) {
+      return { startDay: s, endDay: e };
+    }
+  }
+  return null;
+}
+
+// Detect explicit shift in voice commands (उदा. "शाम का", "सुबह का", "shaam", "subah")
+function detectShiftInText(text) {
+  if (!text) return null;
+  const t = text.toLowerCase();
+  if (
+    t.includes('शाम') || t.includes('सांझ') || t.includes('संझा') ||
+    t.includes('shaam') || t.includes('sham') || t.includes('evening') || t.includes('sanjh')
+  ) {
+    return 'evening';
+  }
+  if (
+    t.includes('सुबह') || t.includes('सवेरे') || t.includes('तड़के') || t.includes('भोर') ||
+    t.includes('subah') || t.includes('subha') || t.includes('morning') || t.includes('savere')
+  ) {
+    return 'morning';
+  }
+  return null;
+}
+
+function findAnimalFuzzy(text) {
+  const t = text.toLowerCase();
+  for (let animal of appData.animals) {
+    const rawName = animal.name.toLowerCase();
+    const cleanName = rawName.split(' ')[0].replace(/[^a-z\u0900-\u097F]/gi, '');
+    if (t.includes(cleanName) || t.includes(rawName)) return animal;
+    // लाली / ललाई / लालई / ललई
+    if (cleanName.includes('लाली') && (
+      t.includes('ललाई') || t.includes('लालई') || t.includes('ललई') ||
+      t.includes('लालि') || t.includes('लली') || t.includes('लाली') ||
+      t.includes('lali') || t.includes('laali') || t.includes('lalai') || t.includes('lallai') ||
+      t.includes('मुर्रा') || t.includes('murra')
+    )) return animal;
+    // भूरी / भूरिया
+    if (cleanName.includes('भूरी') && (
+      t.includes('भूरी') || t.includes('भुरि') || t.includes('भूरिया') ||
+      t.includes('bhuri') || t.includes('bhoori') || t.includes('bhuriya') ||
+      t.includes('गिर') || t.includes('gir')
+    )) return animal;
+    // कजरी / कजरा
+    if (cleanName.includes('कजरी') && (
+      t.includes('कजरी') || t.includes('कजरि') || t.includes('कजरा') ||
+      t.includes('kajri') || t.includes('kajari') || t.includes('देसी')
+    )) return animal;
+    // गौरी
+    if (cleanName.includes('गौरी') && (
+      t.includes('गौरी') || t.includes('गौरि') ||
+      t.includes('gauri') || t.includes('gouri') ||
+      t.includes('साहीवाल') || t.includes('sahiwal')
+    )) return animal;
+    // रानी
+    if (cleanName.includes('रानी') && (
+      t.includes('रानी') || t.includes('रानि') ||
+      t.includes('rani') || t.includes('hf') || t.includes('एचएफ')
+    )) return animal;
+  }
+  return null;
+}
+
+function findCustomerFuzzy(text) {
+  const t = text.toLowerCase();
+  for (let cust of appData.customers) {
+    const rawName = cust.name.toLowerCase();
+    const cleanName = rawName.split(' ')[0].replace(/[^a-z\u0900-\u097F]/gi, '');
+    if (t.includes(cleanName) || t.includes(rawName)) return cust;
+    // शर्मा जी
+    if (cleanName.includes('शर्मा') && (
+      t.includes('शर्मा') || t.includes('सरमा') ||
+      t.includes('sharma') || t.includes('sarma') ||
+      t.includes('किराना') || t.includes('kirana')
+    )) return cust;
+    // वर्मा मास्टर जी
+    if (cleanName.includes('वर्मा') && (
+      t.includes('वर्मा') || t.includes('वारमा') ||
+      t.includes('verma') || t.includes('varma') ||
+      t.includes('मास्टर') || t.includes('master')
+    )) return cust;
+    // रमेश जी
+    if (cleanName.includes('रमेश') && (
+      t.includes('रमेश') || t.includes('रमेस') ||
+      t.includes('ramesh') || t.includes('rames')
+    )) return cust;
+    // गुप्ता जी
+    if (cleanName.includes('गुप्ता') && (
+      t.includes('गुप्ता') || t.includes('गुपता') ||
+      t.includes('gupta')
+    )) return cust;
+  }
+  return null;
+}
+
+function showAiVoiceReply(title, message) {
+  const card = document.getElementById('aiVoiceReplyCard');
+  const titleEl = document.getElementById('aiVoiceReplyTitle');
+  const textEl = document.getElementById('aiVoiceReplyText');
+  if (card && textEl) {
+    if (titleEl) titleEl.innerText = title || '🤖 AI मुंशी का जवाब';
+    textEl.innerHTML = message.replace(/\n/g, '<br>');
+    card.classList.remove('hidden');
+  }
+  const statusEl = document.getElementById('voiceStatus');
+  if (statusEl) statusEl.innerText = title || '🤖 AI मुंशी का जवाब:';
+  const resultEl = document.getElementById('voiceResult');
+  if (resultEl) resultEl.innerText = message;
+
+  showAudioToast(message);
+  speakAudio(message);
+}
+
+// SMART DAIRY AI VOICE QUERY ENGINE (स्मार्ट डेयरी AI मुंशी)
+function handleDairyAiVoiceQuery(text, rawText) {
+  const now = new Date();
+  const isYesterday = text.includes('कल') || text.includes('बीते दिन') || text.includes('yesterday') || text.includes('kal');
+  const targetDate = isYesterday ? getYesterdayDateKey() : currentDateKey;
+  const dateLabel = isYesterday ? 'कल' : 'आज';
+
+  // Ensure monthly records exist for safety
+  ensureMonthlyMilkingRecords(now.getFullYear(), now.getMonth() + 1);
+  ensureMonthlyDeliveryRecords(now.getFullYear(), now.getMonth() + 1);
+  if (isYesterday) {
+    const yDate = new Date();
+    yDate.setDate(yDate.getDate() - 1);
+    ensureMonthlyMilkingRecords(yDate.getFullYear(), yDate.getMonth() + 1);
+    ensureMonthlyDeliveryRecords(yDate.getFullYear(), yDate.getMonth() + 1);
+  }
+
+  const matchedAnimal = findAnimalFuzzy(text);
+  const matchedCust = findCustomerFuzzy(text);
+  const dateRange = extractDayRange(text);
+
+  // ===================================================================
+  // 1. SPECIFIC CUSTOMER QUERY (Priority 1)
+  // उदा. "शर्मा जी के यहाँ कल कितना दूध गया", "इस महीने वर्मा जी का कितना दूध गया और कितना टोटल हिसाब हो गया"
+  // ===================================================================
+  if (matchedCust) {
+    // 1A. Customer Date Range (उदा. "रमेश को 1 से 28 तक कितना दूध गया और कितना हिसाब हुआ")
+    if (dateRange && !isYesterday) {
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const monthName = getHindiMonthName(month);
+      let rangeLitres = 0;
+      let deliveredCount = 0;
+      let skippedCount = 0;
+
+      for (let d = dateRange.startDay; d <= dateRange.endDay; d++) {
+        const dKey = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const m = appData.dailyRecords[dKey]?.delivery?.morning?.[matchedCust.id];
+        const e = appData.dailyRecords[dKey]?.delivery?.evening?.[matchedCust.id];
+        const mQ = (m && m.status !== 'skipped') ? (parseFloat(m.litres) || 0) : 0;
+        const eQ = (e && e.status !== 'skipped') ? (parseFloat(e.litres) || 0) : 0;
+        const tot = Math.round((mQ + eQ) * 10) / 10;
+        if (tot > 0) {
+          rangeLitres += tot;
+          deliveredCount++;
+        } else if ((m && m.status === 'skipped') || (e && e.status === 'skipped')) {
+          skippedCount++;
+        }
+      }
+      rangeLitres = Math.round(rangeLitres * 10) / 10;
+      const rangeBill = Math.round(rangeLitres * (matchedCust.rate || 60));
+      let reply = `${dateRange.startDay} से ${dateRange.endDay} ${monthName} तक ${matchedCust.name} के यहाँ कुल ${rangeLitres.toFixed(1)} लीटर दूध गया है (${deliveredCount} दिन दूध लिया${skippedCount > 0 ? `, ${skippedCount} दिन नागा रहा` : ''})।`;
+      reply += ` ₹${matchedCust.rate}/लीटर के भाव से इसका दूध बिल ₹${rangeBill.toLocaleString('en-IN')} बनता है।`;
+      if (matchedCust.dues > 0) {
+        reply += ` पिछला बकाया ₹${matchedCust.dues.toLocaleString('en-IN')} जोड़कर कुल शुद्ध हिसाब ₹${Math.round(rangeBill + matchedCust.dues).toLocaleString('en-IN')} होता है।`;
+      }
+      showAiVoiceReply(`📒 ${matchedCust.name} (${dateRange.startDay} से ${dateRange.endDay} तारीख)`, reply);
+      return true;
+    }
+
+    const isMonthlyOrBill = text.includes('महीने') || text.includes('महीना') || 
+                            text.includes('अभी तक') || text.includes('हिसाब') || 
+                            text.includes('बिल') || text.includes('बकाया') || 
+                            text.includes('उधार') || text.includes('उधारी') || 
+                            text.includes('टोटल हिसाब') || text.includes('पूरा हिसाब') ||
+                            text.includes('hisab') || text.includes('bill');
+
+    if (isMonthlyOrBill && !isYesterday) {
+      const stats = getCustomerMonthlyStats(matchedCust.id, now.getFullYear(), now.getMonth() + 1);
+      const monthName = getHindiMonthName(now.getMonth() + 1);
+      
+      let reply = `इस महीने ${monthName} में ${matchedCust.name} के यहाँ अब तक कुल ${stats.totalLitres.toFixed(1)} लीटर दूध गया है (${stats.deliveredDays} दिन दूध लिया${stats.skippedDays > 0 ? `, ${stats.skippedDays} दिन नागा रहा` : ', कोई नागा नहीं'})।`;
+      reply += ` ₹${matchedCust.rate}/लीटर के भाव से इस महीने का दूध बिल ₹${stats.monthBill.toLocaleString('en-IN')} हुआ है।`;
+      if (matchedCust.dues > 0) {
+        reply += ` पिछला बकाया ₹${matchedCust.dues.toLocaleString('en-IN')} जोड़कर कुल शुद्ध देय हिसाब ₹${stats.totalPayable.toLocaleString('en-IN')} बनता है।`;
+      } else {
+        reply += ` पिछला कोई बकाया नहीं है, कुल देय हिसाब ₹${stats.totalPayable.toLocaleString('en-IN')} है।`;
+      }
+      showAiVoiceReply(`📒 ${matchedCust.name} का हिसाब`, reply);
+      return true;
+    }
+
+    // Specific day delivery for customer
+    const mEntry = appData.dailyRecords[targetDate]?.delivery?.morning?.[matchedCust.id];
+    const eEntry = appData.dailyRecords[targetDate]?.delivery?.evening?.[matchedCust.id];
+    const mQty = (mEntry && mEntry.status !== 'skipped') ? (parseFloat(mEntry.litres) || 0) : 0;
+    const eQty = (eEntry && eEntry.status !== 'skipped') ? (parseFloat(eEntry.litres) || 0) : 0;
+    const dayTot = Math.round((mQty + eQty) * 10) / 10;
+
+    let reply = '';
+    if (dayTot === 0 && ((mEntry && mEntry.status === 'skipped') || (eEntry && eEntry.status === 'skipped'))) {
+      reply = `${dateLabel} ${matchedCust.name} का नागा (छुट्टी) था, उन्हें कोई दूध नहीं दिया गया।`;
+    } else if (text.includes('सुबह') && !text.includes('शाम')) {
+      reply = `${dateLabel} ${matchedCust.name} को सुबह ${mQty.toFixed(1)} लीटर दूध दिया गया था (भाव ₹${matchedCust.rate}/L)।`;
+    } else if (text.includes('शाम') && !text.includes('सुबह')) {
+      reply = `${dateLabel} ${matchedCust.name} को शाम को ${eQty.toFixed(1)} लीटर दूध दिया गया था (भाव ₹${matchedCust.rate}/L)।`;
+    } else {
+      reply = `${dateLabel} ${matchedCust.name} के यहाँ कुल ${dayTot.toFixed(1)} लीटर दूध गया था — सुबह ${mQty.toFixed(1)}L और शाम को ${eQty.toFixed(1)}L (भाव ₹${matchedCust.rate}/L, ${dateLabel} का हिसाब ₹${Math.round(dayTot * matchedCust.rate)})।`;
+    }
+    showAiVoiceReply(`🚚 ${matchedCust.name} का दूध`, reply);
+    return true;
+  }
+
+  // ===================================================================
+  // 1.5 OVERALL FARM MONTHLY / RANGE DELIVERY & BILLING (सभी ग्राहकों का कुल दूध वितरण व हिसाब)
+  // उदा. "अभी 1 से 28 तक इस महीने में कितना दूध गया और उसका कितना हिसाब हुआ", "इस महीने कुल कितना दूध बिका और कितना हिसाब हुआ"
+  // ===================================================================
+  const isOverallDeliveryOrBill = (
+    dateRange ||
+    text.includes('महीने') || text.includes('महीना') || text.includes('mahine') ||
+    text.includes('अब तक') || text.includes('अभी तक')
+  ) && (
+    text.includes('दूध गया') || text.includes('दूध बिका') || text.includes('दूध बांटा') || 
+    text.includes('वितरण') || text.includes('सप्लाई') || text.includes('बिक्री') ||
+    text.includes('हिसाब') || text.includes('बिल') || text.includes('कमाई') ||
+    text.includes('kitna dudh gya') || text.includes('dudh gya') || text.includes('hisab') || text.includes('bill')
+  ) && !matchedCust && !matchedAnimal;
+
+  if (isOverallDeliveryOrBill) {
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const monthName = getHindiMonthName(month);
+    const startDay = dateRange ? dateRange.startDay : 1;
+    const endDay = dateRange ? dateRange.endDay : now.getDate();
+
+    let totalLitres = 0;
+    let totalBill = 0;
+    let totalDues = 0;
+
+    appData.customers.forEach(c => {
+      totalDues += (c.dues || 0);
+      let cLitres = 0;
+      for (let d = startDay; d <= endDay; d++) {
+        const dKey = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const m = appData.dailyRecords[dKey]?.delivery?.morning?.[c.id];
+        const e = appData.dailyRecords[dKey]?.delivery?.evening?.[c.id];
+        if (m && m.status !== 'skipped') cLitres += (parseFloat(m.litres) || 0);
+        if (e && e.status !== 'skipped') cLitres += (parseFloat(e.litres) || 0);
+      }
+      totalLitres += cLitres;
+      totalBill += Math.round(cLitres * (c.rate || 60));
+    });
+
+    totalLitres = Math.round(totalLitres * 10) / 10;
+    const rangeLabel = dateRange ? `${startDay} से ${endDay} ${monthName}` : `इस महीने ${monthName} में 1 से ${endDay} तारीख तक`;
+
+    let reply = `${rangeLabel} सभी ग्राहकों को कुल मिलाकर ${totalLitres.toFixed(1)} लीटर दूध सप्लाई किया गया है। इसका कुल दूध बिल ₹${totalBill.toLocaleString('en-IN')} बनता है।`;
+    if (totalDues > 0) {
+      reply += ` पुराना बकाया ₹${totalDues.toLocaleString('en-IN')} जोड़कर फार्म का कुल देय हिसाब ₹${Math.round(totalBill + totalDues).toLocaleString('en-IN')} है।`;
+    }
+    showAiVoiceReply('📊 कुल दूध वितरण व हिसाब', reply);
+    return true;
+  }
+
+  // ===================================================================
+  // 2. SPECIFIC ANIMAL MILK QUERY (Priority 2)
+  // उदा. "आज लाली ने कितना दूध दिया टोटल सुबह शाम मिला के"
+  // ===================================================================
+  if (matchedAnimal) {
+    if (text.includes('महीने') || text.includes('महीना') || text.includes('अभी तक') || text.includes('औसत') || text.includes('रिकॉर्ड')) {
+      const stats = getAnimalMonthlyMilkingStats(matchedAnimal.id, now.getFullYear(), now.getMonth() + 1);
+      const monthName = getHindiMonthName(now.getMonth() + 1);
+      let reply = `इस महीने ${monthName} में ${matchedAnimal.name} ने अब तक कुल ${stats.totalLitres.toFixed(1)} लीटर दूध दिया है (${stats.milkedDays} दिन दूध चालू रहा)। इसका दैनिक AI औसत ${stats.avgDailyMilk} लीटर प्रति दिन है।`;
+      if (stats.highestYield && stats.highestYield.litres > 0) {
+        reply += ` सबसे ज्यादा दूध ${stats.highestYield.dayNum} तारीख को ${stats.highestYield.litres} लीटर दिया था।`;
+      }
+      showAiVoiceReply(`🐄 ${matchedAnimal.name} का मासिक दूध`, reply);
+      return true;
+    }
+
+    const mQty = parseFloat(appData.dailyRecords[targetDate]?.milking?.morning?.[matchedAnimal.id]) || 0;
+    const eQty = parseFloat(appData.dailyRecords[targetDate]?.milking?.evening?.[matchedAnimal.id]) || 0;
+    const dayTot = Math.round((mQty + eQty) * 10) / 10;
+
+    let reply = '';
+    if (text.includes('सुबह') && !text.includes('शाम')) {
+      reply = `${dateLabel} ${matchedAnimal.name} ने सुबह ${mQty.toFixed(1)} लीटर दूध दिया है।`;
+    } else if (text.includes('शाम') && !text.includes('सुबह')) {
+      reply = `${dateLabel} ${matchedAnimal.name} ने शाम को ${eQty.toFixed(1)} लीटर दूध दिया है।`;
+    } else {
+      if (dayTot === 0) {
+        reply = `${dateLabel} ${matchedAnimal.name} का दूध अभी दर्ज नहीं हुआ है (0 लीटर)। आप "${matchedAnimal.name.split(' ')[0]} 6 लीटर" बोलकर तुरंत दर्ज कर सकते हैं।`;
+      } else {
+        reply = `${dateLabel} ${matchedAnimal.name} ने सुबह ${mQty.toFixed(1)} लीटर और शाम को ${eQty.toFixed(1)} लीटर, यानी कुल मिलाकर ${dayTot.toFixed(1)} लीटर दूध दिया है।`;
+      }
+    }
+    showAiVoiceReply(`🥛 ${matchedAnimal.name} का दूध`, reply);
+    return true;
+  }
+
+  // ===================================================================
+  // 3. TOP / BEST MILK ANIMAL (Priority 3)
+  // उदा. "किस पशु ने सबसे ज्यादा दूध दिया", "सबसे ज्यादा दूध किसका है"
+  // ===================================================================
+  const isTopAnimalQuery = (
+    text.includes('सबसे ज्यादा') || text.includes('सबसे अधिक') || text.includes('सब से ज्यादा') ||
+    text.includes('सर्वश्रेष्ठ') || text.includes('टॉप') || text.includes('top') || text.includes('highest') || text.includes('best')
+  ) && (
+    text.includes('पशु') || text.includes('दूध') || text.includes('गाय') || text.includes('भैंस') ||
+    text.includes('दिया') || text.includes('किसने') || text.includes('किसका') || text.includes('देती')
+  );
+
+  if (isTopAnimalQuery) {
+    if (text.includes('महीने') || text.includes('महीना')) {
+      const monthStatsList = appData.animals.map(a => {
+        const st = getAnimalMonthlyMilkingStats(a.id, now.getFullYear(), now.getMonth() + 1);
+        return { animal: a, stats: st };
+      }).sort((a, b) => b.stats.totalLitres - a.stats.totalLitres);
+
+      const top = monthStatsList[0];
+      const monthName = getHindiMonthName(now.getMonth() + 1);
+      if (top && top.stats.totalLitres > 0) {
+        let reply = `इस महीने ${monthName} में सबसे ज्यादा दूध ${top.animal.name} ने दिया है — कुल ${top.stats.totalLitres.toFixed(1)} लीटर (दैनिक AI औसत ${top.stats.avgDailyMilk}L/दिन)।`;
+        if (monthStatsList.length > 1 && monthStatsList[1].stats.totalLitres > 0) {
+          reply += ` दूसरे नंबर पर ${monthStatsList[1].animal.name} है (${monthStatsList[1].stats.totalLitres.toFixed(1)} लीटर)।`;
+        }
+        showAiVoiceReply('⭐ सर्वश्रेष्ठ दूध देने वाला पशु', reply);
+        return true;
+      }
+    }
+
+    const list = appData.animals.map(a => {
+      const m = parseFloat(appData.dailyRecords[targetDate]?.milking?.morning?.[a.id]) || 0;
+      const e = parseFloat(appData.dailyRecords[targetDate]?.milking?.evening?.[a.id]) || 0;
+      return { animal: a, morning: m, evening: e, total: Math.round((m + e) * 10) / 10 };
+    }).filter(item => item.total > 0).sort((a, b) => b.total - a.total);
+
+    if (list.length === 0) {
+      const monthStatsList = appData.animals.map(a => {
+        const st = getAnimalMonthlyMilkingStats(a.id, now.getFullYear(), now.getMonth() + 1);
+        return { animal: a, stats: st };
+      }).sort((a, b) => b.stats.totalLitres - a.stats.totalLitres);
+      const topMonth = monthStatsList[0];
+      
+      let reply = `${dateLabel} अभी किसी पशु का दूध दर्ज नहीं हुआ है। लेकिन इस महीने सबसे ज्यादा दूध ${topMonth ? topMonth.animal.name : 'लाली'} ने दिया है (कुल ${topMonth ? topMonth.stats.totalLitres.toFixed(1) : '0'} लीटर, औसत ${topMonth ? topMonth.stats.avgDailyMilk : '0'}L/दिन)।`;
+      showAiVoiceReply('⭐ टॉप पशु', reply);
+      return true;
+    }
+
+    const top = list[0];
+    let reply = `${dateLabel} सबसे ज्यादा दूध ${top.animal.name} ने दिया है — कुल ${top.total} लीटर (सुबह ${top.morning}L + शाम ${top.evening}L)।`;
+    if (list.length > 1 && list[1].total > 0) {
+      const second = list[1];
+      reply += ` इसके बाद दूसरे नंबर पर ${second.animal.name} है (${second.total} लीटर)।`;
+    }
+    showAiVoiceReply('⭐ सबसे ज्यादा दूध', reply);
+    return true;
+  }
+
+  // ===================================================================
+  // 4. TOTAL FARM MILK PRODUCTION (Priority 4)
+  // उदा. "आज सारे पशु को मिला के कितना दूध हो गया", "कुल दूध कितना हुआ"
+  // ===================================================================
+  const isFarmTotalQuery = (
+    text.includes('सारे पशु') || text.includes('सभी पशु') || text.includes('सब पशु') ||
+    text.includes('सारे') || text.includes('सभी') || text.includes('सबका') ||
+    text.includes('कुल दूध') || text.includes('पूरा दूध') || text.includes('टोटल दूध') ||
+    text.includes('फार्म का दूध') || text.includes('फार्म में कितना दूध') ||
+    text.includes('मिला के') || text.includes('मिलाकर')
+  ) && (
+    text.includes('दूध') || text.includes('कितना') || text.includes('निकला') ||
+    text.includes('हो गया') || text.includes('हुआ') || text.includes('बना')
+  );
+
+  if (isFarmTotalQuery) {
+    let mTot = 0, eTot = 0;
+    appData.animals.forEach(a => {
+      mTot += parseFloat(appData.dailyRecords[targetDate]?.milking?.morning?.[a.id]) || 0;
+      eTot += parseFloat(appData.dailyRecords[targetDate]?.milking?.evening?.[a.id]) || 0;
+    });
+    const farmTot = Math.round((mTot + eTot) * 10) / 10;
+    mTot = Math.round(mTot * 10) / 10;
+    eTot = Math.round(eTot * 10) / 10;
+
+    let delTot = 0;
+    appData.customers.forEach(c => {
+      const m = appData.dailyRecords[targetDate]?.delivery?.morning?.[c.id];
+      const e = appData.dailyRecords[targetDate]?.delivery?.evening?.[c.id];
+      if (m && m.status !== 'skipped') delTot += (parseFloat(m.litres) || 0);
+      if (e && e.status !== 'skipped') delTot += (parseFloat(e.litres) || 0);
+    });
+    delTot = Math.round(delTot * 10) / 10;
+    const remTot = Math.max(0, Math.round((farmTot - delTot) * 10) / 10);
+
+    let reply = '';
+    if (farmTot === 0) {
+      reply = `${dateLabel} फार्म के पशुओं का दूध अभी दर्ज नहीं हुआ है (0 लीटर)। आप बोलकर दूध दर्ज कर सकते हैं।`;
+    } else {
+      reply = `${dateLabel} फार्म के सभी पशुओं को मिलाकर कुल ${farmTot} लीटर दूध हुआ है — सुबह ${mTot} लीटर और शाम को ${eTot} लीटर।`;
+      if (delTot > 0) {
+        reply += ` इसमें से ${delTot} लीटर ग्राहकों को बंट चुका है${remTot > 0 ? ` और ${remTot} लीटर अभी घर में बचा हुआ है।` : '।'}`;
+      } else {
+        reply += ` पूरा ${farmTot} लीटर दूध अभी उपलब्ध है।`;
+      }
+    }
+    showAiVoiceReply('🥛 कुल फार्म दूध उत्पादन', reply);
+    return true;
+  }
+
+  // ===================================================================
+  // 5. OVERALL FARM EARNINGS / DUES QUERY (Priority 5)
+  // उदा. "आज की कमाई कितनी है", "कुल कितना बकाया है"
+  // ===================================================================
+  if (text.includes('कमाई') || text.includes('बिक्री') || text.includes('कलेक्शन') || text.includes('गल्ला')) {
+    let dayEarnings = 0;
+    appData.customers.forEach(c => {
+      const m = appData.dailyRecords[targetDate]?.delivery?.morning?.[c.id];
+      const e = appData.dailyRecords[targetDate]?.delivery?.evening?.[c.id];
+      const mQ = (m && m.status !== 'skipped') ? (parseFloat(m.litres) || 0) : 0;
+      const eQ = (e && e.status !== 'skipped') ? (parseFloat(e.litres) || 0) : 0;
+      dayEarnings += ((mQ + eQ) * (c.rate || 60));
+    });
+    const reply = `${dateLabel} कुल ₹${Math.round(dayEarnings).toLocaleString('en-IN')} का दूध बिका है।`;
+    showAiVoiceReply('💰 फार्म कमाई', reply);
+    return true;
+  }
+
+  if (text.includes('कुल बकाया') || text.includes('उधार') || text.includes('उधारी') || (text.includes('बकाया') && !matchedCust)) {
+    let totalDues = 0;
+    appData.customers.forEach(c => totalDues += (c.dues || 0));
+    const reply = `सभी ग्राहकों का मिलाकर कुल पुराना बकाया ₹${totalDues.toLocaleString('en-IN')} है।`;
+    showAiVoiceReply('📒 कुल बकाया', reply);
+    return true;
+  }
+
+  // ===================================================================
+  // 6. ANIMAL HEADCOUNT QUERY (Priority 6)
+  // उदा. "कुल कितने पशु हैं", "कितनी गाय हैं"
+  // ===================================================================
+  if (text.includes('कितने पशु') || text.includes('कितनी गाय') || text.includes('कितनी भैंस') || text.includes('कुल पशु')) {
+    const cows = appData.animals.filter(a => a.type === 'cow').length;
+    const buff = appData.animals.filter(a => a.type === 'buffalo').length;
+    const milking = appData.animals.filter(a => a.status === 'milking').length;
+    const reply = `फार्म में कुल ${appData.animals.length} पशु हैं (${cows} गाय और ${buff} भैंस)। इनमें से ${milking} पशु अभी दूध दे रहे हैं।`;
+    showAiVoiceReply('🐄 फार्म के पशु', reply);
+    return true;
+  }
+
+  return false;
+}
+
 function processVoiceCommand(rawText) {
   const text = rawText.toLowerCase();
+
+  // 0. CHECK IF USER IS ASKING A QUESTION (AI VOICE QUERY)
+  if (isVoiceQuery(text)) {
+    const answered = handleDairyAiVoiceQuery(text, rawText);
+    if (answered) return;
+  }
 
   // Navigation Commands
   if (text.includes('बांट') || text.includes('वितरण') || text.includes('डिलीवरी')) {
@@ -390,42 +911,74 @@ function processVoiceCommand(rawText) {
     return;
   }
 
-  // Animal Milking Commands
-  for (let animal of appData.animals) {
-    const cleanName = animal.name.split(' ')[0].toLowerCase();
-    if (text.includes(cleanName)) {
-      const litres = parseHindiNumbers(text);
-      if (litres !== null) {
-        setAnimalMilk(animal.id, litres);
-        const shiftLabel = currentShift === 'morning' ? 'सुबह' : 'शाम';
-        speakAudio(`${animal.name} का ${shiftLabel} का ${litres} लीटर दर्ज हो गया!`);
-        document.getElementById('voiceResult').innerText = `✅ ${animal.name}: ${litres} L दर्ज`;
-        return;
+  // Reset / New Day Voice Commands (उदा. "आज का नया दिन शुरू करो", "सारे काउंटर 0 करो")
+  if (
+    text.includes('नया दिन') || text.includes('सारे काउंटर 0') ||
+    text.includes('सब 0 करो') || text.includes('0 कर दो') ||
+    text.includes('reset today') || text.includes('reset counter')
+  ) {
+    resetTodayCounters();
+    return;
+  }
+
+  // Animal Milking Commands (उदा. "लाली का शाम का दूध 5 लीटर हुआ", "सुबह भूरी ने 4 l दूध दिया")
+  const matchedAnimalVoice = findAnimalFuzzy(text);
+  if (matchedAnimalVoice) {
+    const litres = parseHindiNumbers(text);
+    if (litres !== null) {
+      const explicitShift = detectShiftInText(text);
+      const targetShift = explicitShift || currentShift;
+      const shiftLabel = targetShift === 'morning' ? 'सुबह' : 'शाम';
+
+      // Automatically switch to the morning or evening shift tab if explicitly spoken
+      if (explicitShift && explicitShift !== currentShift) {
+        setShift(explicitShift, true);
       }
+      // Ensure Milking Tab is active
+      switchTab('viewMilking');
+
+      setAnimalMilk(matchedAnimalVoice.id, litres, targetShift);
+      speakAudio(`${matchedAnimalVoice.name} का ${shiftLabel} का ${litres} लीटर दर्ज हो गया!`);
+      const resEl = document.getElementById('voiceResult');
+      if (resEl) resEl.innerText = `✅ ${matchedAnimalVoice.name} (${shiftLabel}): ${litres} L दर्ज`;
+      return;
     }
   }
 
-  // Customer Delivery Commands
-  for (let customer of appData.customers) {
-    const cleanCust = customer.name.split(' ')[0].toLowerCase();
-    if (text.includes(cleanCust)) {
-      if (text.includes('नागा') || text.includes('नहीं') || text.includes('छुट्टी')) {
-        setCustomerDeliveryStatus(customer.id, 'skipped', 0);
-        speakAudio(`${customer.name} का आज नागा दर्ज किया गया!`);
-        return;
-      }
+  // Customer Delivery Commands (उदा. "रमेश को शाम 2 लीटर दिया", "सुबह रमेश का नागा")
+  const matchedCustVoice = findCustomerFuzzy(text);
+  if (matchedCustVoice) {
+    const explicitShift = detectShiftInText(text);
+    const targetShift = explicitShift || currentShift;
+    const shiftLabel = targetShift === 'morning' ? 'सुबह' : 'शाम';
 
-      const litres = parseHindiNumbers(text);
-      if (litres !== null) {
-        setCustomerDeliveryStatus(customer.id, 'custom', litres);
-        speakAudio(`${customer.name} को ${litres} लीटर दर्ज हो गया!`);
-        return;
-      } else {
-        const defaultLitres = currentShift === 'morning' ? customer.quotaMorning : customer.quotaEvening;
-        setCustomerDeliveryStatus(customer.id, 'delivered', defaultLitres);
-        speakAudio(`${customer.name} को ${defaultLitres} लीटर दूध दिया गया!`);
-        return;
-      }
+    if (explicitShift && explicitShift !== currentShift) {
+      setShift(explicitShift, true);
+    }
+    switchTab('viewDelivery');
+
+    if (text.includes('नागा') || text.includes('नहीं') || text.includes('छुट्टी') || text.includes('naga')) {
+      setCustomerDeliveryStatus(matchedCustVoice.id, 'skipped', 0, targetShift);
+      speakAudio(`${matchedCustVoice.name} का ${shiftLabel} का नागा दर्ज किया गया!`);
+      const resEl = document.getElementById('voiceResult');
+      if (resEl) resEl.innerText = `🔴 ${matchedCustVoice.name} (${shiftLabel}): नागा`;
+      return;
+    }
+
+    const litres = parseHindiNumbers(text);
+    if (litres !== null) {
+      setCustomerDeliveryStatus(matchedCustVoice.id, 'custom', litres, targetShift);
+      speakAudio(`${matchedCustVoice.name} को ${shiftLabel} का ${litres} लीटर दर्ज हो गया!`);
+      const resEl = document.getElementById('voiceResult');
+      if (resEl) resEl.innerText = `✅ ${matchedCustVoice.name} (${shiftLabel}): ${litres} L`;
+      return;
+    } else {
+      const defaultLitres = targetShift === 'morning' ? (matchedCustVoice.quotaMorning || 0) : (matchedCustVoice.quotaEvening || 0);
+      setCustomerDeliveryStatus(matchedCustVoice.id, 'delivered', defaultLitres, targetShift);
+      speakAudio(`${matchedCustVoice.name} को ${shiftLabel} का ${defaultLitres} लीटर दूध दिया गया!`);
+      const resEl = document.getElementById('voiceResult');
+      if (resEl) resEl.innerText = `✅ ${matchedCustVoice.name} (${shiftLabel}): ${defaultLitres} L`;
+      return;
     }
   }
 
@@ -549,7 +1102,7 @@ function updateStatsHeader() {
   let totalEarnings = 0;
   for (let cid in shiftDelivery) {
     const entry = shiftDelivery[cid];
-    if (entry && entry.status !== 'skipped') {
+    if (entry && (entry.status === 'delivered' || entry.status === 'custom') && entry.litres > 0) {
       const qty = parseFloat(entry.litres) || 0;
       totalDelivered += qty;
       const cust = appData.customers.find(c => c.id === cid);
@@ -698,9 +1251,12 @@ function renderMilkingCards() {
   });
 }
 
-function setAnimalMilk(animalId, litres) {
+function setAnimalMilk(animalId, litres, shift = currentShift) {
   initTodayRecord();
-  appData.dailyRecords[currentDateKey].milking[currentShift][animalId] = litres;
+  if (!appData.dailyRecords[currentDateKey].milking[shift]) {
+    appData.dailyRecords[currentDateKey].milking[shift] = {};
+  }
+  appData.dailyRecords[currentDateKey].milking[shift][animalId] = litres;
   saveData();
   renderMilkingCards();
 }
@@ -722,13 +1278,16 @@ function renderDeliveryCards() {
 
   appData.customers.forEach(cust => {
     const shiftQuota = currentShift === 'morning' ? (cust.quotaMorning !== undefined ? cust.quotaMorning : 1.0) : (cust.quotaEvening !== undefined ? cust.quotaEvening : 1.0);
-    const entry = shiftDelivery[cust.id] || { status: shiftQuota > 0 ? 'delivered' : 'skipped', litres: shiftQuota };
-    const isDelivered = entry.status === 'delivered' || entry.status === 'custom';
+    const entry = shiftDelivery[cust.id] || { status: 'pending', litres: 0 };
+    const isDelivered = (entry.status === 'delivered' || entry.status === 'custom') && entry.litres > 0;
     const isSkipped = entry.status === 'skipped';
-    if (isDelivered && entry.litres > 0) deliveredCount++;
+    if (isDelivered) deliveredCount++;
+
+    const badgeText = isDelivered ? `${entry.litres} L` : (isSkipped ? 'नागा (0L)' : `कोटा: ${shiftQuota}L`);
+    const deliverBtnQty = isDelivered ? entry.litres : shiftQuota;
 
     const card = document.createElement('div');
-    card.className = `delivery-card ${isDelivered && entry.litres > 0 ? 'delivered' : ''} ${isSkipped || entry.litres === 0 ? 'skipped' : ''}`;
+    card.className = `delivery-card ${isDelivered ? 'delivered' : ''} ${isSkipped ? 'skipped' : ''}`;
     card.innerHTML = `
       <div class="cust-row">
         <div class="cust-identity">
@@ -745,16 +1304,16 @@ function renderDeliveryCards() {
         </div>
         <div class="cattle-actions">
           <div class="cust-quota-badge">
-            ${entry.litres} L
+            ${badgeText}
           </div>
         </div>
       </div>
 
       <div class="delivery-actions-row">
-        <button class="btn-delivery-action btn-deliver-ok ${isDelivered && entry.litres > 0 ? 'active' : ''}" data-id="${cust.id}">
-          ✔ दिया (${entry.litres}L)
+        <button class="btn-delivery-action btn-deliver-ok ${isDelivered ? 'active' : ''}" data-id="${cust.id}">
+          ✔ दिया (${deliverBtnQty}L)
         </button>
-        <button class="btn-delivery-action btn-deliver-skip ${isSkipped || entry.litres === 0 ? 'active' : ''}" data-id="${cust.id}">
+        <button class="btn-delivery-action btn-deliver-skip ${isSkipped ? 'active' : ''}" data-id="${cust.id}">
           ✕ नागा
         </button>
         <button class="btn-delivery-action btn-deliver-edit" data-id="${cust.id}">
@@ -812,9 +1371,12 @@ function renderDeliveryCards() {
   });
 }
 
-function setCustomerDeliveryStatus(custId, status, litres) {
+function setCustomerDeliveryStatus(custId, status, litres, shift = currentShift) {
   initTodayRecord();
-  appData.dailyRecords[currentDateKey].delivery[currentShift][custId] = {
+  if (!appData.dailyRecords[currentDateKey].delivery[shift]) {
+    appData.dailyRecords[currentDateKey].delivery[shift] = {};
+  }
+  appData.dailyRecords[currentDateKey].delivery[shift][custId] = {
     status: status,
     litres: parseFloat(litres) || 0
   };
@@ -830,7 +1392,7 @@ function ensureMonthlyDeliveryRecords(year, month) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
   const isCurrentMonth = (today.getFullYear() === year && (today.getMonth() + 1) === month);
-  const maxDay = isCurrentMonth ? today.getDate() : daysInMonth;
+  const maxDay = isCurrentMonth ? Math.max(0, today.getDate() - 1) : daysInMonth;
 
   for (let day = 1; day <= maxDay; day++) {
     const dKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -897,7 +1459,7 @@ function ensureMonthlyMilkingRecords(year, month) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
   const isCurrentMonth = (today.getFullYear() === year && (today.getMonth() + 1) === month);
-  const maxDay = isCurrentMonth ? today.getDate() : daysInMonth;
+  const maxDay = isCurrentMonth ? Math.max(0, today.getDate() - 1) : daysInMonth;
 
   for (let day = 1; day <= maxDay; day++) {
     const dKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -959,6 +1521,7 @@ function getAnimalMonthlyMilkingStats(animalId, year = currentKhataYear, month =
   for (let day = 1; day <= daysInMonth; day++) {
     const dKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const isFuture = isCurrentMonth && day > todayDateNum;
+    const isToday = isCurrentMonth && day === todayDateNum;
 
     let mQty = 0;
     let eQty = 0;
@@ -973,6 +1536,8 @@ function getAnimalMonthlyMilkingStats(animalId, year = currentKhataYear, month =
 
     if (isFuture) {
       status = 'future';
+    } else if (isToday && dayTotal === 0) {
+      status = 'today_pending';
     } else {
       if (dayTotal > 0) {
         status = 'milking';
@@ -1054,7 +1619,7 @@ function syncCustomerMonthRecordsWithQuota(custId, year, month) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
   const isCurrentMonth = (today.getFullYear() === year && (today.getMonth() + 1) === month);
-  const maxDay = isCurrentMonth ? today.getDate() : daysInMonth;
+  const maxDay = isCurrentMonth ? Math.max(0, today.getDate() - 1) : daysInMonth;
 
   const mQ = (cust.quotaMorning !== undefined && cust.quotaMorning !== null) ? cust.quotaMorning : 0;
   const eQ = (cust.quotaEvening !== undefined && cust.quotaEvening !== null) ? cust.quotaEvening : 0;
@@ -1106,23 +1671,22 @@ function getCustomerMonthlyStats(custId, year, month) {
   for (let day = 1; day <= daysInMonth; day++) {
     const dKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const isFuture = isCurrentMonth && day > todayDateNum;
+    const isToday = isCurrentMonth && day === todayDateNum;
     
     let morningQty = 0;
-    let morningStatus = 'delivered';
+    let morningStatus = 'pending';
     let eveningQty = 0;
-    let eveningStatus = 'delivered';
+    let eveningStatus = 'pending';
 
     if (!isFuture && appData.dailyRecords[dKey] && appData.dailyRecords[dKey].delivery) {
       const mEntry = appData.dailyRecords[dKey].delivery.morning ? appData.dailyRecords[dKey].delivery.morning[custId] : null;
       const eEntry = appData.dailyRecords[dKey].delivery.evening ? appData.dailyRecords[dKey].delivery.evening[custId] : null;
 
       morningQty = mEntry ? (parseFloat(mEntry.litres) || 0) : 0;
-      morningStatus = mEntry ? mEntry.status : (morningQty > 0 ? 'delivered' : 'skipped');
-      if (morningQty === 0) morningStatus = 'skipped';
+      morningStatus = mEntry ? mEntry.status : (morningQty > 0 ? 'delivered' : 'pending');
 
       eveningQty = eEntry ? (parseFloat(eEntry.litres) || 0) : 0;
-      eveningStatus = eEntry ? eEntry.status : (eveningQty > 0 ? 'delivered' : 'skipped');
-      if (eveningQty === 0) eveningStatus = 'skipped';
+      eveningStatus = eEntry ? eEntry.status : (eveningQty > 0 ? 'delivered' : 'pending');
     }
 
     const dayTotal = Math.round((morningQty + eveningQty) * 10) / 10;
@@ -1130,6 +1694,8 @@ function getCustomerMonthlyStats(custId, year, month) {
     let status = 'delivered';
     if (isFuture) {
       status = 'future';
+    } else if (isToday && dayTotal === 0 && (morningStatus === 'pending' || eveningStatus === 'pending') && morningStatus !== 'skipped' && eveningStatus !== 'skipped') {
+      status = 'today_pending';
     } else if (dayTotal === 0 || (morningStatus === 'skipped' && eveningStatus === 'skipped')) {
       status = 'skipped';
       skippedDays++;
@@ -1980,14 +2546,18 @@ function switchTab(tabId) {
   if (tabId === 'viewCattle') renderCattleRegister();
 }
 
-function setShift(shift) {
+function setShift(shift, silent = false) {
   currentShift = shift;
-  document.getElementById('shiftMorningBtn').classList.toggle('active', shift === 'morning');
-  document.getElementById('shiftEveningBtn').classList.toggle('active', shift === 'evening');
+  const mBtn = document.getElementById('shiftMorningBtn');
+  const eBtn = document.getElementById('shiftEveningBtn');
+  if (mBtn) mBtn.classList.toggle('active', shift === 'morning');
+  if (eBtn) eBtn.classList.toggle('active', shift === 'evening');
   updateStatsHeader();
   renderMilkingCards();
   renderDeliveryCards();
-  speakAudio(shift === 'morning' ? 'सुबह की शिफ्ट चुनी गई' : 'शाम की शिफ्ट चुनी गई');
+  if (!silent) {
+    speakAudio(shift === 'morning' ? 'सुबह की शिफ्ट चुनी गई' : 'शाम की शिफ्ट चुनी गई');
+  }
 }
 
 function setupModals() {
@@ -3169,6 +3739,9 @@ function renderCalendarGrid(stats) {
     if (d.isFuture) {
       badgeText = '-';
       miniShifts = '-';
+    } else if (d.status === 'today_pending') {
+      badgeText = 'आज चालू';
+      miniShifts = 'प्रगति पर';
     } else if (d.status === 'skipped') {
       badgeText = '0 L';
       miniShifts = '✕ नागा';
@@ -3424,6 +3997,9 @@ function renderAnimalCalendarDays(stats) {
     if (d.isFuture) {
       badgeText = '-';
       subText = '-';
+    } else if (d.status === 'today_pending') {
+      badgeText = 'आज चालू';
+      subText = 'प्रगति पर';
     } else if (d.totalLitres === 0) {
       badgeText = '0 L';
       subText = 'सूखा/नागा';
@@ -4614,6 +5190,50 @@ document.addEventListener('DOMContentLoaded', () => {
         if (aDayEDisp) aDayEDisp.innerText = `${val.toFixed(1)} L`;
       }
     });
+  });
+
+  // AI Voice Assistant Answer Card close button
+  const closeAiVoiceReplyBtn = document.getElementById('closeAiVoiceReplyBtn');
+  if (closeAiVoiceReplyBtn) {
+    closeAiVoiceReplyBtn.addEventListener('click', () => {
+      const card = document.getElementById('aiVoiceReplyCard');
+      if (card) card.classList.add('hidden');
+    });
+  }
+
+  // Reset Today's Counters Button (0 से शुरू करें)
+  const resetTodayBtn = document.getElementById('resetTodayBtn');
+  if (resetTodayBtn) {
+    resetTodayBtn.addEventListener('click', () => {
+      if (confirm('क्या आप आज के सभी दूध और डिलीवरी काउंटर 0 करके नया दिन शुरू करना चाहते हैं?\n\n(ध्यान दें: पुराना सारा रिकॉर्ड कैलेंडर व खाते में पूरी तरह सुरक्षित रहेगा)')) {
+        resetTodayCounters();
+      }
+    });
+  }
+
+  // Automatic Day Rollover on App Focus / Resume
+  window.addEventListener('focus', () => {
+    const freshDate = getTodayDateKey();
+    if (freshDate !== currentDateKey) {
+      currentDateKey = freshDate;
+      initTodayRecord();
+      updateStatsHeader();
+      renderMilkingCards();
+      renderDeliveryCards();
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      const freshDate = getTodayDateKey();
+      if (freshDate !== currentDateKey) {
+        currentDateKey = freshDate;
+        initTodayRecord();
+        updateStatsHeader();
+        renderMilkingCards();
+        renderDeliveryCards();
+      }
+    }
   });
 });
 
