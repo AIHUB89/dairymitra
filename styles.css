@@ -1321,8 +1321,9 @@ html, body {
   animation: fadeIn 0.2s ease;
 }
 
-.modal-backdrop.hidden {
-  display: none;
+.modal-backdrop.hidden,
+.hidden {
+  display: none !important;
 }
 
 .modal-card {
@@ -3381,4 +3382,874 @@ html, body {
   padding: 0 2px;
   margin-top: 1px;
 }
+
+/* ==========================================================================
+   TRENDING FEATURES v6.0: STYLES
+   ========================================================================== */
+
+/* Trending Shortcuts Bar in Header */
+.trending-actions-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.trending-actions-bar::-webkit-scrollbar {
+  display: none;
+}
+.trending-action-btn {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+.trending-action-btn:active {
+  transform: scale(0.96);
+}
+.btn-trend-profit {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2);
+}
+.btn-trend-routine {
+  background: #e0f2fe;
+  color: #0369a1;
+  border-color: #bae6fd;
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.2);
+}
+.btn-trend-purity {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #a7f3d0;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+}
+.btn-trend-icon {
+  font-size: 14px;
+}
+
+/* Feature 1: UPI Bill & WhatsApp Slip */
+.modal-upi-bill {
+  max-width: 440px;
+}
+.upi-slip-card {
+  background: #ffffff;
+  border: 2px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  font-family: inherit;
+}
+.upi-slip-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+.upi-slip-logo {
+  font-size: 17px;
+  font-weight: 800;
+  color: #065f46;
+}
+.upi-slip-tagline {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+.upi-slip-divider {
+  border-top: 1px dashed #cbd5e1;
+  margin: 10px 0;
+}
+.upi-slip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.upi-slip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #334155;
+}
+.upi-slip-row .slip-label {
+  font-weight: 600;
+  color: #64748b;
+}
+.upi-slip-row .slip-val {
+  font-weight: 700;
+  color: #1e293b;
+}
+.upi-slip-row .slip-val.highlight {
+  color: #0284c7;
+}
+.upi-slip-total-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1.5px solid #10b981;
+  border-radius: 10px;
+}
+.slip-total-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #065f46;
+}
+.slip-total-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #047857;
+}
+.upi-qr-section {
+  text-align: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+}
+.upi-qr-wrapper {
+  display: inline-block;
+  padding: 10px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+.upi-qr-image {
+  width: 170px;
+  height: 170px;
+  display: block;
+  margin: 0 auto;
+}
+.upi-scan-hint {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  margin-top: 6px;
+}
+.upi-id-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 5px 12px;
+  background: #f1f5f9;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #334155;
+}
+.btn-copy-upi {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+}
+.upi-app-badges {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.upi-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+.upi-badge.gpay { color: #1a73e8; border-color: #93c5fd; background: #eff6ff; }
+.upi-badge.phonepe { color: #5f259f; border-color: #d8b4fe; background: #faf5ff; }
+.upi-badge.paytm { color: #00b9f1; border-color: #7dd3fc; background: #f0f9ff; }
+.upi-badge.bhim { color: #0284c7; border-color: #38bdf8; background: #f0fdf4; }
+
+.upi-actions-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+.btn-direct-upi {
+  width: 100%;
+  height: 44px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+/* Feature 2: Daily Expenses & Profit/Loss */
+.modal-expense-profit {
+  max-width: 480px;
+}
+.profit-revenue-card {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 12px;
+}
+.kpi-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.kpi-mini .kpi-title {
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 600;
+}
+.kpi-mini .kpi-num {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1e293b;
+  margin-top: 2px;
+}
+.kpi-mini .kpi-num.green {
+  color: #059669;
+}
+
+.expense-inputs-card {
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.section-title-sm {
+  font-size: 12px;
+  font-weight: 800;
+  color: #334155;
+  margin-bottom: 8px;
+}
+.expense-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.expense-input-item label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 4px;
+}
+.expense-input-item input {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  background: #f8fafc;
+}
+.expense-input-item input:focus {
+  border-color: var(--primary);
+  background: #fff;
+  outline: none;
+}
+
+.net-profit-hero-card {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+.net-profit-hero-card.is-loss {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border-color: #ef4444;
+}
+.hero-profit-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: #065f46;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.net-profit-hero-card.is-loss .hero-profit-header {
+  color: #991b1b;
+}
+.hero-profit-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: #047857;
+}
+.net-profit-hero-card.is-loss .hero-profit-val {
+  color: #dc2626;
+}
+.hero-profit-sub {
+  font-size: 11px;
+  color: #475569;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.hero-kpi-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.12);
+}
+.hero-kpi-pill {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.hero-kpi-pill .pill-label {
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 600;
+}
+.hero-kpi-pill .pill-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1e293b;
+}
+.hero-kpi-pill .pill-val.green {
+  color: #059669;
+}
+
+/* Feature 3: Feed Optimizer */
+.modal-feed-optimizer {
+  max-width: 480px;
+}
+.feed-inputs-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.feed-ration-card {
+  background: #ffffff;
+  border: 1.5px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 12px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+}
+.ration-card-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #065f46;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ration-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ration-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+.ration-icon {
+  font-size: 18px;
+}
+.ration-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+.ration-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+.ration-qty {
+  font-size: 12px;
+  font-weight: 800;
+  color: #047857;
+  white-space: nowrap;
+}
+.ration-qty.highlight {
+  color: #b45309;
+  background: #fef3c7;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.feed-benefit-banner {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: #f0fdf4;
+  border-left: 3px solid #10b981;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #14532d;
+  line-height: 1.4;
+}
+.btn-voice-speak {
+  flex: 1;
+  height: 44px;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Feature 4: Digital Cattle Kundali */
+.modal-kundali {
+  max-width: 440px;
+}
+.kundali-card-wrapper {
+  background: linear-gradient(145deg, #ffffff, #fffbeb);
+  border: 2px solid #f59e0b;
+  border-radius: 14px;
+  padding: 16px;
+  position: relative;
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.15);
+}
+.kundali-badge-gold {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+}
+.kundali-header-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.kundali-avatar-box {
+  width: 54px;
+  height: 54px;
+  background: #fef3c7;
+  border: 2px solid #fcd34d;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kundali-avatar-emoji {
+  font-size: 30px;
+}
+.kundali-title-box h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #78350f;
+}
+.kundali-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+}
+.kundali-breed {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+.kundali-divider {
+  border-top: 1px dashed #fcd34d;
+  margin: 12px 0;
+}
+.kundali-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.kundali-cell {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #fef08a;
+  border-radius: 8px;
+  padding: 7px 9px;
+  display: flex;
+  flex-direction: column;
+}
+.kundali-cell .k-label {
+  font-size: 10px;
+  color: #78350f;
+  font-weight: 600;
+}
+.kundali-cell .k-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e293b;
+  margin-top: 2px;
+}
+.kundali-cell .k-val.highlight {
+  color: #059669;
+}
+.kundali-health-strip {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 8px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #065f46;
+}
+.kundali-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #92400e;
+  border-top: 1px solid #fef08a;
+  padding-top: 6px;
+}
+
+/* Feature 5: AI Valuation */
+.modal-valuation {
+  max-width: 440px;
+}
+.valuation-hero-price {
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  border: 2px solid #6366f1;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  margin: 12px 0;
+}
+.valuation-hero-price .v-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4338ca;
+}
+.valuation-hero-price .v-price-range {
+  font-size: 26px;
+  font-weight: 800;
+  color: #312e81;
+  margin: 6px 0;
+}
+.valuation-hero-price .v-fair-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #4338ca;
+  color: #ffffff;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.valuation-factors-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+}
+.v-factors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.v-factor-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #334155;
+  font-weight: 600;
+}
+.v-factor-item .icon {
+  font-size: 14px;
+}
+
+/* Feature 6: Smart Farm Routine */
+.modal-farm-routine {
+  max-width: 480px;
+}
+.routine-banner {
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: #1e40af;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+.routine-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.timeline-slot {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+.timeline-slot.active {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+.slot-time {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0369a1;
+  background: #e0f2fe;
+  padding: 4px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.slot-info {
+  flex: 1;
+}
+.slot-info strong {
+  display: block;
+  font-size: 13px;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+.slot-info p {
+  margin: 0;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.3;
+}
+.btn-slot-alarm {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+.btn-slot-alarm:active {
+  transform: scale(0.9);
+}
+.routine-controls {
+  margin-top: 14px;
+}
+
+/* Feature 7: 100% Purity Certificate Poster */
+.modal-purity-cert {
+  max-width: 440px;
+}
+.purity-cert-wrapper {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  padding: 14px;
+  border-radius: 14px;
+}
+.cert-gold-frame {
+  border: 3px double #d97706;
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.15);
+}
+.cert-badge-royal {
+  display: inline-block;
+  background: #d97706;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+}
+.cert-farm-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #78350f;
+  margin: 8px 0 2px;
+}
+.cert-subtitle {
+  font-size: 11px;
+  color: #b45309;
+  font-weight: 700;
+}
+.cert-seal-art {
+  font-size: 28px;
+  margin: 8px 0;
+  letter-spacing: 6px;
+}
+.cert-highlights-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 12px 0;
+}
+.cert-box {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+.cert-box-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #92400e;
+}
+.cert-box-val {
+  font-size: 14px;
+  font-weight: 800;
+  color: #047857;
+  margin: 2px 0;
+}
+.cert-box-sub {
+  font-size: 9px;
+  color: #64748b;
+  font-weight: 600;
+}
+.cert-checklist {
+  text-align: left;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cert-footer-banner {
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #78350f;
+}
+.cert-phone {
+  font-size: 14px;
+  font-weight: 800;
+  color: #059669;
+  margin-top: 2px;
+}
+
+/* Action Buttons inside Cattle & Customer Cards */
+.animal-smart-actions-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+  overflow-x: auto;
+}
+.btn-smart-action {
+  flex: 1;
+  min-width: 65px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.btn-smart-action:hover {
+  background: #f1f5f9;
+}
+.btn-smart-action.btn-animal-kundali {
+  border-color: #fcd34d;
+  color: #b45309;
+  background: #fffbeb;
+}
+.btn-smart-action.btn-feed-optimizer {
+  border-color: #a7f3d0;
+  color: #065f46;
+  background: #ecfdf5;
+}
+.btn-smart-action.btn-animal-valuation {
+  border-color: #c7d2fe;
+  color: #4338ca;
+  background: #eef2ff;
+}
+
+/* UPI Button on Customer Card */
+.btn-upi-bill {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: transform 0.15s ease;
+}
+.btn-upi-bill:active {
+  transform: scale(0.95);
+}
+
 

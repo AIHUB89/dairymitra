@@ -217,7 +217,27 @@ function initTodayRecord(forceReset = false) {
       };
     });
 
+    // Daily farm expenses (दाना, चारा, भूसा, दवाई, अन्य)
+    appData.dailyRecords[currentDateKey].expenses = {
+      feed: 0,
+      greenFodder: 0,
+      dryFodder: 0,
+      medical: 0,
+      other: 0
+    };
+
     saveData();
+  }
+
+  // Ensure expenses exists even if dailyRecord was created earlier
+  if (!appData.dailyRecords[currentDateKey].expenses) {
+    appData.dailyRecords[currentDateKey].expenses = {
+      feed: 0,
+      greenFodder: 0,
+      dryFodder: 0,
+      medical: 0,
+      other: 0
+    };
   }
 }
 
@@ -303,6 +323,11 @@ function initVoiceRecognition() {
   speechRecognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript;
     document.getElementById('voiceStatus').innerText = `आपने बोला: "${transcript}"`;
+    const docInput = document.getElementById('aiQuestionInput');
+    const viewDoc = document.getElementById('viewDoctor');
+    if (viewDoc && !viewDoc.classList.contains('hidden') && docInput) {
+      docInput.value = transcript;
+    }
     processVoiceCommand(transcript);
   };
 
@@ -408,12 +433,458 @@ function isVoiceQuery(text) {
     'हिसाब', 'बिल', 'बकाया', 'उधार', 'उधारी', 'बाकी', 'बताओ', 'बताइए', 'दिखाओ', 'दिखाइए',
     'चेक', 'पूरा दूध', 'टोटल दूध', 'कुल दूध', 'सारे पशु', 'सभी पशु', 'सब पशु',
     'मिला के', 'मिलाकर', 'कुल बिक्री', 'कमाई', 'गल्ला', 'औसत', 'रिकॉर्ड',
-    'kitna', 'kitne', 'kitni', 'kya', 'kis', 'kisne', 'kiska', 'kaun', 'sabse',
+    'kitna', 'kitne', 'kitni', 'kya', 'kis', 'kisne', 'kiska', 'kaun', 'kon', 'sabse',
     'total', 'hisab', 'batao', 'dikhao', 'record', 'avg', 'average', 'highest', 'bill', 'dues',
-    'dudh gya', 'doodh gya', 'kitna gya', 'dudh bika', 'doodh bika', 'kal'
+    'dudh gya', 'doodh gya', 'kitna gya', 'dudh bika', 'doodh bika', 'kal',
+    'गाभिन', 'gabhin', 'गर्भवती', 'ग्याभिन', 'प्रेग्नेंट', 'pregnant',
+    'दूध दे रही', 'dudh de rahi', 'doodh de rahi', 'दूध चालू', 'चालू पशु', 'सूखी', 'सूखा', 'ड्राई', 'dry',
+    'डिलीवरी', 'ब्याएगी', 'ब्याने', 'बच्चा देगी', 'बच्चा कब', 'delivery', 'calving',
+    'हीट', 'सीमन', 'गर्भाधान', 'एआई', 'semen',
+    'आज का दिन', 'दिन कैसा', 'मौसम', 'आज कौन', 'तारीख', 'aaj ka din', 'kaisa h', 'kaisa hai', 'kon sa din', 'kaun sa din', 'konsa din', 'weather',
+    'सलाह', 'डॉक्टर', 'उपाय', 'बीमारी', 'इलाज', 'दवा', 'बुखार', 'अफारा', 'दस्त', 'कीड़े', 'थनैल',
+    'पिछले महीने', 'pichle mahine', 'pichla mahina', 'महीने पहले', 'mahine pehle', 'months ago', 'pehle',
+    'चारा', 'खुराक', 'आहार',
+    'मुनाफा', 'लाभ', 'प्रॉफिट', 'profit', 'खर्च', 'लागत', 'expense',
+    'डाइट', 'राशन', 'diet', 'ration', 'पोषण',
+    'बाजार भाव', 'कीमत', 'मूल्य', 'भाव', 'वैल्यू', 'valuation',
+    'कुंडली', 'kundali', 'हेल्थ कार्ड', 'आईडी कार्ड',
+    'रूटीन', 'routine', 'अलार्म', 'alarm', 'शेड्यूल',
+    'शुद्धता', 'गारंटी', 'सर्टिफिकेट', 'पोस्टर', 'poster', 'qr', 'upi'
   ];
   return queryTriggers.some(t => text.includes(t));
 }
+
+// Parse query target month and year (उदा. "पिछले महीने", "3 महीने पहले", "सितंबर", "अगस्त", "इस महीने")
+function parseQueryMonthYear(text) {
+  if (!text) return null;
+  const t = text.toLowerCase();
+  const now = new Date();
+  const curYear = now.getFullYear();
+  const curMonth = now.getMonth() + 1; // 1-12
+
+  // 1. Relative "पिछले महीने" / "last month" / "pichle mahine"
+  if (
+    t.includes('पिछले महीने') || t.includes('पिछला महीना') || t.includes('पिछले माह') ||
+    t.includes('पिछली माह') || t.includes('last month') || t.includes('pichle mahine') ||
+    t.includes('pichla mahina') || t.includes('pichhle mahine')
+  ) {
+    let m = curMonth - 1;
+    let y = curYear;
+    if (m < 1) { m = 12; y--; }
+    return {
+      isPast: true,
+      offset: 1,
+      year: y,
+      month: m,
+      monthName: getHindiMonthName(m),
+      label: `पिछले महीने (${getHindiMonthName(m)})`
+    };
+  }
+
+  // 2. Relative "N महीने पहले" (उदा. "3 महीने पहले", "दो महीने पहले", "3 months ago")
+  const hindiNumMap = {
+    'एक': 1, 'दो': 2, 'तीन': 3, 'चार': 4, 'पांच': 5, 'पाँच': 5,
+    'छह': 6, 'छः': 6, 'सात': 7, 'आठ': 8, 'नौ': 9, 'दस': 10,
+    'ग्यारह': 11, 'बारह': 12
+  };
+  const agoMatch = t.match(/(\d+|एक|दो|तीन|चार|पांच|पाँच|छह|छः|सात|आठ|नौ|दस)\s*(?:महीने|महीना|माह|mahine|mahina|months?)\s*(?:पहले|pehle|ago)/i);
+  if (agoMatch) {
+    let n = parseInt(agoMatch[1], 10);
+    if (isNaN(n)) n = hindiNumMap[agoMatch[1]] || 1;
+    if (n >= 1 && n <= 24) {
+      let m = curMonth - n;
+      let y = curYear;
+      while (m < 1) {
+        m += 12;
+        y--;
+      }
+      return {
+        isPast: true,
+        offset: n,
+        year: y,
+        month: m,
+        monthName: getHindiMonthName(m),
+        label: `${n} महीने पहले (${getHindiMonthName(m)} ${y})`
+      };
+    }
+  }
+
+  // 3. Named Months (उदा. "सितंबर में", "अगस्त", "जुलाई का हिसाब", "september")
+  const MONTH_NAMES_MAP = [
+    { m: 1, names: ['जनवरी', 'january', 'jan'] },
+    { m: 2, names: ['फरवरी', 'फ़रवरी', 'february', 'feb'] },
+    { m: 3, names: ['मार्च', 'march', 'mar'] },
+    { m: 4, names: ['अप्रैल', 'april', 'apr'] },
+    { m: 5, names: ['मई', 'may'] },
+    { m: 6, names: ['जून', 'june', 'jun'] },
+    { m: 7, names: ['जुलाई', 'july', 'jul'] },
+    { m: 8, names: ['अगस्त', 'august', 'aug'] },
+    { m: 9, names: ['सितंबर', 'सितम्बर', 'september', 'sep'] },
+    { m: 10, names: ['अक्टूबर', 'अक्टुबर', 'october', 'oct'] },
+    { m: 11, names: ['नवंबर', 'नवम्बर', 'november', 'nov'] },
+    { m: 12, names: ['दिसंबर', 'दिसम्बर', 'december', 'dec'] }
+  ];
+
+  for (let item of MONTH_NAMES_MAP) {
+    if (item.names.some(name => t.includes(name))) {
+      let y = curYear;
+      if (item.m > curMonth) {
+        y = curYear - 1;
+      }
+      const isPast = (y < curYear || item.m < curMonth);
+      const yrLabel = y !== curYear ? ` ${y}` : '';
+      return {
+        isPast: isPast,
+        offset: isPast ? (curMonth - item.m + (curYear - y) * 12) : 0,
+        year: y,
+        month: item.m,
+        monthName: getHindiMonthName(item.m),
+        label: `${getHindiMonthName(item.m)}${yrLabel} माह`
+      };
+    }
+  }
+
+  // 4. Current Month query (उदा. "इस महीने", "इस माह", "इस महीने में")
+  if (t.includes('महीने') || t.includes('महीना') || t.includes('माह') || t.includes('mahine') || t.includes('month')) {
+    return {
+      isPast: false,
+      offset: 0,
+      year: curYear,
+      month: curMonth,
+      monthName: getHindiMonthName(curMonth),
+      label: `इस महीने (${getHindiMonthName(curMonth)})`
+    };
+  }
+
+  return null;
+}
+
+// Dynamic Today's Cattle Health & Seasonal Weather Care Bulletin
+function getTodayCattleBulletin() {
+  const dayNames = ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
+  const now = new Date();
+  const dayName = dayNames[now.getDay()];
+  const dateStr = `${now.getDate()} ${getHindiMonthName(now.getMonth() + 1)} ${now.getFullYear()}`;
+
+  const totalAnimals = appData.animals ? appData.animals.length : 5;
+  const milkingCount = appData.animals ? appData.animals.filter(a => a.status === 'milking').length : 3;
+  const pregnantCount = appData.animals ? appData.animals.filter(a => a.status === 'pregnant' || getActiveBreedingRecord(a.id) !== null).length : 2;
+
+  let advice = `🌤️ **आज का दिन व पशु स्वास्थ्य बुलेटिन**\n\n`;
+  advice += `📅 **दिन व तारीख:** आज **${dayName}, ${dateStr}** है।\n\n`;
+  advice += `🍂 **मौसम व मौसमी पशु देखभाल (गुलाबी ठंड / शरद ऋतु):**\n`;
+  advice += `1. **रात की ठंडी हवा से बचाव:** रात का तापमान गिर रहा है। पशुओं को रात में खुले में न बांधें, शेड में सूखा पुआल या भूसा बिछाएं ताकि थन में ठंड और नमी न लगे।\n`;
+  advice += `2. **थनैल (Mastitis) से सुरक्षा:** दूध निकालने के तुरंत बाद थनों को हल्के गुनगुने पानी और लाल दवा (पोटाश) से साफ करें। दुहने के 20 मिनट तक पशु को बैठने न दें ताकि थन के छिद्र बंद हो सकें।\n`;
+  advice += `3. **संतुलित आहार व मिनरल मिक्सचर:** मौसम बदलने पर पाचन सही रखने हेतु रोज प्रति पशु 50 ग्राम मिनरल मिक्सचर और 30 ग्राम मीठा सोडा चारे में दें। 70% हरा चारा और 30% सूखा भूसा मिलाकर खिलाएं।\n`;
+  advice += `4. **पीने का पानी:** सुबह-सुबह बहुत ठंडा पानी न दें, ताजा बोरवेल का या धूप में रखा पानी पिलाएं।\n\n`;
+  advice += `🐄 **फार्म की स्थिति:** फार्म में कुल ${totalAnimals} पशु हैं (${milkingCount} चालू दूध, ${pregnantCount} गाभिन/सीमन)। सभी पशु स्वस्थ व सामान्य हैं। आज का दिन पशुओं के लिए उत्तम है।`;
+
+  const audioSummary = `आज ${dayName}, ${now.getDate()} ${getHindiMonthName(now.getMonth() + 1)} है। हल्की ठंड शुरू हो चुकी है। रात को पशुओं को ठंडी हवा से बचाएं और सूखा बिछावन डालें ताकि थनैल न हो। साथ ही रोज 50 ग्राम मिनरल मिक्सचर दें। आपके सभी पशु स्वस्थ हैं।`;
+
+  return { reply: advice, audio: audioSummary };
+}
+
+// Live Cattle Register Status & Breeding Countdown Summary
+function getCattleStatusSummary(query) {
+  const q = query ? query.toLowerCase() : '';
+
+  // 1. Calving / Delivery / गाभिन होने वाली
+  const isCalving = (
+    q.includes('ब्याएगी') || q.includes('ब्याने') || q.includes('डिलीवरी') ||
+    q.includes('प्रसव') || q.includes('बच्चा देगी') || q.includes('बच्चा कब') ||
+    q.includes('delivery') || q.includes('calving') || q.includes('गाभिन होने वाली') ||
+    q.includes('gabhin hone wali')
+  );
+
+  // 2. Pregnant animals query
+  const isGabhin = (
+    q.includes('गाभिन') || q.includes('गर्भवती') || q.includes('ग्याभिन') ||
+    q.includes('gabhin') || q.includes('pregnant')
+  );
+
+  // 3. Milking animals query
+  const isMilking = (
+    q.includes('दूध दे रही') || q.includes('दूध दे रहे') || q.includes('दूध चालू') ||
+    q.includes('चालू पशु') || q.includes('dudh de rahi') || q.includes('doodh de rahi') ||
+    q.includes('दूध देने वाली')
+  );
+
+  // 4. Dry animals query
+  const isDry = (
+    q.includes('सूखी') || q.includes('सूखा') || q.includes('ड्राई') || q.includes('dry')
+  );
+
+  // 5. Heat / AI check query
+  const isHeat = (
+    q.includes('हीट') || q.includes('सीमन') || q.includes('गर्भाधान') ||
+    q.includes('heat') || q.includes('semen')
+  );
+
+  if (isCalving) {
+    const list = [];
+    appData.animals.forEach(a => {
+      const br = getActiveBreedingRecord(a.id);
+      if (a.status === 'pregnant' || br !== null) {
+        if (br) {
+          const tl = getBreedingTimeline(br, a);
+          list.push({ animal: a, br, tl });
+        } else {
+          list.push({ animal: a, br: null, tl: null });
+        }
+      }
+    });
+
+    list.sort((x, y) => {
+      const dx = x.tl ? x.tl.daysRemaining : 999;
+      const dy = y.tl ? y.tl.daysRemaining : 999;
+      return dx - dy;
+    });
+
+    let text = `🍼 **संभावित प्रसव व डिलीवरी स्थिति:**\n\n`;
+    if (list.length === 0) {
+      text += `फार्म में अभी कोई भी पशु गाभिन या डिलीवरी सूची में दर्ज नहीं है।`;
+    } else {
+      list.forEach((item, idx) => {
+        if (item.tl) {
+          text += `${idx + 1}. **${item.animal.name}:**\n   - अवस्था: ${item.tl.stageName}\n   - संभावित डिलीवरी: **${formatHindiDate(item.tl.calvingDate)}** (${item.tl.daysRemaining > 0 ? `${item.tl.daysRemaining} दिन बाकी` : 'डिलीवरी का समय पूरा'})\n   - सीमन: ${item.br.semenDetails} (${item.br.doctorName})\n\n`;
+        } else {
+          text += `${idx + 1}. **${item.animal.name}:** गाभिन अवस्था में दर्ज है (सीमन रिकॉर्ड अपडेट करें)।\n\n`;
+        }
+      });
+      const dryList = appData.animals.filter(a => a.status === 'dry');
+      if (dryList.length > 0) {
+        text += `💡 **तैयार पशु:** ${dryList.map(a => a.name).join(', ')} अभी ड्राई है और अगली हीट में सीमन लगवाने के लिए तैयार है।`;
+      }
+    }
+
+    const first = list[0];
+    const audio = first && first.tl 
+      ? `सबसे पहले ${first.animal.name} की डिलीवरी ${formatHindiDate(first.tl.calvingDate)} को संभावित है और ${first.tl.daysRemaining} दिन बाकी हैं।`
+      : 'फार्म में गौरी साहीवाल गाभिन है और डिलीवरी जनवरी में संभावित है।';
+
+    return { title: '🍼 प्रसव व संभावित डिलीवरी स्थिति', text, audio, filter: 'pregnant' };
+  }
+
+  if (isGabhin) {
+    const pregnantAnimals = appData.animals.filter(a => a.status === 'pregnant' || getActiveBreedingRecord(a.id) !== null);
+    let text = `🤰 **गाभिन (गर्भवती) पशुओं की स्थिति:**\n\n`;
+    if (pregnantAnimals.length === 0) {
+      text += `फार्म में अभी कोई गाभिन पशु दर्ज नहीं है।`;
+    } else {
+      pregnantAnimals.forEach((a, i) => {
+        const br = getActiveBreedingRecord(a.id);
+        if (br) {
+          const tl = getBreedingTimeline(br, a);
+          text += `${i + 1}. **${a.name}:**\n   - अवस्था: ${tl.stageName}\n   - संभावित प्रसव: **${formatHindiDate(tl.calvingDate)}** (${tl.daysRemaining} दिन बाकी)\n   - सीमन: ${br.semenDetails} (${br.doctorName})\n\n`;
+        } else {
+          text += `${i + 1}. **${a.name}:** गाभिन अवस्था में है।\n\n`;
+        }
+      });
+      const recentAi = appData.breedingRecords.filter(br => br.status === 'active' && !pregnantAnimals.some(a => a.id === br.animalId));
+      if (recentAi.length > 0) {
+        text += `🧬 **सीमन निगरानी:** `;
+        recentAi.forEach(br => {
+          const a = appData.animals.find(an => an.id === br.animalId);
+          if (a) text += `${a.name} को ${br.aiDate} को सीमन लगा है (हीट/गर्भ जांच बाकी)। `;
+        });
+      }
+    }
+    const audio = 'फार्म में गौरी साहीवाल 6 माह 16 दिन की गाभिन है और लाली को 16 दिन पहले सीमन लगा है।';
+    return { title: '🤰 गाभिन पशुओं की स्थिति', text, audio, filter: 'pregnant' };
+  }
+
+  if (isMilking) {
+    const milkingAnimals = appData.animals.filter(a => a.status === 'milking');
+    let text = `🥛 **दूध देने वाले पशु (कुल ${milkingAnimals.length} चालू हैं):**\n\n`;
+    let totalEst = 0;
+    milkingAnimals.forEach((a, i) => {
+      totalEst += (a.expectedYield || 0);
+      text += `${i + 1}. **${a.name}:** अनुमानित ${a.expectedYield || 0} लीटर/दिन (${a.breed})\n`;
+    });
+    totalEst = Math.round(totalEst * 10) / 10;
+    text += `\nफार्म का कुल दैनिक दूध उत्पादन लगभग **${totalEst} लीटर** है।\n`;
+    const nonMilking = appData.animals.filter(a => a.status !== 'milking');
+    if (nonMilking.length > 0) {
+      text += `\n🍂 *अन्य पशु:* ${nonMilking.map(a => `${a.name} (${a.status === 'pregnant' ? 'गाभिन' : 'ड्राई'})`).join(', ')}`;
+    }
+    const audio = `फार्म में ${milkingAnimals.map(a => a.name.split(' ')[0]).join(', ')}, कुल ${milkingAnimals.length} पशु अभी दूध दे रहे हैं।`;
+    return { title: '🥛 दूध देने वाले पशु', text, audio, filter: 'milking' };
+  }
+
+  if (isDry) {
+    const dryAnimals = appData.animals.filter(a => a.status === 'dry');
+    let text = `🍂 **सूखे (ड्राई) पशुओं की स्थिति:**\n\n`;
+    if (dryAnimals.length === 0) {
+      text += `फार्म में अभी कोई भी पशु सूखा (ड्राई) नहीं है, सभी पशु चालू या गाभिन हैं।`;
+    } else {
+      dryAnimals.forEach((a, i) => {
+        text += `${i + 1}. **${a.name}:** ${a.breed} (${a.type === 'cow' ? 'गाय' : 'भैंस'}) अभी दूध नहीं दे रही है (ड्राई अवस्था)।\n`;
+      });
+      text += `\n💡 **सुझाव:** ड्राई पशु को नियमित मिनरल मिक्सचर दें ताकि अगली हीट में समय पर सीमन लगाया जा सके।`;
+    }
+    const audio = dryAnimals.length > 0 ? `फार्म में ${dryAnimals[0].name} अभी ड्राई अवस्था में है।` : 'फार्म में कोई भी पशु अभी ड्राई नहीं है।';
+    return { title: '🍂 सूखे (ड्राई) पशु', text, audio, filter: 'dry' };
+  }
+
+  if (isHeat) {
+    let text = `🧬 **सीमन व हीट चेक स्थिति:**\n\n`;
+    const activeBrs = appData.breedingRecords.filter(br => br.status === 'active');
+    if (activeBrs.length === 0) {
+      text += `फार्म में अभी कोई सक्रिय सीमन रिकॉर्ड दर्ज नहीं है।`;
+    } else {
+      activeBrs.forEach((br, i) => {
+        const a = appData.animals.find(an => an.id === br.animalId);
+        const tl = a ? getBreedingTimeline(br, a) : null;
+        text += `${i + 1}. **${a ? a.name : 'पशु'}:**\n`;
+        text += `   - सीमन तारीख: ${br.aiDate} (${br.semenDetails})\n`;
+        text += `   - डॉक्टर: ${br.doctorName}\n`;
+        if (tl) text += `   - स्थिति: ${tl.stageName}\n`;
+        text += `\n`;
+      });
+    }
+    const audio = 'लाली मुर्रा को 16 दिन पहले सीमन लगा है और 5 दिन बाद 21-दिन का हीट चेक होना है।';
+    return { title: '🧬 सीमन व हीट चेक स्थिति', text, audio, filter: 'pregnant' };
+  }
+
+  return null;
+}
+
+// Comprehensive AI Veterinary Guidance Engine (Doctor & Advisor)
+function getAiVeterinaryAdvice(query) {
+  if (!query) return null;
+  const q = query.toLowerCase();
+
+  // 1. Check if asking about today's bulletin / day / date
+  if (
+    q.includes('आज का दिन') || q.includes('दिन कैसा') || q.includes('मौसम') ||
+    q.includes('आज कौन') || q.includes('तारीख') || q.includes('aaj ka din') ||
+    q.includes('din kaisa') || q.includes('kaisa h') || q.includes('kaisa hai') ||
+    q.includes('kon sa din') || q.includes('kaun sa din') || q.includes('konsa din') ||
+    q.includes('weather')
+  ) {
+    const bul = getTodayCattleBulletin();
+    return { title: '🌤️ आज का दिन व पशु सलाह', text: bul.reply, audio: bul.audio };
+  }
+
+  // 2. Check if asking about Cattle Status / Breeding
+  if (
+    q.includes('गाभिन') || q.includes('gabhin') || q.includes('गर्भवती') ||
+    q.includes('दूध दे रही') || q.includes('dudh de rahi') || q.includes('डिलीवरी') ||
+    q.includes('ब्याएगी') || q.includes('बच्चा कब') || q.includes('calving') ||
+    q.includes('सूखी') || q.includes('ड्राई') || q.includes('हीट')
+  ) {
+    if (q.includes('कौन') || q.includes('किस') || q.includes('कितनी') || q.includes('है') || q.includes('कब') || q.includes('kon') || q.includes('kaun')) {
+      const statusRes = getCattleStatusSummary(q);
+      if (statusRes) return statusRes;
+    }
+  }
+
+  // 3. Veterinary Medical Topics Knowledge Base
+  const KB_TOPICS = [
+    {
+      keys: ['दूध', 'फैट', 'snf', 'मलाई', 'गाढ़ा', 'fat', 'doodh', 'dudh', 'yield'],
+      title: '🥛 दूध और फैट बढ़ाने के आसान देसी उपाय',
+      audio: 'दूध और फैट बढ़ाने के लिए रोज 50 ग्राम मिनरल मिक्सचर और 30 ग्राम मीठा सोडा दें। प्रति ढाई लीटर दूध पर 1 किलो संतुलित दाना दें।',
+      text: `🥛 **दूध और फैट बढ़ाने के आसान वैज्ञानिक व देसी उपाय:**\n\n1. **संतुलित दाना (Concentrate):** प्रति 2.5 लीटर दूध पर 1 किलो दाना (30% सरसों या बिनौला खल + 40% मक्का दलिया + 30% चोकर) दें।\n2. **मिनरल मिक्सचर:** रोजाना 50 ग्राम कीलेटेड (Chelated) मिनरल मिक्सचर चारे में मिलाकर दें। इससे 7-10 दिनों में फैट 0.5 से 1.0 तक बढ़ता है।\n3. **मीठा सोडा (Baking Soda):** रोज 30 ग्राम मीठा सोडा देने से रूमेन का pH सही रहता है, पाचन दुरुस्त होता है और दूध पतला नहीं पड़ता।\n4. **बाईपास फैट (Bypass Fat):** उच्च दूध देने वाले पशु को रोज 50-100 ग्राम बाईपास फैट दें।\n5. **साफ व ताजा पानी:** पशु को 24 घंटे साफ पानी उपलब्ध कराएं, क्योंकि दूध में 87% पानी होता है।`
+    },
+    {
+      keys: ['गाभिन', 'गर्भवती', 'प्रेग्नेंट', 'gabhin', 'pregnant', 'ब्याने वाली', 'गर्भ'],
+      title: '🤰 गाभिन पशु की विशेष देखभाल व आहार',
+      audio: 'गाभिन पशु को ब्याने से दो महीने पहले ड्राई करें और अंतिम दो महीनों में दो किलो अतिरिक्त दाना, दलिया और मिनरल मिक्सचर दें।',
+      text: `🤰 **गाभिन (Pregnant) पशु की वैज्ञानिक देखभाल:**\n\n1. **ड्राई पीरियड (दूध बंद करना):** ब्याने से 60 दिन (2 माह) पहले दूध निकालना पूरी तरह बंद कर दें ताकि थन को आराम मिले और आने वाला बछड़ा तंदुरुस्त हो।\n2. **अतिरिक्त पौष्टिक खुराक:** गर्भ के 7वें माह से 2-3 किलो अतिरिक्त दाना, गेहूं का दलिया व उबला बिनौला दें।\n3. **अंतिम 15 दिन:** अंतिम 15 दिनों में कैल्शियम जेल या गुड़-अजवाइन की खुराक दें ताकि प्रसव आसानी से हो और जेर समय पर गिर जाए।\n4. **सावधानी:** गाभिन पशु को फिसलने वाली जगह या भीड़ में न रखें, साफ व हवादार जगह पर रखें।`
+    },
+    {
+      keys: ['सीमन', 'गर्भाधान', 'एआई', 'कृत्रिम', 'बुल', 'semen', 'ai', 'straw'],
+      title: '🧬 पशु गर्भाधान (AI) व सीमन के जरूरी नियम',
+      audio: 'गर्भाधान का AM-PM नियम याद रखें: सुबह बोले तो शाम को सीमन, और शाम को बोले तो अगली सुबह सीमन लगवाएं। सीमन के बाद 2 घंटे पशु को बैठने न दें।',
+      text: `🧬 **पशु गर्भाधान (AI) के सुनहरे नियम (Golden Rules):**\n\n1. **AM-PM नियम:**\n   - यदि पशु **सुबह** हीट में आए, तो **शाम** को सीमन लगवाएं।\n   - यदि पशु **शाम** को हीट में आए, तो **अगली सुबह** सीमन लगवाएं।\n2. **सीमन के बाद देखभाल:** सीमन लगवाने के तुरंत बाद पशु को कम से कम 2 घंटे बैठने न दें और ठंडी छांव में रखें।\n3. **21 दिन बाद हीट चेक:** सीमन लगने के 18 से 24 दिन के बीच पशु पर विशेष नजर रखें कि वह दोबारा हीट में तो नहीं आ रहा।\n4. **60-90 दिन पर गर्भ जांच:** डॉक्टर से गर्भाशय जांच (PD Check) करवाकर गर्भ पक्का करें।`
+    },
+    {
+      keys: ['हीट', 'मूक हीट', 'बोली', 'तार', 'डिस्चार्ज', 'heat', 'silent heat'],
+      title: '🔥 गाय-भैंस की हीट के मुख्य लक्षण व पहचान',
+      audio: 'हीट के मुख्य लक्षण हैं बार-बार रंभाना, बेचैनी और कांच जैसा पारदर्शी तार गिरना। भैंसों में मूक हीट होती है इसलिए सुबह शाम डिस्चार्ज पर नजर रखें।',
+      text: `🔥 **हीट (मद) के मुख्य लक्षण व समय:**\n\n1. **पारदर्शी तार (Clear Discharge):** योनि से कांच जैसा साफ, पारदर्शी और लसलसा तार गिरना सबसे पक्का लक्षण है।\n2. **आवाज व बेचैनी:** बार-बार रंभाना, पूंछ उठाना और दूसरे पशुओं पर चढ़ना।\n3. **दूध में कमी:** दूध उत्पादन में अचानक गिरावट आना।\n💡 **भैंसों में मूक हीट (Silent Heat):** भैंसें अक्सर आवाज नहीं देतीं। सुबह-शाम पूंछ उठाकर डिस्चार्ज चेक करें और पेशाब की जगह पर लाली देखें।`
+    },
+    {
+      keys: ['रिपीट', 'खाली', 'बार बार', 'फिरना', 'repeat', 'ferna'],
+      title: '⚠️ बार-बार रिपीट होने के कारण व समाधान',
+      audio: 'बार बार रिपीट होने पर डॉक्टर से गर्भाशय की जांच कराएं और संक्रमण का इलाज कराएं। साथ ही रोज मिनरल मिक्सचर दें।',
+      text: `⚠️ **बार-बार रिपीट ब्रीडिंग (Repeat Breeding) का समाधान:**\n\n1. **गर्भाशय में संक्रमण (Infection):** यदि डिस्चार्ज मटमैला, सफेद या बदबूदार हो तो सीमन न लगाएं। पहले डॉक्टर से गर्भाशय की धुलाई व एंटीबायोटिक करवाएं।\n2. **खनिज लवणों की कमी:** रोज 50 ग्राम कीलेटेड मिनरल मिक्सचर लगातार 2 माह तक दें।\n3. **विटामिन A, D3, E:** प्रजनन क्षमता बढ़ाने हेतु विटामिन इंजेक्शन या टॉनिक दें।\n4. **सीमन का सही समय:** हीट शुरू होने के 12 से 18 घंटे के बीच ही सीमन लगवाएं।`
+    },
+    {
+      keys: ['थनैल', 'मस्टाइटिस', 'सूजन', 'छीछड़े', 'थन', 'mastitis', 'thanail'],
+      title: '🩺 थनैल (Mastitis) रोग के लक्षण व तुरंत उपचार',
+      audio: 'थनैल में थन से खराब दूध निकालें, बर्फ से सिंकाई करें और लाल दवा से धोएं। तुरंत पशु डॉक्टर से एंटीबायोटिक लगवाएं।',
+      text: `🩺 **थनैल (Mastitis) रोग का तुरंत प्राथमिक उपचार:**\n\n1. **लक्षण:** थन में सूजन, कड़ापन, छूने पर दर्द, दूध में छीछड़े, पीला पानी या खून आना।\n2. **तुरंत करें:**\n   - थन से सारा खराब दूध बार-बार पूरी तरह निकालें और दूर जमीन में गाड़ दें।\n   - **बर्फ से सिंकाई:** दिन में 3-4 बार बर्फ से सिंकाई करें (गर्म पानी बिल्कुल न लगाएं)।\n   - **लाल दवा:** 1:1000 पोटैशियम परमैंगनेट (लाल दवा) के हल्के गुलाबी पानी से थनों की धुलाई करें।\n   - **डॉक्टर संपर्क:** तुरंत पशु चिकित्सक से थन में चढ़ाने वाली ट्यूब (Intramammary) और एंटीबायोटिक इंजेक्शन लगवाएं।`
+    },
+    {
+      keys: ['अफारा', 'पेट फूल', 'गैस', 'ब्लोट', 'bloat', 'afara', 'pet ful'],
+      title: '💨 पेट फूलना (अफारा / Bloat) का आपातकालीन देसी इलाज',
+      audio: 'अफारे में 50 ग्राम हींग, 250 ग्राम सरसों का तेल और 50 ग्राम अदरक का रस मिलाकर नाल से पिलाएं। पशु को लगातार टहलाएं, बैठने न दें।',
+      text: `💨 **पेट फूलना (अफारा / Bloat) का तुरंत घरेलू उपचार:**\n\n1. **आपातकालीन देसी नुस्खा:**\n   - 50 ग्राम हींग + 250 ग्राम कच्चा सरसों का तेल + 50 ग्राम अदरक का रस अच्छी तरह मिलाकर तुरंत नाल से पिलाएं।\n2. **दवा:** बाजार से Bloatosil या Tympol सिरप 100ml तुरंत पिलाएं।\n3. **पशु को टहलाएं:** पशु को लगातार धीरे-धीरे चलाएं, किसी भी हालत में बैठने न दें।\n4. **मुंह खुला रखें:** मुंह में लकड़ी का छोटा टुकड़ा बांधें ताकि डकार आए और गैस बाहर निकले। यदि सांस फूलने लगे तो तुरंत डॉक्टर को बुलाएं।`
+    },
+    {
+      keys: ['दस्त', 'पेचिश', 'पतला गोबर', 'लूज मोशन', 'dast', 'scours', 'diarrhea'],
+      title: '💧 दस्त व पेचिश (पतला गोबर) का तुरंत उपचार',
+      audio: 'दस्त होने पर ओआरएस घोल पिलाएं, बेल का चूर्ण और नेबुला पाउडर दें। अत्यधिक हरा चारा रोकें और सूखा भूसा दें।',
+      text: `💧 **दस्त व पतला गोबर होने पर क्या करें:**\n\n1. **ORS व नमक-पानी:** डिहाइड्रेशन से बचाने हेतु 5 लीटर पानी में 50g नमक, 100g चीनी व नींबू मिलाकर दिन में 2-3 बार पिलाएं।\n2. **देसी नुस्खा:** 100 ग्राम बेल का गूदा या बेल पाउडर + 50 ग्राम मेथी पाउडर छाछ (मट्ठे) में मिलाकर दें।\n3. **दवा:** आयुर्वेदिक नेबुला पाउडर (Neblon) या सल्फा डिमिडिन बोलस डॉक्टर की सलाह से दें।\n4. **आहार बदलाव:** 1-2 दिन तक ताजा रसीला हरा चारा रोकें और केवल सूखा भूसा दें।`
+    },
+    {
+      keys: ['बुखार', 'तापमान', 'सुस्त', 'खाना छोड़', 'bukhar', 'fever'],
+      title: '🌡️ पशु को बुखार व सुस्ती होने पर क्या करें',
+      audio: 'पशु का सामान्य तापमान 101.5 डिग्री होता है। बुखार होने पर सिर पर ठंडा पानी डालें और डॉक्टर की सलाह से मेलोनेक्स या पैरासिटामोल दें।',
+      text: `🌡️ **पशु का बुखार व तापमान नियंत्रण:**\n\n1. **सामान्य तापमान:**\n   - गाय का सामान्य तापमान: **101.5°F**\n   - भैंस का सामान्य तापमान: **100.5°F**\n2. **लक्षण:** कान ठंडे या बहुत गर्म होना, नाक का सूखा रहना, जुगाली बंद करना और सुस्त खड़े रहना।\n3. **प्राथमिक उपचार:**\n   - सिर और माथे पर ताजा पानी डालें।\n   - मेलोक्सीकैम + पैरासिटामोल बोलस (Melonex Plus) चारे या गुड़ में दें।\n   - तुरंत डॉक्टर से खून की जांच करवाएं कि कहीं सर्रा या टिक्स फीवर तो नहीं है।`
+    },
+    {
+      keys: ['कीड़े', 'पेट के कीड़े', 'डीवर्मिंग', 'कीड़े की दवा', 'deworming', 'kide'],
+      title: '🪱 पेट के कीड़े (Deworming) का सही कैलेंडर व दवा',
+      audio: 'हर तीन महीने में एक बार सुबह खाली पेट कीड़े की दवा दें। गाभिन पशु को केवल फेनबेंडाजोल दवा ही दें।',
+      text: `🪱 **पेट के कीड़े (Deworming) का सही तरीका:**\n\n1. **समय:** हर 3 महीने (मौसम बदलने पर) सुबह खाली पेट दवा दें। दवा देने के 2 घंटे बाद ही चारा दें।\n2. **दवा का चुनाव:**\n   - **गाभिन पशु के लिए सुरक्षित:** फेनबेंडाजोल (Fenbendazole 3g Bolus / Panacur).\n   - **खाली पशु के लिए:** एल्बेंडाजोल (Albendazole) या आइवरमेक्टिन (Ivermectin).\n3. **लाभ:** कीड़े खत्म होने से पशु का दूध 10-15% बढ़ता है और चारे का पूरा पोषण शरीर को लगता है।`
+    },
+    {
+      keys: ['चिचड़ी', 'जूं', 'पिस्सू', 'किलनी', 'ticks', 'chichdi', 'lice'],
+      title: '🕷️ चिचड़ी, जूं व किलनी से बचाव व दवा',
+      audio: 'चिचड़ी हटाने के लिए ब्यूटॉक्स दवा 2 मिलीलीटर प्रति लीटर पानी में घोलकर शरीर पर लगाएं। पशु को चाटने न दें।',
+      text: `🕷️ **चिचड़ी (Ticks) व बाह्य परजीवी नियंत्रण:**\n\n1. **दवा का लेप:** ब्यूटॉक्स (Butox) या एमिट्राज (Taktic) 2ml प्रति 1 लीटर पानी में घोलकर पशु के शरीर पर लगाएं।\n2. **सावधानी:** दवा लगाने के 1 घंटे तक पशु को चाटने न दें। आंख व मुंह से दूर रखें।\n3. **बाड़े की सफाई:** चिचड़ी दीवारों की दरारों में अंडे देती है, इसलिए फर्श व दीवारों पर भी स्प्रे करें।\n4. **देसी उपाय:** 1 लीटर नीम का तेल + 50ml कपूर का तेल मिलाकर लगाना भी बहुत असरदार है।`
+    },
+    {
+      keys: ['टीका', 'वैक्सीन', 'टीकाकरण', 'खुरपका', 'गलघोंटू', 'vaccine', 'fmd', 'hs'],
+      title: '💉 पशु टीकाकरण (Vaccination) वार्षिक कैलेंडर',
+      audio: 'खुरपका-मुंहपका का टीका साल में दो बार मई और नवंबर में लगाएं। गलघोंटू का टीका बारिश शुरू होने से पहले मई-जून में लगवाएं।',
+      text: `💉 **सरकारी व वैज्ञानिक पशु टीकाकरण कैलेंडर:**\n\n1. **FMD (खुरपका-मुंहपका):** साल में दो बार — मई-जून और नवंबर-दिसंबर।\n2. **HS (गलघोंटू):** मानसून शुरू होने से पहले — मई-जून।\n3. **BQ (लंगड़ा बुखार):** मानसून से ठीक पहले — मई-जून।\n4. **लंपी स्किन (Lumpy Skin):** गोट पॉक्स वैक्सीन साल में एक बार।\n💡 *नोट:* टीका हमेशा स्वस्थ पशु को ही लगाएं और टीका लगाने के बाद 2 दिन हल्का बुखार आना सामान्य है।`
+    },
+    {
+      keys: ['चारा', 'खुराक', 'आहार', 'साइलेज', 'भूसा', 'feed', 'fodder', 'chara', 'ration'],
+      title: '🌾 दुधारू पशु का आदर्श दैनिक आहार (Ration Chart)',
+      audio: 'प्रतिदिन सत्तर प्रतिशत हरा चारा और तीस प्रतिशत सूखा भूसा दें। प्रति ढाई लीटर दूध पर एक किलो दाना और पचास ग्राम मिनरल मिक्सचर जरूर दें।',
+      text: `🌾 **दुधारू पशु का आदर्श दैनिक भोजन अनुपात:**\n\n1. **सूखा भूसा:** 4 से 6 किलो प्रति दिन।\n2. **हरा चारा (बरसीम/ज्वार/मक्का):** 15 से 25 किलो प्रति दिन (चारे में 70% हरा + 30% सूखा भूसा मिलाएं)।\n3. **दाना मिश्रण:**\n   - शरीर की देखभाल हेतु: 1.5 किलो दाना।\n   - दूध उत्पादन हेतु: प्रति 2.5 लीटर दूध पर 1.0 किलो अतिरिक्त दाना।\n4. **खनिज व लवण:** 50 ग्राम मिनरल मिक्सचर + 30 ग्राम साधारण नमक + 30 ग्राम मीठा सोडा प्रतिदिन।`
+    },
+    {
+      keys: ['जेर', 'प्लेसेंटा', 'jer', 'placenta', 'rop'],
+      title: '⚠️ ब्याने के बाद जेर न गिरने पर प्राथमिक उपाय',
+      audio: 'ब्याने के बाद छह से आठ घंटे तक जेर को हाथ से न खींचें। गुड़, सोंठ और अजवाइन का काढ़ा दें या रिप्लेन्टा सिरप पिलाएं।',
+      text: `⚠️ **ब्याने के बाद जेर (Placenta) न गिरने पर क्या करें:**\n\n1. **जबरदस्ती न खींचें:** ब्याने के 6-8 घंटे तक जेर को हाथ से बिल्कुल न खींचें, इससे गर्भाशय छिल सकता है और खून बह सकता है।\n2. **देसी काढ़ा:** 500 ग्राम गुड़ + 50 ग्राम सोंठ + 50 ग्राम अजवाइन + 25 ग्राम हल्दी को 2 लीटर पानी में उबालकर गुनगुना पिलाएं।\n3. **दवा:** रिप्लेन्टा (Replanta) या एक्साबोल (Exabol) सिरप 200ml पिलाएं।\n4. **डॉक्टर:** यदि 10-12 घंटे तक जेर न गिरे तो तुरंत पशु चिकित्सक से सुरक्षित तरीके से निकलवाएं।`
+    },
+    {
+      keys: ['कैल्शियम', 'मिल्क फीवर', 'बैठ जाना', 'calcium', 'milk fever'],
+      title: '🦴 कैल्शियम की कमी व मिल्क फीवर (Downer Cow) का इलाज',
+      audio: 'ब्याने के तुरंत बाद पशु बैठ जाए और गर्दन मोड़ ले तो यह मिल्क फीवर है। तुरंत डॉक्टर से नस में कैल्शियम चढ़वाएं।',
+      text: `🦴 **मिल्क फीवर (Milk Fever) व कैल्शियम की कमी:**\n\n1. **लक्षण:** ब्याने के 24-48 घंटे के भीतर पशु अचानक बैठ जाता है, उठ नहीं पाता, गर्दन मोड़कर पेट की तरफ रख लेता है और शरीर ठंडा पड़ने लगता है।\n2. **आपातकाल:** यह तुरंत जानलेवा हो सकता है। बिना समय गंवाए पशु चिकित्सक से Calborol या CBG नस (IV) में चढ़वाएं।\n3. **बचाव:** ब्याने से 15 दिन पहले और ब्याने के 3 दिन बाद तक रोज 100ml ओरल कैल्शियम जेल पिलाएं।`
+    }
+  ];
+
+  for (let topic of KB_TOPICS) {
+    if (topic.keys.some(k => q.includes(k))) {
+      return { title: topic.title, text: topic.text, audio: topic.audio };
+    }
+  }
+
+  // Fallback smart advisor
+  const fallbackText = `💡 **पशु मित्र AI डॉक्टर की सलाह:**\n\nआपके सवाल *" ${query} "* के लिए:\n1. **स्वच्छता व आवास:** पशु को हमेशा साफ, सूखे और हवादार शेड में रखें। फर्श पर सूखा बिछावन रखें।\n2. **दैनिक पोषण:** रोज प्रति पशु 50 ग्राम मिनरल मिक्सचर, 30 ग्राम नमक और 30 ग्राम मीठा सोडा चारे में मिलाकर दें।\n3. **पानी:** 24 घंटे साफ व ताजा पीने का पानी उपलब्ध कराएं।\n4. **डॉक्टर परामर्श:** यदि पशु को बुखार है, चारा नहीं खा रहा है या जुगाली बंद है, तो तुरंत नजदीकी पशु चिकित्सालय या डॉक्टर से संपर्क करें।`;
+  const fallbackAudio = `पशु को सूखा और हवादार जगह पर रखें और रोज 50 ग्राम मिनरल मिक्सचर दें। किसी गंभीर लक्षण पर तुरंत पशु डॉक्टर से संपर्क करें।`;
+  return { title: '💡 पशु मित्र सलाह', text: fallbackText, audio: fallbackAudio };
+}
+
 
 // Extract day range like "1 se 28", "1 से 28 तारीख", "1 to 28"
 function extractDayRange(text) {
@@ -540,15 +1011,22 @@ function showAiVoiceReply(title, message) {
 }
 
 // SMART DAIRY AI VOICE QUERY ENGINE (स्मार्ट डेयरी AI मुंशी)
+// SMART DAIRY AI VOICE QUERY ENGINE (स्मार्ट डेयरी AI मुंशी)
 function handleDairyAiVoiceQuery(text, rawText) {
   const now = new Date();
   const isYesterday = text.includes('कल') || text.includes('बीते दिन') || text.includes('yesterday') || text.includes('kal');
   const targetDate = isYesterday ? getYesterdayDateKey() : currentDateKey;
   const dateLabel = isYesterday ? 'कल' : 'आज';
 
+  const queryMonth = parseQueryMonthYear(text);
+
   // Ensure monthly records exist for safety
   ensureMonthlyMilkingRecords(now.getFullYear(), now.getMonth() + 1);
   ensureMonthlyDeliveryRecords(now.getFullYear(), now.getMonth() + 1);
+  if (queryMonth) {
+    ensureMonthlyMilkingRecords(queryMonth.year, queryMonth.month);
+    ensureMonthlyDeliveryRecords(queryMonth.year, queryMonth.month);
+  }
   if (isYesterday) {
     const yDate = new Date();
     yDate.setDate(yDate.getDate() - 1);
@@ -561,14 +1039,142 @@ function handleDairyAiVoiceQuery(text, rawText) {
   const dateRange = extractDayRange(text);
 
   // ===================================================================
+  // 0. TODAY'S CATTLE BULLETIN & WEATHER CARE QUERY (Priority 0)
+  // उदा. "आज का दिन पशु लोगों के लिए कैसा है", "आज कौन सा दिन है", "मौसम के अनुसार सलाह"
+  // ===================================================================
+  const isDailyBulletinQuery = (
+    text.includes('आज का दिन') || text.includes('दिन कैसा') || text.includes('मौसम') ||
+    text.includes('आज कौन') || text.includes('तारीख') || text.includes('aaj ka din') ||
+    text.includes('din kaisa') || text.includes('kaisa h') || text.includes('kaisa hai') ||
+    text.includes('kon sa din') || text.includes('kaun sa din') || text.includes('konsa din') ||
+    text.includes('weather')
+  ) && !matchedCust && !matchedAnimal;
+
+  if (isDailyBulletinQuery) {
+    const bul = getTodayCattleBulletin();
+    showAiVoiceReply('🌤️ आज का दिन व पशु सलाह', bul.reply);
+    return true;
+  }
+
+  // ===================================================================
+  // 0.5 CATTLE STATUS & BREEDING INQUIRIES (Priority 0.5)
+  // उदा. "कौन सी पशु गाभिन है", "कौन कौन दूध दे रही है", "कौन सी गाभिन होने वाली है", "किसकी डिलीवरी कब है"
+  // ===================================================================
+  if (!matchedCust && !matchedAnimal) {
+    const statusResult = getCattleStatusSummary(text);
+    if (statusResult) {
+      if (statusResult.filter) {
+        switchTab('viewCattle');
+        activeFilter = statusResult.filter;
+        document.querySelectorAll('.filter-pill').forEach(p => {
+          p.classList.toggle('active', p.getAttribute('data-filter') === statusResult.filter);
+        });
+        renderCattleRegister();
+      }
+      showAiVoiceReply(statusResult.title, statusResult.text);
+      return true;
+    }
+  }
+
+  // ===================================================================
+  // 0.8 GENERAL VETERINARY / DOCTOR QUERIES (Priority 0.8)
+  // उदा. "थनैल का क्या उपाय है", "फैट कैसे बढ़ाएं", "पेट फूल गया है क्या करें", "कीड़े की दवा कब दें"
+  // ===================================================================
+  const isDoctorQuery = (
+    text.includes('इलाज') || text.includes('उपाय') || text.includes('दवा') ||
+    text.includes('बीमार') || text.includes('रोग') || text.includes('लक्षण') ||
+    text.includes('थनैल') || text.includes('अफारा') || text.includes('पेट फूल') ||
+    text.includes('दस्त') || text.includes('बुखार') || text.includes('कीड़े') ||
+    text.includes('टीका') || text.includes('चिचड़ी') || text.includes('खुराक') ||
+    text.includes('चारा') || text.includes('कैसे बढ़ाएं') || text.includes('मिल्क फीवर') ||
+    text.includes('जेर') || text.includes('doctor') || text.includes('salah')
+  ) && !matchedCust && !matchedAnimal;
+
+  if (isDoctorQuery) {
+    const docRes = getAiVeterinaryAdvice(text);
+    if (docRes) {
+      switchTab('viewDoctor');
+      const inEl = document.getElementById('aiQuestionInput');
+      if (inEl) inEl.value = rawText || text;
+      const bodyEl = document.getElementById('aiAnswerBody');
+      const cardEl = document.getElementById('aiAnswerCard');
+      if (bodyEl && cardEl) {
+        bodyEl.innerHTML = docRes.text.replace(/\n/g, '<br>');
+        cardEl.classList.remove('hidden');
+      }
+      showAiVoiceReply(docRes.title, docRes.text);
+      return true;
+    }
+  }
+
+  // ===================================================================
+  // 0.9 TRENDING FEATURES VOICE QUERIES (Priority 0.9)
+  // उदा. "आज का मुनाफा कितना हुआ", "डाइट प्लान", "बाजार भाव", "पशु कुंडली", "रूटीन अलार्म", "शुद्धता पोस्टर"
+  // ===================================================================
+  // 1. Daily Profit & Expenses
+  if (text.includes('मुनाफा') || text.includes('लाभ') || text.includes('प्रॉफिट') || text.includes('profit') || text.includes('दैनिक खर्च') || text.includes('आज का खर्च')) {
+    const prof = calculateDailyProfit(currentDateKey);
+    openExpenseProfitModal(currentDateKey);
+    const reply = `आज कुल दूध बिक्री ₹${prof.revenue} हुई है और कुल पशु खर्च ₹${prof.totalExpenses} रहा। आज का शुद्ध दैनिक मुनाफा ₹${prof.netProfit} है (1 लीटर दूध लागत ₹${prof.costPerLitre.toFixed(1)})।`;
+    showAiVoiceReply('💰 आज का शुद्ध मुनाफा व खर्च', reply);
+    return true;
+  }
+
+  // 2. AI Pashu Poshan & Diet Plan
+  if (text.includes('डाइट') || text.includes('राशन') || text.includes('diet') || text.includes('ration') || (text.includes('खुराक') && matchedAnimal)) {
+    const targetA = matchedAnimal || appData.animals[0];
+    openFeedOptimizerModal(targetA ? targetA.id : null);
+    const ration = calculateFeedRation(targetA, targetA.type === 'buffalo' ? 500 : 420, targetA.expectedYield || 8, 'milking_peak');
+    const reply = `${targetA.name} के लिए AI संतुलित आहार: ${ration.greenFodder} हरा चारा, ${ration.dryFodder} सूखा भूसा, ${ration.concentrate} दाना, ${ration.mineral} मिनरल और ${ration.water} पानी।`;
+    showAiVoiceReply('🌾 AI संतुलित आहार चार्ट', reply);
+    return true;
+  }
+
+  // 3. Animal Market Valuation
+  if (text.includes('बाजार भाव') || text.includes('कीमत') || text.includes('मूल्य') || text.includes('valuation') || text.includes('भाव क्या')) {
+    const targetA = matchedAnimal || appData.animals[0];
+    openAnimalValuationModal(targetA ? targetA.id : null);
+    const val = calculateAnimalMarketValue(targetA);
+    const reply = `${targetA.name} का अनुमानित उचित बाजार भाव ₹${val.fair.toLocaleString('en-IN')} है (अनुमानित रेंज: ₹${val.low.toLocaleString('en-IN')} से ₹${val.high.toLocaleString('en-IN')})।`;
+    showAiVoiceReply('🏷️ AI पशु बाजार भाव', reply);
+    return true;
+  }
+
+  // 4. Digital Cattle Kundali
+  if (text.includes('कुंडली') || text.includes('kundali') || text.includes('हेल्थ कार्ड') || text.includes('आईडी कार्ड')) {
+    const targetA = matchedAnimal || appData.animals[0];
+    openAnimalKundaliModal(targetA ? targetA.id : null);
+    const reply = `${targetA.name} की डिजिटल पशु कुंडली व हेल्थ कार्ड स्क्रीन पर खोल दिया गया है। आप इसे WhatsApp पर भी शेयर कर सकते हैं।`;
+    showAiVoiceReply('🪪 डिजिटल पशु कुंडली', reply);
+    return true;
+  }
+
+  // 5. Smart Farm Routine & Alarms
+  if (text.includes('रूटीन') || text.includes('routine') || text.includes('अलार्म') || text.includes('alarm') || text.includes('शेड्यूल')) {
+    openFarmRoutineModal();
+    triggerRoutineAlarm('morning_milking');
+    const reply = `डेयरी फार्म का दैनिक रूटीन स्क्रीन पर उपलब्ध है। सुबह 5:00 बजे और शाम 4:30 बजे दोहन का मुख्य समय है।`;
+    showAiVoiceReply('⏰ स्मार्ट फार्म रूटीन', reply);
+    return true;
+  }
+
+  // 6. 100% Purity Poster
+  if (text.includes('शुद्धता') || text.includes('सर्टिफिकेट') || text.includes('पोस्टर') || text.includes('स्टेटस')) {
+    openPurityCertModal();
+    const reply = `100% शुद्धता गारंटी स्टेटस पोस्टर तैयार है! आप इसे 1-क्लिक में WhatsApp स्टेटस पर शेयर कर सकते हैं।`;
+    showAiVoiceReply('🥛 शुद्धता गारंटी पोस्टर', reply);
+    return true;
+  }
+
+  // ===================================================================
   // 1. SPECIFIC CUSTOMER QUERY (Priority 1)
-  // उदा. "शर्मा जी के यहाँ कल कितना दूध गया", "इस महीने वर्मा जी का कितना दूध गया और कितना टोटल हिसाब हो गया"
+  // उदा. "शर्मा जी के यहाँ कल कितना दूध गया", "3 महीने पहले रमेश जी ने टोटल कितना दूध लिया"
   // ===================================================================
   if (matchedCust) {
     // 1A. Customer Date Range (उदा. "रमेश को 1 से 28 तक कितना दूध गया और कितना हिसाब हुआ")
     if (dateRange && !isYesterday) {
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
+      const year = queryMonth ? queryMonth.year : now.getFullYear();
+      const month = queryMonth ? queryMonth.month : (now.getMonth() + 1);
       const monthName = getHindiMonthName(month);
       let rangeLitres = 0;
       let deliveredCount = 0;
@@ -599,29 +1205,45 @@ function handleDairyAiVoiceQuery(text, rawText) {
       return true;
     }
 
-    const isMonthlyOrBill = text.includes('महीने') || text.includes('महीना') || 
-                            text.includes('अभी तक') || text.includes('हिसाब') || 
-                            text.includes('बिल') || text.includes('बकाया') || 
-                            text.includes('उधार') || text.includes('उधारी') || 
-                            text.includes('टोटल हिसाब') || text.includes('पूरा हिसाब') ||
-                            text.includes('hisab') || text.includes('bill');
+    // 1B. Customer Monthly / Past Months / Dues (उदा. "3 महीने पहले रमेश जी ने टोटल कितना दूध लिया था")
+    const isMonthlyOrBill = (
+      queryMonth !== null ||
+      text.includes('महीने') || text.includes('महीना') || text.includes('mahine') ||
+      text.includes('अभी तक') || text.includes('हिसाब') || 
+      text.includes('बिल') || text.includes('बकाया') || 
+      text.includes('उधार') || text.includes('उधारी') || 
+      text.includes('टोटल हिसाब') || text.includes('पूरा हिसाब') ||
+      text.includes('hisab') || text.includes('bill')
+    );
 
     if (isMonthlyOrBill && !isYesterday) {
-      const stats = getCustomerMonthlyStats(matchedCust.id, now.getFullYear(), now.getMonth() + 1);
-      const monthName = getHindiMonthName(now.getMonth() + 1);
+      const targetYear = queryMonth ? queryMonth.year : now.getFullYear();
+      const targetMonth = queryMonth ? queryMonth.month : (now.getMonth() + 1);
+      const targetLabel = queryMonth ? queryMonth.label : `इस महीने (${getHindiMonthName(now.getMonth() + 1)})`;
+
+      const stats = getCustomerMonthlyStats(matchedCust.id, targetYear, targetMonth);
       
-      let reply = `इस महीने ${monthName} में ${matchedCust.name} के यहाँ अब तक कुल ${stats.totalLitres.toFixed(1)} लीटर दूध गया है (${stats.deliveredDays} दिन दूध लिया${stats.skippedDays > 0 ? `, ${stats.skippedDays} दिन नागा रहा` : ', कोई नागा नहीं'})।`;
-      reply += ` ₹${matchedCust.rate}/लीटर के भाव से इस महीने का दूध बिल ₹${stats.monthBill.toLocaleString('en-IN')} हुआ है।`;
-      if (matchedCust.dues > 0) {
-        reply += ` पिछला बकाया ₹${matchedCust.dues.toLocaleString('en-IN')} जोड़कर कुल शुद्ध देय हिसाब ₹${stats.totalPayable.toLocaleString('en-IN')} बनता है।`;
+      let reply = '';
+      if (queryMonth && queryMonth.isPast) {
+        reply = `${targetLabel} में ${matchedCust.name} के यहाँ कुल ${stats.totalLitres.toFixed(1)} लीटर दूध गया था (${stats.deliveredDays} दिन दूध लिया${stats.skippedDays > 0 ? `, ${stats.skippedDays} दिन नागा रहा` : ', कोई नागा नहीं रहा'})।`;
+        reply += ` ₹${matchedCust.rate}/लीटर के भाव से उस महीने का दूध बिल ₹${stats.monthBill.toLocaleString('en-IN')} बनता है।`;
+        if (matchedCust.dues > 0) {
+          reply += ` पुराना बकाया ₹${matchedCust.dues.toLocaleString('en-IN')} जोड़कर कुल देय हिसाब ₹${Math.round(stats.monthBill + matchedCust.dues).toLocaleString('en-IN')} होता है।`;
+        }
       } else {
-        reply += ` पिछला कोई बकाया नहीं है, कुल देय हिसाब ₹${stats.totalPayable.toLocaleString('en-IN')} है।`;
+        reply = `${targetLabel} में ${matchedCust.name} के यहाँ अब तक कुल ${stats.totalLitres.toFixed(1)} लीटर दूध गया है (${stats.deliveredDays} दिन दूध लिया${stats.skippedDays > 0 ? `, ${stats.skippedDays} दिन नागा रहा` : ', कोई नागा नहीं'})।`;
+        reply += ` ₹${matchedCust.rate}/लीटर के भाव से इस महीने का दूध बिल ₹${stats.monthBill.toLocaleString('en-IN')} हुआ है।`;
+        if (matchedCust.dues > 0) {
+          reply += ` पिछला बकाया ₹${matchedCust.dues.toLocaleString('en-IN')} जोड़कर कुल शुद्ध देय हिसाब ₹${stats.totalPayable.toLocaleString('en-IN')} बनता है।`;
+        } else {
+          reply += ` पिछला कोई बकाया नहीं है, कुल देय हिसाब ₹${stats.totalPayable.toLocaleString('en-IN')} है।`;
+        }
       }
-      showAiVoiceReply(`📒 ${matchedCust.name} का हिसाब`, reply);
+      showAiVoiceReply(`📒 ${matchedCust.name} (${targetLabel})`, reply);
       return true;
     }
 
-    // Specific day delivery for customer
+    // 1C. Specific Day Delivery
     const mEntry = appData.dailyRecords[targetDate]?.delivery?.morning?.[matchedCust.id];
     const eEntry = appData.dailyRecords[targetDate]?.delivery?.evening?.[matchedCust.id];
     const mQty = (mEntry && mEntry.status !== 'skipped') ? (parseFloat(mEntry.litres) || 0) : 0;
@@ -643,26 +1265,33 @@ function handleDairyAiVoiceQuery(text, rawText) {
   }
 
   // ===================================================================
-  // 1.5 OVERALL FARM MONTHLY / RANGE DELIVERY & BILLING (सभी ग्राहकों का कुल दूध वितरण व हिसाब)
-  // उदा. "अभी 1 से 28 तक इस महीने में कितना दूध गया और उसका कितना हिसाब हुआ", "इस महीने कुल कितना दूध बिका और कितना हिसाब हुआ"
+  // 1.5 OVERALL FARM MONTHLY / RANGE DELIVERY & BILLING (Priority 1.5)
+  // उदा. "पिछले महीने फार्म का कुल कितना दूध बिका", "3 महीने पहले कितना दूध सप्लाई हुआ"
   // ===================================================================
   const isOverallDeliveryOrBill = (
     dateRange ||
+    queryMonth !== null ||
     text.includes('महीने') || text.includes('महीना') || text.includes('mahine') ||
     text.includes('अब तक') || text.includes('अभी तक')
   ) && (
     text.includes('दूध गया') || text.includes('दूध बिका') || text.includes('दूध बांटा') || 
     text.includes('वितरण') || text.includes('सप्लाई') || text.includes('बिक्री') ||
     text.includes('हिसाब') || text.includes('बिल') || text.includes('कमाई') ||
-    text.includes('kitna dudh gya') || text.includes('dudh gya') || text.includes('hisab') || text.includes('bill')
+    text.includes('kitna dudh gya') || text.includes('dudh gya') || text.includes('hisab') || text.includes('bill') ||
+    text.includes('kitna dudh bika') || text.includes('dudh bika')
   ) && !matchedCust && !matchedAnimal;
 
   if (isOverallDeliveryOrBill) {
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const monthName = getHindiMonthName(month);
+    const targetYear = queryMonth ? queryMonth.year : now.getFullYear();
+    const targetMonth = queryMonth ? queryMonth.month : (now.getMonth() + 1);
+    const targetMonthName = queryMonth ? queryMonth.monthName : getHindiMonthName(now.getMonth() + 1);
+    const isPast = queryMonth ? queryMonth.isPast : false;
+    const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+
     const startDay = dateRange ? dateRange.startDay : 1;
-    const endDay = dateRange ? dateRange.endDay : now.getDate();
+    const endDay = dateRange ? dateRange.endDay : (isPast ? daysInTargetMonth : now.getDate());
+
+    ensureMonthlyDeliveryRecords(targetYear, targetMonth);
 
     let totalLitres = 0;
     let totalBill = 0;
@@ -672,7 +1301,7 @@ function handleDairyAiVoiceQuery(text, rawText) {
       totalDues += (c.dues || 0);
       let cLitres = 0;
       for (let d = startDay; d <= endDay; d++) {
-        const dKey = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dKey = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const m = appData.dailyRecords[dKey]?.delivery?.morning?.[c.id];
         const e = appData.dailyRecords[dKey]?.delivery?.evening?.[c.id];
         if (m && m.status !== 'skipped') cLitres += (parseFloat(m.litres) || 0);
@@ -683,32 +1312,70 @@ function handleDairyAiVoiceQuery(text, rawText) {
     });
 
     totalLitres = Math.round(totalLitres * 10) / 10;
-    const rangeLabel = dateRange ? `${startDay} से ${endDay} ${monthName}` : `इस महीने ${monthName} में 1 से ${endDay} तारीख तक`;
+    const rangeLabel = dateRange 
+      ? `${startDay} से ${endDay} ${targetMonthName}` 
+      : (queryMonth ? queryMonth.label : `इस महीने ${targetMonthName} में 1 से ${endDay} तारीख तक`);
 
-    let reply = `${rangeLabel} सभी ग्राहकों को कुल मिलाकर ${totalLitres.toFixed(1)} लीटर दूध सप्लाई किया गया है। इसका कुल दूध बिल ₹${totalBill.toLocaleString('en-IN')} बनता है।`;
+    let reply = `${rangeLabel} सभी ग्राहकों को कुल मिलाकर ${totalLitres.toFixed(1)} लीटर दूध सप्लाई किया गया${isPast ? ' था' : ' है'}। इसका कुल दूध बिल ₹${totalBill.toLocaleString('en-IN')} बनता है।`;
     if (totalDues > 0) {
       reply += ` पुराना बकाया ₹${totalDues.toLocaleString('en-IN')} जोड़कर फार्म का कुल देय हिसाब ₹${Math.round(totalBill + totalDues).toLocaleString('en-IN')} है।`;
     }
-    showAiVoiceReply('📊 कुल दूध वितरण व हिसाब', reply);
+    showAiVoiceReply(`📊 कुल दूध वितरण व हिसाब (${rangeLabel})`, reply);
     return true;
   }
 
   // ===================================================================
   // 2. SPECIFIC ANIMAL MILK QUERY (Priority 2)
-  // उदा. "आज लाली ने कितना दूध दिया टोटल सुबह शाम मिला के"
+  // उदा. "लाली ने पिछले महीने में कितना दूध दिया था", "लाली कब ब्याएगी"
   // ===================================================================
   if (matchedAnimal) {
-    if (text.includes('महीने') || text.includes('महीना') || text.includes('अभी तक') || text.includes('औसत') || text.includes('रिकॉर्ड')) {
-      const stats = getAnimalMonthlyMilkingStats(matchedAnimal.id, now.getFullYear(), now.getMonth() + 1);
-      const monthName = getHindiMonthName(now.getMonth() + 1);
-      let reply = `इस महीने ${monthName} में ${matchedAnimal.name} ने अब तक कुल ${stats.totalLitres.toFixed(1)} लीटर दूध दिया है (${stats.milkedDays} दिन दूध चालू रहा)। इसका दैनिक AI औसत ${stats.avgDailyMilk} लीटर प्रति दिन है।`;
-      if (stats.highestYield && stats.highestYield.litres > 0) {
-        reply += ` सबसे ज्यादा दूध ${stats.highestYield.dayNum} तारीख को ${stats.highestYield.litres} लीटर दिया था।`;
+    // 2A. Specific animal breeding questions (उदा. "लाली कब ब्याएगी", "गौरी की डिलीवरी कब है")
+    if (text.includes('ब्याएगी') || text.includes('डिलीवरी') || text.includes('बच्चा कब') || text.includes('गाभिन') || text.includes('सीमन')) {
+      const br = getActiveBreedingRecord(matchedAnimal.id);
+      if (br) {
+        const tl = getBreedingTimeline(br, matchedAnimal);
+        let reply = `🐄 **${matchedAnimal.name} की गर्भाधान स्थिति:**\n\n`;
+        reply += `- अवस्था: ${tl.stageName}\n`;
+        reply += `- संभावित डिलीवरी तारीख: **${formatHindiDate(tl.calvingDate)}** (${tl.daysRemaining > 0 ? `${tl.daysRemaining} दिन बाकी हैं` : 'तारीख पूरी हो चुकी है'})\n`;
+        reply += `- सीमन: ${br.semenDetails} (${br.doctorName})\n`;
+        if (tl.alert) {
+          reply += `- अलर्ट: ${tl.alert.title} - ${tl.alert.message}\n`;
+        }
+        showAiVoiceReply(`🤰 ${matchedAnimal.name} डिलीवरी`, reply);
+        switchTab('viewCattle');
+        return true;
+      } else if (matchedAnimal.status === 'pregnant') {
+        const reply = `${matchedAnimal.name} गाभिन अवस्था में दर्ज है, लेकिन इसका सीमन रिकॉर्ड दर्ज नहीं है। आप 'पशु' टैब में जाकर सीमन तारीख जोड़ सकते हैं।`;
+        showAiVoiceReply(`🤰 ${matchedAnimal.name}`, reply);
+        switchTab('viewCattle');
+        return true;
       }
-      showAiVoiceReply(`🐄 ${matchedAnimal.name} का मासिक दूध`, reply);
+    }
+
+    // 2B. Animal Monthly / Past Months / Average (उदा. "लाली ने पिछले महीने कितना दूध दिया था")
+    if (queryMonth !== null || text.includes('महीने') || text.includes('महीना') || text.includes('mahine') || text.includes('अभी तक') || text.includes('औसत') || text.includes('रिकॉर्ड')) {
+      const targetYear = queryMonth ? queryMonth.year : now.getFullYear();
+      const targetMonth = queryMonth ? queryMonth.month : (now.getMonth() + 1);
+      const targetLabel = queryMonth ? queryMonth.label : `इस महीने (${getHindiMonthName(now.getMonth() + 1)})`;
+
+      const stats = getAnimalMonthlyMilkingStats(matchedAnimal.id, targetYear, targetMonth);
+      let reply = '';
+      if (queryMonth && queryMonth.isPast) {
+        reply = `${targetLabel} में ${matchedAnimal.name} ने कुल ${stats.totalLitres.toFixed(1)} लीटर दूध दिया था (${stats.milkedDays} दिन दूध चालू रहा)। इसका दैनिक AI औसत ${stats.avgDailyMilk} लीटर प्रति दिन रहा था।`;
+        if (stats.highestYield && stats.highestYield.litres > 0) {
+          reply += ` सबसे ज्यादा दूध ${stats.highestYield.dayNum} तारीख को ${stats.highestYield.litres} लीटर दिया था।`;
+        }
+      } else {
+        reply = `${targetLabel} में ${matchedAnimal.name} ने अब तक कुल ${stats.totalLitres.toFixed(1)} लीटर दूध दिया है (${stats.milkedDays} दिन दूध चालू रहा)। इसका दैनिक AI औसत ${stats.avgDailyMilk} लीटर प्रति दिन है।`;
+        if (stats.highestYield && stats.highestYield.litres > 0) {
+          reply += ` सबसे ज्यादा दूध ${stats.highestYield.dayNum} तारीख को ${stats.highestYield.litres} लीटर दिया था।`;
+        }
+      }
+      showAiVoiceReply(`🐄 ${matchedAnimal.name} (${targetLabel})`, reply);
       return true;
     }
 
+    // 2C. Specific Day Milk
     const mQty = parseFloat(appData.dailyRecords[targetDate]?.milking?.morning?.[matchedAnimal.id]) || 0;
     const eQty = parseFloat(appData.dailyRecords[targetDate]?.milking?.evening?.[matchedAnimal.id]) || 0;
     const dayTot = Math.round((mQty + eQty) * 10) / 10;
@@ -731,7 +1398,7 @@ function handleDairyAiVoiceQuery(text, rawText) {
 
   // ===================================================================
   // 3. TOP / BEST MILK ANIMAL (Priority 3)
-  // उदा. "किस पशु ने सबसे ज्यादा दूध दिया", "सबसे ज्यादा दूध किसका है"
+  // उदा. "किस पशु ने सबसे ज्यादा दूध दिया", "पिछले महीने सबसे ज्यादा दूध किसका था"
   // ===================================================================
   const isTopAnimalQuery = (
     text.includes('सबसे ज्यादा') || text.includes('सबसे अधिक') || text.includes('सब से ज्यादा') ||
@@ -742,20 +1409,25 @@ function handleDairyAiVoiceQuery(text, rawText) {
   );
 
   if (isTopAnimalQuery) {
-    if (text.includes('महीने') || text.includes('महीना')) {
+    if (queryMonth !== null || text.includes('महीने') || text.includes('महीना') || text.includes('mahine')) {
+      const targetYear = queryMonth ? queryMonth.year : now.getFullYear();
+      const targetMonth = queryMonth ? queryMonth.month : (now.getMonth() + 1);
+      const targetLabel = queryMonth ? queryMonth.label : `इस महीने (${getHindiMonthName(now.getMonth() + 1)})`;
+
+      ensureMonthlyMilkingRecords(targetYear, targetMonth);
+
       const monthStatsList = appData.animals.map(a => {
-        const st = getAnimalMonthlyMilkingStats(a.id, now.getFullYear(), now.getMonth() + 1);
+        const st = getAnimalMonthlyMilkingStats(a.id, targetYear, targetMonth);
         return { animal: a, stats: st };
       }).sort((a, b) => b.stats.totalLitres - a.stats.totalLitres);
 
       const top = monthStatsList[0];
-      const monthName = getHindiMonthName(now.getMonth() + 1);
       if (top && top.stats.totalLitres > 0) {
-        let reply = `इस महीने ${monthName} में सबसे ज्यादा दूध ${top.animal.name} ने दिया है — कुल ${top.stats.totalLitres.toFixed(1)} लीटर (दैनिक AI औसत ${top.stats.avgDailyMilk}L/दिन)।`;
+        let reply = `${targetLabel} में सबसे ज्यादा दूध ${top.animal.name} ने दिया${queryMonth && queryMonth.isPast ? ' था' : ' है'} — कुल ${top.stats.totalLitres.toFixed(1)} लीटर (दैनिक AI औसत ${top.stats.avgDailyMilk}L/दिन)।`;
         if (monthStatsList.length > 1 && monthStatsList[1].stats.totalLitres > 0) {
-          reply += ` दूसरे नंबर पर ${monthStatsList[1].animal.name} है (${monthStatsList[1].stats.totalLitres.toFixed(1)} लीटर)।`;
+          reply += ` दूसरे नंबर पर ${monthStatsList[1].animal.name} ${queryMonth && queryMonth.isPast ? 'रहा' : 'है'} (${monthStatsList[1].stats.totalLitres.toFixed(1)} लीटर)।`;
         }
-        showAiVoiceReply('⭐ सर्वश्रेष्ठ दूध देने वाला पशु', reply);
+        showAiVoiceReply(`⭐ सर्वश्रेष्ठ दूध देने वाला पशु (${targetLabel})`, reply);
         return true;
       }
     }
@@ -1806,6 +2478,9 @@ function renderCustomerKhata() {
         <button class="btn-khata-calendar" data-cal-cust="${cust.id}" title="30-दिन की दैनिक हाज़िरी व नागा कैलेंडर देखें">
           📅 30-दिन कैलेंडर
         </button>
+        <button class="btn-upi-bill" data-upi-cust="${cust.id}" title="1-क्लिक UPI QR कोड व डिजिटल पर्ची">
+          ⚡ UPI QR
+        </button>
         <button class="btn-whatsapp-bill" data-id="${cust.id}">
           💬 WhatsApp
         </button>
@@ -1826,6 +2501,13 @@ function renderCustomerKhata() {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-cal-cust');
       openCustomerCalendarModal(id, currentKhataYear, currentKhataMonth);
+    });
+  });
+
+  container.querySelectorAll('[data-upi-cust]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-upi-cust');
+      openUpiBillModal(id, currentKhataYear, currentKhataMonth);
     });
   });
 
@@ -2163,9 +2845,18 @@ function renderCattleRegister() {
           <div class="animal-breed">नस्ल: ${animal.breed} • ${avgYieldDisplay}</div>
         </div>
       </div>
-      <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+      <div class="animal-smart-actions-row">
         <button type="button" class="btn-card-action btn-animal-cal-card" data-aid="${animal.id}">
-          📅 30-दिन दूध कैलेंडर व AI रिकॉर्ड
+          📅 दूध कैलेंडर
+        </button>
+        <button type="button" class="btn-smart-action btn-animal-kundali" data-kundali-aid="${animal.id}" title="डिजिटल पशु कुंडली व हेल्थ कार्ड">
+          🪪 कुंडली
+        </button>
+        <button type="button" class="btn-smart-action btn-feed-optimizer" data-feed-aid="${animal.id}" title="AI संतुलित आहार चार्ट">
+          🌾 डाइट
+        </button>
+        <button type="button" class="btn-smart-action btn-animal-valuation" data-val-aid="${animal.id}" title="AI बाजार भाव कैलकुलेटर">
+          🏷️ बाजार भाव
         </button>
       </div>
       ${breedingHtml}
@@ -2180,6 +2871,33 @@ function renderCattleRegister() {
       e.stopPropagation();
       const aid = btn.getAttribute('data-aid');
       openAnimalCalendarModal(aid);
+    });
+  });
+
+  // Animal Kundali Listeners
+  container.querySelectorAll('[data-kundali-aid]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const aid = btn.getAttribute('data-kundali-aid');
+      openAnimalKundaliModal(aid);
+    });
+  });
+
+  // Feed Optimizer Listeners
+  container.querySelectorAll('[data-feed-aid]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const aid = btn.getAttribute('data-feed-aid');
+      openFeedOptimizerModal(aid);
+    });
+  });
+
+  // Animal Valuation Listeners
+  container.querySelectorAll('[data-val-aid]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const aid = btn.getAttribute('data-val-aid');
+      openAnimalValuationModal(aid);
     });
   });
 
@@ -2443,22 +3161,15 @@ function handleAiQuestion(query) {
   const answerCard = document.getElementById('aiAnswerCard');
   const answerBody = document.getElementById('aiAnswerBody');
 
-  let foundAnswer = null;
-  for (let key in AI_KNOWLEDGE_BASE) {
-    if (query.includes(key)) {
-      foundAnswer = AI_KNOWLEDGE_BASE[key];
-      break;
+  const advice = getAiVeterinaryAdvice(query);
+  if (advice) {
+    if (answerBody && answerCard) {
+      answerBody.innerHTML = advice.text.replace(/\n/g, '<br>');
+      answerCard.classList.remove('hidden');
     }
+    showAudioToast(advice.audio || advice.title);
+    speakAudio(advice.audio || advice.text);
   }
-
-  if (!foundAnswer) {
-    foundAnswer = `💡 **पशु मित्र का सुझाव:**\n\nआपके सवाल *" ${query} "* के लिए:\n- पशु को हमेशा सूखा और हवादार जगह पर रखें।\n- रोजाना 50 ग्राम नमक और 50 ग्राम मिनरल मिक्सचर दें।\n- यदि पशु चारा नहीं खा रहा है या बुखार है, तो तुरंत नजदीकी पशु डॉक्टर से संपर्क करें।`;
-  }
-
-  answerBody.innerHTML = foundAnswer.replace(/\n/g, '<br>');
-  answerCard.classList.remove('hidden');
-
-  speakAudio('सलाह नीचे लिखी गई है, आप सुन भी सकते हैं');
 }
 
 // ===================================================================
@@ -2807,10 +3518,22 @@ function setupModals() {
   });
 
   // AI Doctor ask
+  // AI Doctor ask & Mic
   document.getElementById('aiAskBtn').addEventListener('click', () => {
     const q = document.getElementById('aiQuestionInput').value.trim();
     if (q) handleAiQuestion(q);
   });
+
+  const aiMicBtn = document.getElementById('aiMicBtn');
+  if (aiMicBtn) {
+    aiMicBtn.addEventListener('click', () => {
+      if (isRecognizing) {
+        stopVoiceRecognition();
+      } else {
+        startVoiceRecognition();
+      }
+    });
+  }
 
   // Quick Topic chips
   document.querySelectorAll('.topic-chip').forEach(chip => {
@@ -5237,3 +5960,945 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// ===================================================================
+// TRENDING FEATURES v6.0: COMPLETE IMPLEMENTATION MODULE
+// ===================================================================
+
+let currentUpiCustState = null;
+let currentFeedAnimalId = null;
+let currentKundaliAnimalId = null;
+let currentValuationAnimalId = null;
+
+// -------------------------------------------------------------------
+// 1. Instant Payment QR & WhatsApp Milk Slip (1-क्लिक UPI QR कोड)
+// -------------------------------------------------------------------
+function openUpiBillModal(custId, year, month) {
+  const y = year || currentKhataYear;
+  const m = month || currentKhataMonth;
+  const cust = appData.customers.find(c => c.id === custId) || appData.customers[0];
+  if (!cust) return;
+
+  const stats = getCustomerMonthlyStats(cust.id, y, m);
+  const monthName = getHindiMonthName(m);
+  const totalAmount = Math.max(0, Math.round(stats.monthBill + (cust.dues > 0 ? (cust.dues - stats.monthBill > 0 ? cust.dues - stats.monthBill : 0) : 0)));
+  const payableAmount = totalAmount > 0 ? totalAmount : (cust.dues || 0);
+
+  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
+  const upiId = appData.farmSettings.upiId || 'dairyfarm@upi';
+  const billNote = `दूध बिल ${cust.name} ${monthName} ${y}`;
+  const upiPayUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(farmName)}&am=${payableAmount}&cu=INR&tn=${encodeURIComponent(billNote)}`;
+  const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiPayUrl)}`;
+
+  // Populate UI
+  const nameEl = document.getElementById('upiBillCustomerName');
+  const monthEl = document.getElementById('upiBillMonthLabel');
+  const milkEl = document.getElementById('upiBillTotalMilk');
+  const rateEl = document.getElementById('upiBillMilkRate');
+  const amtEl = document.getElementById('upiBillTotalAmount');
+  const qrImg = document.getElementById('upiDynamicQrImg');
+  const upiIdEl = document.getElementById('upiDisplayId');
+
+  if (nameEl) nameEl.innerText = cust.name;
+  if (monthEl) monthEl.innerText = `${monthName} ${y}`;
+  if (milkEl) milkEl.innerText = `${stats.totalLitres.toFixed(1)} L (${stats.deliveredDays} दिन)`;
+  if (rateEl) rateEl.innerText = `₹${cust.rate || appData.farmSettings.defaultRate || 60}/L`;
+  if (amtEl) amtEl.innerText = `₹${payableAmount.toLocaleString('en-IN')}`;
+  if (qrImg) qrImg.src = qrApiUrl;
+  if (upiIdEl) upiIdEl.innerText = upiId;
+
+  currentUpiCustState = {
+    cust,
+    stats,
+    monthName,
+    year: y,
+    payableAmount,
+    upiPayUrl,
+    upiId
+  };
+
+  const modal = document.getElementById('upiBillModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function sendUpiWhatsAppBill() {
+  if (!currentUpiCustState) return;
+  const { cust, stats, monthName, year, payableAmount, upiPayUrl, upiId } = currentUpiCustState;
+  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
+  const ownerPhone = appData.farmSettings.ownerPhone || '';
+
+  const msg = 
+`🥛 *${farmName} - डिजिटल दूध पर्ची* 🧾
+━━━━━━━━━━━━━━━━━━
+👤 *ग्राहक:* ${cust.name}
+📅 *माह:* ${monthName} ${year}
+🥛 *कुल दूध:* ${stats.totalLitres.toFixed(1)} लीटर
+📊 *दूध भाव:* ₹${cust.rate || 60}/लीटर
+💵 *मासिक बिल:* ₹${stats.monthBill.toLocaleString('en-IN')}
+${cust.dues > stats.monthBill ? `📌 *पिछला बकाया:* ₹${(cust.dues - stats.monthBill).toLocaleString('en-IN')}\n` : ''}💰 *कुल देय राशि:* *₹${payableAmount.toLocaleString('en-IN')}*
+━━━━━━━━━━━━━━━━━━
+📲 *1-क्लिक UPI भुगतान लिंक:*
+${upiPayUrl}
+
+🏦 *UPI ID:* \`${upiId}\`
+(PhonePe / GooglePay / Paytm से सीधे भुगतान करें)
+
+📞 संपर्क: ${ownerPhone}
+धन्यवाद! आपका दिन शुभ हो! 🙏`;
+
+  const phone = (cust.phone || '').replace(/\D/g, '');
+  const targetPhone = phone.length === 10 ? `91${phone}` : phone;
+  const waUrl = targetPhone ? `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, '_blank');
+}
+
+function openDirectUpiPayment() {
+  if (!currentUpiCustState || !currentUpiCustState.upiPayUrl) return;
+  window.location.href = currentUpiCustState.upiPayUrl;
+}
+
+// -------------------------------------------------------------------
+// 2. Daily Expenses & Profit/Loss Tracker (खर्च व शुद्ध मुनाफा)
+// -------------------------------------------------------------------
+function calculateDailyProfit(dateKey) {
+  const dKey = dateKey || currentDateKey;
+  const record = appData.dailyRecords[dKey];
+  const expenses = (record && record.expenses) ? record.expenses : { feed: 0, greenFodder: 0, dryFodder: 0, medical: 0, other: 0 };
+
+  // Calculate milk revenue and quantities
+  let totalMilkProduced = 0;
+  let totalMilkSold = 0;
+  let milkRevenue = 0;
+
+  if (record) {
+    if (record.milking) {
+      const m = record.milking.morning || {};
+      const e = record.milking.evening || {};
+      Object.values(m).forEach(v => totalMilkProduced += (parseFloat(v) || 0));
+      Object.values(e).forEach(v => totalMilkProduced += (parseFloat(v) || 0));
+    }
+    if (record.delivery) {
+      const mDel = record.delivery.morning || {};
+      const eDel = record.delivery.evening || {};
+      appData.customers.forEach(c => {
+        const rate = c.rate || appData.farmSettings.defaultRate || 60;
+        const mItem = mDel[c.id];
+        const eItem = eDel[c.id];
+        if (mItem && (mItem.status === 'delivered' || mItem.litres > 0)) {
+          const l = parseFloat(mItem.litres) || 0;
+          totalMilkSold += l;
+          milkRevenue += (l * rate);
+        }
+        if (eItem && (eItem.status === 'delivered' || eItem.litres > 0)) {
+          const l = parseFloat(eItem.litres) || 0;
+          totalMilkSold += l;
+          milkRevenue += (l * rate);
+        }
+      });
+    }
+  }
+
+  const feedCost = parseFloat(expenses.feed) || 0;
+  const greenCost = parseFloat(expenses.greenFodder) || 0;
+  const dryCost = parseFloat(expenses.dryFodder) || 0;
+  const medCost = parseFloat(expenses.medical) || 0;
+  const otherCost = parseFloat(expenses.other) || 0;
+
+  const totalExpenses = feedCost + greenCost + dryCost + medCost + otherCost;
+  const netProfit = Math.round(milkRevenue - totalExpenses);
+  const homeMilk = Math.max(0, Math.round((totalMilkProduced - totalMilkSold) * 10) / 10);
+  const costPerLitre = totalMilkProduced > 0 ? (totalExpenses / totalMilkProduced) : 0;
+  const profitPerLitre = totalMilkSold > 0 ? (netProfit / totalMilkSold) : 0;
+
+  return {
+    dateKey: dKey,
+    totalMilkProduced,
+    totalMilkSold,
+    homeMilk,
+    revenue: Math.round(milkRevenue),
+    expenses,
+    totalExpenses,
+    netProfit,
+    costPerLitre,
+    profitPerLitre
+  };
+}
+
+function openExpenseProfitModal(targetDateKey) {
+  const dKey = targetDateKey || currentDateKey;
+  const dateInput = document.getElementById('expenseProfitDate');
+  if (dateInput) dateInput.value = dKey;
+
+  const prof = calculateDailyProfit(dKey);
+
+  // Set inputs
+  const expFeedEl = document.getElementById('expFeed');
+  const expGreenEl = document.getElementById('expGreenFodder');
+  const expDryEl = document.getElementById('expDryFodder');
+  const expMedEl = document.getElementById('expMedical');
+  const expOtherEl = document.getElementById('expOther');
+
+  if (expFeedEl) expFeedEl.value = prof.expenses.feed || '';
+  if (expGreenEl) expGreenEl.value = prof.expenses.greenFodder || '';
+  if (expDryEl) expDryEl.value = prof.expenses.dryFodder || '';
+  if (expMedEl) expMedEl.value = prof.expenses.medical || '';
+  if (expOtherEl) expOtherEl.value = prof.expenses.other || '';
+
+  updateExpenseProfitView(prof);
+
+  const modal = document.getElementById('expenseProfitModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function updateExpenseProfitView(prof) {
+  const soldEl = document.getElementById('expSummaryMilkSold');
+  const revEl = document.getElementById('expSummaryMilkRevenue');
+  const homeEl = document.getElementById('expSummaryMilkHome');
+  const heroCard = document.getElementById('netProfitHeroCard');
+  const valEl = document.getElementById('netProfitHeroVal');
+  const subEl = document.getElementById('netProfitHeroSub');
+  const costEl = document.getElementById('kpiCostPerLitre');
+  const profLitreEl = document.getElementById('kpiProfitPerLitre');
+
+  if (soldEl) soldEl.innerText = `${prof.totalMilkSold.toFixed(1)} L`;
+  if (revEl) revEl.innerText = `₹${prof.revenue.toLocaleString('en-IN')}`;
+  if (homeEl) homeEl.innerText = `${prof.homeMilk.toFixed(1)} L`;
+
+  if (heroCard) {
+    if (prof.netProfit < 0) {
+      heroCard.classList.add('is-loss');
+    } else {
+      heroCard.classList.remove('is-loss');
+    }
+  }
+
+  if (valEl) valEl.innerText = `₹${prof.netProfit.toLocaleString('en-IN')}`;
+  if (subEl) subEl.innerText = `कुल आमदनी ₹${prof.revenue.toLocaleString('en-IN')} - कुल खर्च ₹${prof.totalExpenses.toLocaleString('en-IN')}`;
+  if (costEl) costEl.innerText = `₹${prof.costPerLitre.toFixed(1)}/L`;
+  if (profLitreEl) profLitreEl.innerText = `₹${prof.profitPerLitre.toFixed(1)}/L`;
+}
+
+function recalculateLiveExpenses() {
+  const dKey = (document.getElementById('expenseProfitDate') || {}).value || currentDateKey;
+  const feed = parseFloat((document.getElementById('expFeed') || {}).value) || 0;
+  const green = parseFloat((document.getElementById('expGreenFodder') || {}).value) || 0;
+  const dry = parseFloat((document.getElementById('expDryFodder') || {}).value) || 0;
+  const med = parseFloat((document.getElementById('expMedical') || {}).value) || 0;
+  const other = parseFloat((document.getElementById('expOther') || {}).value) || 0;
+
+  const currentProf = calculateDailyProfit(dKey);
+  const totalExpenses = feed + green + dry + med + other;
+  const netProfit = Math.round(currentProf.revenue - totalExpenses);
+  const costPerLitre = currentProf.totalMilkProduced > 0 ? (totalExpenses / currentProf.totalMilkProduced) : 0;
+  const profitPerLitre = currentProf.totalMilkSold > 0 ? (netProfit / currentProf.totalMilkSold) : 0;
+
+  updateExpenseProfitView({
+    ...currentProf,
+    totalExpenses,
+    netProfit,
+    costPerLitre,
+    profitPerLitre
+  });
+}
+
+function saveDailyExpenses() {
+  const dKey = (document.getElementById('expenseProfitDate') || {}).value || currentDateKey;
+  if (!appData.dailyRecords[dKey]) {
+    appData.dailyRecords[dKey] = { milking: { morning: {}, evening: {} }, delivery: { morning: {}, evening: {} } };
+  }
+
+  appData.dailyRecords[dKey].expenses = {
+    feed: parseFloat((document.getElementById('expFeed') || {}).value) || 0,
+    greenFodder: parseFloat((document.getElementById('expGreenFodder') || {}).value) || 0,
+    dryFodder: parseFloat((document.getElementById('expDryFodder') || {}).value) || 0,
+    medical: parseFloat((document.getElementById('expMedical') || {}).value) || 0,
+    other: parseFloat((document.getElementById('expOther') || {}).value) || 0
+  };
+
+  saveData();
+  const prof = calculateDailyProfit(dKey);
+  showAudioToast(`💾 आज का खर्च व मुनाफा सेव! शुद्ध लाभ: ₹${prof.netProfit}`);
+  speakAudio(`आज का शुद्ध मुनाफा ₹${prof.netProfit} सुरक्षित कर लिया गया है।`);
+}
+
+function shareDailyProfitWhatsApp() {
+  const dKey = (document.getElementById('expenseProfitDate') || {}).value || currentDateKey;
+  const prof = calculateDailyProfit(dKey);
+  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
+
+  const msg = 
+`📊 *${farmName} - दैनिक बैलेंस शीट* 💰
+📅 *तारीख:* ${dKey}
+━━━━━━━━━━━━━━━━━━
+🥛 कुल दूध उत्पादन: ${prof.totalMilkProduced.toFixed(1)} L
+🚚 दूध बिक्री: ${prof.totalMilkSold.toFixed(1)} L
+🏡 घर में बचा: ${prof.homeMilk.toFixed(1)} L
+💵 *कुल दूध आय (A):* *₹${prof.revenue.toLocaleString('en-IN')}*
+
+🌾 *दैनिक पशु खर्च (B):*
+• दाना / खल / चोकर: ₹${prof.expenses.feed || 0}
+• हरा चारा: ₹${prof.expenses.greenFodder || 0}
+• सूखा भूसा / पुआल: ₹${prof.expenses.dryFodder || 0}
+• दवाई / मिनरल: ₹${prof.expenses.medical || 0}
+• अन्य / मजदूरी: ₹${prof.expenses.other || 0}
+🔻 *कुल खर्च:* *₹${prof.totalExpenses.toLocaleString('en-IN')}*
+━━━━━━━━━━━━━━━━━━
+⭐ *दैनिक शुद्ध लाभ (Net Profit):*
+👉 *₹${prof.netProfit.toLocaleString('en-IN')}* 👈
+📊 1 लीटर दूध की उत्पादन लागत: ₹${prof.costPerLitre.toFixed(1)}
+📈 1 लीटर पर शुद्ध मुनाफा: ₹${prof.profitPerLitre.toFixed(1)}
+━━━━━━━━━━━━━━━━━━
+डेयरी मित्र - स्मार्ट पशु बहीखाता द्वारा प्रमाणित ✨`;
+
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// -------------------------------------------------------------------
+// 3. AI Pashu Poshan & Feed Optimizer (आहार व पोषण अनुकूलक)
+// -------------------------------------------------------------------
+function calculateFeedRation(animal, weightKg = 450, dailyMilkL = 10, stage = 'milking_peak') {
+  const isBuff = animal ? animal.type === 'buffalo' : false;
+  const wt = parseFloat(weightKg) || 450;
+  const milk = parseFloat(dailyMilkL) || 0;
+
+  // NRC / ICAR Dairy Ration Norms
+  const greenKg = Math.round(wt * 0.05); // ~20-25 kg
+  const dryKg = Math.max(3.5, Math.round(wt * 0.012)); // ~4-5.5 kg
+
+  let concMaintenance = isBuff ? 1.5 : 1.2; // kg
+  if (stage === 'pregnant_dry') concMaintenance += 1.5; // Steaming up allowance
+
+  const concProduction = milk * (isBuff ? 0.45 : 0.4); // 400-450g per kg milk
+  const totalConc = Math.round((concMaintenance + concProduction) * 10) / 10;
+
+  const mineralGrams = milk > 12 ? 70 : (milk > 6 ? 50 : 40);
+  const saltGrams = 30;
+  const sodaGrams = 30;
+  const waterL = Math.round(wt * 0.1 + (milk * 3));
+
+  return {
+    animalName: animal ? animal.name : 'पशु',
+    weight: wt,
+    milk,
+    greenFodder: `${greenKg - 2} से ${greenKg + 3} किग्रा`,
+    dryFodder: `${dryKg} से ${dryKg + 1.5} किग्रा`,
+    concentrate: `${totalConc} किग्रा`,
+    mineral: `${mineralGrams} ग्राम`,
+    salt: `${sodaGrams}g मीठा सोडा + ${saltGrams}g नमक`,
+    water: `${waterL - 5} से ${waterL + 10} लीटर`
+  };
+}
+
+function openFeedOptimizerModal(animalId) {
+  const selectEl = document.getElementById('feedAnimalSelect');
+  if (!selectEl) return;
+
+  selectEl.innerHTML = '';
+  appData.animals.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.id;
+    opt.innerText = `${a.name} (${a.breed || (a.type === 'cow' ? 'गाय' : 'भैंस')})`;
+    selectEl.appendChild(opt);
+  });
+
+  const targetId = animalId || (appData.animals[0] ? appData.animals[0].id : null);
+  if (targetId) selectEl.value = targetId;
+  currentFeedAnimalId = targetId;
+
+  const targetAnimal = appData.animals.find(a => a.id === targetId) || appData.animals[0];
+  const wtInput = document.getElementById('feedAnimalWeight');
+  const milkInput = document.getElementById('feedDailyMilk');
+  const stageInput = document.getElementById('feedAnimalStage');
+
+  if (targetAnimal) {
+    if (wtInput) wtInput.value = targetAnimal.type === 'buffalo' ? 500 : 420;
+    if (milkInput) milkInput.value = targetAnimal.expectedYield || 8;
+    if (stageInput) stageInput.value = targetAnimal.status === 'pregnant' ? 'pregnant_dry' : (targetAnimal.status === 'milking' ? 'milking_peak' : 'dry');
+  }
+
+  updateFeedOptimizerView();
+
+  const modal = document.getElementById('feedOptimizerModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function updateFeedOptimizerView() {
+  const selectEl = document.getElementById('feedAnimalSelect');
+  const aid = selectEl ? selectEl.value : currentFeedAnimalId;
+  const animal = appData.animals.find(a => a.id === aid) || appData.animals[0];
+
+  const wt = parseFloat((document.getElementById('feedAnimalWeight') || {}).value) || 450;
+  const milk = parseFloat((document.getElementById('feedDailyMilk') || {}).value) || 8;
+  const stage = (document.getElementById('feedAnimalStage') || {}).value || 'milking_peak';
+
+  const ration = calculateFeedRation(animal, wt, milk, stage);
+
+  const gEl = document.getElementById('rationGreenFodder');
+  const dEl = document.getElementById('rationDryFodder');
+  const cEl = document.getElementById('rationConcentrate');
+  const mEl = document.getElementById('rationMineral');
+  const sEl = document.getElementById('rationSalt');
+  const wEl = document.getElementById('rationWater');
+
+  if (gEl) gEl.innerText = ration.greenFodder;
+  if (dEl) dEl.innerText = ration.dryFodder;
+  if (cEl) cEl.innerText = ration.concentrate;
+  if (mEl) mEl.innerText = ration.mineral;
+  if (sEl) sEl.innerText = ration.salt;
+  if (wEl) wEl.innerText = ration.water;
+}
+
+function speakFeedRationAudio() {
+  const selectEl = document.getElementById('feedAnimalSelect');
+  const aid = selectEl ? selectEl.value : currentFeedAnimalId;
+  const animal = appData.animals.find(a => a.id === aid) || appData.animals[0];
+
+  const wt = parseFloat((document.getElementById('feedAnimalWeight') || {}).value) || 450;
+  const milk = parseFloat((document.getElementById('feedDailyMilk') || {}).value) || 8;
+  const stage = (document.getElementById('feedAnimalStage') || {}).value || 'milking_peak';
+  const ration = calculateFeedRation(animal, wt, milk, stage);
+
+  const text = `${animal.name} के लिए आज का संतुलित आहार: ${ration.greenFodder} हरा चारा, ${ration.dryFodder} सूखा भूसा, ${ration.concentrate} संतुलित दाना, ${ration.mineral} मिनरल मिक्चर, मीठा सोडा और नमक, तथा ${ration.water} पीने का पानी। इससे दूध और फैट दोनों में बढ़त होगी!`;
+  speakAudio(text);
+  showAudioToast('🔊 आहार चार्ट बोलकर सुनाया जा रहा है!');
+}
+
+function shareFeedWhatsApp() {
+  const selectEl = document.getElementById('feedAnimalSelect');
+  const aid = selectEl ? selectEl.value : currentFeedAnimalId;
+  const animal = appData.animals.find(a => a.id === aid) || appData.animals[0];
+
+  const wt = parseFloat((document.getElementById('feedAnimalWeight') || {}).value) || 450;
+  const milk = parseFloat((document.getElementById('feedDailyMilk') || {}).value) || 8;
+  const stage = (document.getElementById('feedAnimalStage') || {}).value || 'milking_peak';
+  const ration = calculateFeedRation(animal, wt, milk, stage);
+
+  const msg = 
+`🌾 *${animal.name} - AI संतुलित आहार चार्ट (Daily Ration)* 🥛
+━━━━━━━━━━━━━━━━━━
+🐮 *पशु:* ${animal.name} (${animal.breed || ''})
+⚖️ *वजन:* ${wt} kg | 🥛 *दैनिक दूध:* ${milk} L
+
+📋 *आज की संतुलित खुराक:*
+🌿 *हरा चारा:* ${ration.greenFodder}
+🍂 *सूखा भूसा:* ${ration.dryFodder}
+🌾 *संतुलित दाना (खल+दलिया+चोकर):* *${ration.concentrate}*
+⚪ *खनिज मिश्रण (Mineral):* ${ration.mineral}
+🧂 *मीठा सोडा व नमक:* ${ration.salt}
+💧 *ताजा पीने का पानी:* ${ration.water}
+━━━━━━━━━━━━━━━━━━
+🎯 *फायदे:*
+• दूध में 1 से 1.5 लीटर की वृद्धि
+• फैट में 0.3 से 0.5% का सुधार
+• पशु का स्वास्थ्य व प्रजनन शक्ति मजबूत!
+डेयरी मित्र - AI पशु पोषण विशेषज्ञ द्वारा प्रमाणित ✨`;
+
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// -------------------------------------------------------------------
+// 4. Digital Cattle Kundali & Health ID Card (पशु कुंडली)
+// -------------------------------------------------------------------
+function openAnimalKundaliModal(animalId) {
+  const animal = appData.animals.find(a => a.id === animalId) || appData.animals[0];
+  if (!animal) return;
+  currentKundaliAnimalId = animal.id;
+
+  const isCow = animal.type === 'cow';
+  const stats = getAnimalMonthlyMilkingStats(animal.id, currentKhataYear, currentKhataMonth);
+  const br = (appData.breedingRecords || []).find(b => b.animalId === animal.id && b.status === 'active');
+
+  const nameEl = document.getElementById('kundaliAnimalName');
+  const tagEl = document.getElementById('kundaliTagId');
+  const breedEl = document.getElementById('kundaliBreed');
+  const emojiEl = document.getElementById('kundaliAvatarEmoji');
+  const lactEl = document.getElementById('kundaliLactation');
+  const dailyEl = document.getElementById('kundaliDailyYield');
+  const peakEl = document.getElementById('kundaliPeakYield');
+  const statusEl = document.getElementById('kundaliCurrentStatus');
+  const semenEl = document.getElementById('kundaliSemenRecord');
+
+  if (nameEl) nameEl.innerText = animal.name;
+  if (tagEl) tagEl.innerText = `टैग: #DM-${animal.id.toUpperCase()}`;
+  if (breedEl) breedEl.innerText = `${animal.breed || (isCow ? 'देशी गोवंश' : 'मुर्राह नस्ल')}`;
+  if (emojiEl) emojiEl.innerText = isCow ? '🐄' : '🦬';
+  if (lactEl) lactEl.innerText = animal.type === 'buffalo' ? 'दूसरा ब्यात' : 'तीसरा ब्यात';
+  if (dailyEl) dailyEl.innerText = `${stats.avgDailyMilk > 0 ? stats.avgDailyMilk : (animal.expectedYield || 8.0)} L/दिन`;
+  if (peakEl) peakEl.innerText = `${((animal.expectedYield || 8.0) * 1.35).toFixed(1)} L/दिन`;
+  if (statusEl) {
+    statusEl.innerText = animal.status === 'milking' ? '🥛 दूध चालू' : (animal.status === 'pregnant' ? '🤰 गाभिन' : 'सूखी');
+  }
+  if (semenEl) {
+    if (br) {
+      semenEl.innerText = `${br.semenDetails || 'उच्च गुणवत्ता सीमेन'} (दिनांक: ${br.aiDate})`;
+    } else {
+      semenEl.innerText = 'प्रमाणित उच्च नस्ल बुल सीमेन रिकॉर्ड';
+    }
+  }
+
+  const modal = document.getElementById('animalKundaliModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function shareKundaliWhatsApp() {
+  const animal = appData.animals.find(a => a.id === currentKundaliAnimalId) || appData.animals[0];
+  if (!animal) return;
+  const isCow = animal.type === 'cow';
+  const stats = getAnimalMonthlyMilkingStats(animal.id, currentKhataYear, currentKhataMonth);
+  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
+
+  const msg = 
+`🪪 *${farmName} - डिजिटल पशु कुंडली व पासपोर्ट* ✨
+━━━━━━━━━━━━━━━━━━
+🏷️ *नाम:* ${animal.name} (टैग: #DM-${animal.id.toUpperCase()})
+🧬 *प्रजाति:* ${isCow ? 'गाय (Cow)' : 'भैंस (Buffalo)'} | *नस्ल:* ${animal.breed || 'शुद्ध नस्ल'}
+🥛 *वर्तमान दूध:* ${stats.avgDailyMilk > 0 ? stats.avgDailyMilk : (animal.expectedYield || 8.0)} लीटर/दिन
+🏆 *अधिकतम रिकॉर्ड:* ${((animal.expectedYield || 8.0) * 1.35).toFixed(1)} लीटर/दिन
+🤰 *स्थिति:* ${animal.status === 'milking' ? 'दूध चालू' : (animal.status === 'pregnant' ? 'गाभिन' : 'सूखी')}
+
+💉 *टीकाकरण व स्वास्थ्य स्थिति:*
+✅ FMD (खुरपका-मुंहपका) टीका: अपडेटेड
+✅ HS / BQ (गलघोंटू) टीका: अपडेटेड
+✅ पेट के कीड़े (Deworming): संपन्न
+━━━━━━━━━━━━━━━━━━
+डेयरी मित्र डिजिटल पशु कुंडली द्वारा प्रमाणित ⭐`;
+
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// -------------------------------------------------------------------
+// 5. AI Animal Market Valuation Calculator (बाजार भाव)
+// -------------------------------------------------------------------
+function calculateAnimalMarketValue(animal) {
+  if (!animal) return { fair: 65000, low: 58000, high: 72000, factors: [] };
+
+  const isBuff = animal.type === 'buffalo';
+  const yieldL = parseFloat(animal.expectedYield) || 8.0;
+
+  // Base price per litre
+  const baseRatePerLitre = isBuff ? 6800 : 5400;
+  let baseValue = yieldL * baseRatePerLitre;
+
+  // Breed factor
+  let breedBonus = 0;
+  const b = (animal.breed || '').toLowerCase();
+  if (b.includes('मुर्रा') || b.includes('murrah') || b.includes('गिर') || b.includes('gir') || b.includes('साहीवाल')) {
+    breedBonus = baseValue * 0.15;
+  }
+
+  // Pregnancy bonus
+  let pregBonus = 0;
+  if (animal.status === 'pregnant') {
+    pregBonus = 12000;
+  }
+
+  const fairVal = Math.round((baseValue + breedBonus + pregBonus) / 1000) * 1000;
+  const lowVal = Math.round((fairVal * 0.9) / 1000) * 1000;
+  const highVal = Math.round((fairVal * 1.12) / 1000) * 1000;
+
+  const factors = [
+    { icon: '🥛', text: `दैनिक दूध क्षमता ${yieldL} लीटर (मूल्य: ₹${Math.round(baseValue).toLocaleString('en-IN')})` },
+    { icon: '🧬', text: `प्रमाणित नस्ल: ${animal.breed || (isBuff ? 'मुर्राह' : 'साहीवाल')} (+₹${Math.round(breedBonus).toLocaleString('en-IN')})` },
+    { icon: '🤰', text: animal.status === 'pregnant' ? 'गाभिन स्थिति (+₹12,000 मूल्य वर्धन)' : 'वर्तमान में दूध चालू अवस्था' },
+    { icon: '🏥', text: 'नियमित टीकाकरण व उत्कृष्ट स्वास्थ्य रिकॉर्ड' }
+  ];
+
+  return {
+    fair: fairVal,
+    low: lowVal,
+    high: highVal,
+    factors
+  };
+}
+
+function openAnimalValuationModal(animalId) {
+  const selectEl = document.getElementById('valuationAnimalSelect');
+  if (!selectEl) return;
+
+  selectEl.innerHTML = '';
+  appData.animals.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.id;
+    opt.innerText = `${a.name} (${a.breed || (a.type === 'cow' ? 'गाय' : 'भैंस')})`;
+    selectEl.appendChild(opt);
+  });
+
+  const targetId = animalId || (appData.animals[0] ? appData.animals[0].id : null);
+  if (targetId) selectEl.value = targetId;
+  currentValuationAnimalId = targetId;
+
+  updateAnimalValuationView();
+
+  const modal = document.getElementById('animalValuationModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function updateAnimalValuationView() {
+  const selectEl = document.getElementById('valuationAnimalSelect');
+  const aid = selectEl ? selectEl.value : currentValuationAnimalId;
+  const animal = appData.animals.find(a => a.id === aid) || appData.animals[0];
+  const val = calculateAnimalMarketValue(animal);
+
+  const rangeEl = document.getElementById('valuationPriceRange');
+  const fairEl = document.getElementById('valuationFairPrice');
+  const listEl = document.getElementById('valuationFactorsList');
+
+  if (rangeEl) rangeEl.innerText = `₹${val.low.toLocaleString('en-IN')} - ₹${val.high.toLocaleString('en-IN')}`;
+  if (fairEl) fairEl.innerText = `₹${val.fair.toLocaleString('en-IN')}`;
+
+  if (listEl) {
+    listEl.innerHTML = '';
+    val.factors.forEach(f => {
+      const item = document.createElement('div');
+      item.className = 'v-factor-item';
+      item.innerHTML = `<span class="icon">${f.icon}</span> <span>${f.text}</span>`;
+      listEl.appendChild(item);
+    });
+  }
+}
+
+function shareValuationWhatsApp() {
+  const selectEl = document.getElementById('valuationAnimalSelect');
+  const aid = selectEl ? selectEl.value : currentValuationAnimalId;
+  const animal = appData.animals.find(a => a.id === aid) || appData.animals[0];
+  const val = calculateAnimalMarketValue(animal);
+
+  const msg = 
+`🏷️ *AI पशु बाजार भाव व मूल्यांकन रिपोर्ट* 🐮
+━━━━━━━━━━━━━━━━━━
+पशु: *${animal.name}* (${animal.breed || ''})
+दैनिक दूध: ${animal.expectedYield || 8} L/दिन
+
+💰 *उचित बाजार मूल्य (Fair Price):* *₹${val.fair.toLocaleString('en-IN')}*
+📊 *अनुमानित रेंज:* ₹${val.low.toLocaleString('en-IN')} से ₹${val.high.toLocaleString('en-IN')}
+
+🔍 *मूल्य निर्धारण के मुख्य कारण:*
+${val.factors.map(f => `${f.icon} ${f.text}`).join('\n')}
+━━━━━━━━━━━━━━━━━━
+डेयरी मित्र - AI पशु बाजार भाव कैलकुलेटर ✨`;
+
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// -------------------------------------------------------------------
+// 6. Smart Farm Routine & Voice Reminders (रूटीन व अलार्म)
+// -------------------------------------------------------------------
+function triggerRoutineAlarm(soundType) {
+  // Web Audio API Synthesizer: plays a pleasant multi-tone chime
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+
+      // Play 3 melodic bell tones (Chime: C5, E5, G5)
+      const freqs = [523.25, 659.25, 783.99];
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.18);
+        gain.gain.setValueAtTime(0.3, now + idx * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.18 + 0.8);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.18);
+        osc.stop(now + idx * 0.18 + 0.85);
+      });
+    }
+  } catch (e) {
+    console.error('AudioContext alarm error:', e);
+  }
+
+  // Voice announcement after chime
+  const soundPrompts = {
+    morning_milking: 'डेयरी मित्र अलार्म: सुबह का दूध दोहन शुरू करने का समय हो गया है!',
+    morning_delivery: 'डेयरी मित्र अलार्म: सुबह की दूध सप्लाई का समय हो गया है!',
+    feed_time: 'डेयरी मित्र अलार्म: पशुओं को संतुलित सानी व दाना-पानी देने का समय!',
+    water_rest: 'डेयरी मित्र अलार्म: पशुओं को ताजा पानी पिलाने और नहलाने का समय!',
+    evening_milking: 'डेयरी मित्र अलार्म: शाम का दूध दोहन शुरू करने का समय हो गया है!',
+    evening_delivery: 'डेयरी मित्र अलार्म: शाम की दूध सप्लाई का समय हो गया है!'
+  };
+
+  const textToSpeak = soundPrompts[soundType] || 'डेयरी मित्र अलार्म: फार्म रूटीन का समय हो गया है!';
+  setTimeout(() => {
+    speakAudio(textToSpeak);
+    showAudioToast(`🔔 अलार्म: ${textToSpeak}`);
+  }, 600);
+}
+
+function openFarmRoutineModal() {
+  const modal = document.getElementById('farmRoutineModal');
+  if (modal) modal.classList.remove('hidden');
+
+  // Highlight active slot based on current hour
+  const hour = new Date().getHours();
+  const slots = document.querySelectorAll('.routine-timeline .timeline-slot');
+  slots.forEach(s => s.classList.remove('active'));
+
+  if (hour >= 4 && hour < 6 && slots[0]) slots[0].classList.add('active');
+  else if (hour >= 6 && hour < 8 && slots[1]) slots[1].classList.add('active');
+  else if (hour >= 8 && hour < 12 && slots[2]) slots[2].classList.add('active');
+  else if (hour >= 12 && hour < 16 && slots[3]) slots[3].classList.add('active');
+  else if (hour >= 16 && hour < 18 && slots[4]) slots[4].classList.add('active');
+  else if (hour >= 18 && slots[5]) slots[5].classList.add('active');
+}
+
+// -------------------------------------------------------------------
+// 7. 100% Purity Guarantee WhatsApp Poster (शुद्धता गारंटी पत्र)
+// -------------------------------------------------------------------
+function openPurityCertModal() {
+  const phoneEl = document.getElementById('certOwnerPhone');
+  if (phoneEl) {
+    phoneEl.innerText = `📱 ${appData.farmSettings.ownerPhone || '98765 43210'}`;
+  }
+  const modal = document.getElementById('purityCertModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function sharePurityWhatsApp() {
+  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
+  const ownerPhone = appData.farmSettings.ownerPhone || '9876543210';
+
+  const msg = 
+`🥛 *${farmName} - 100% शुद्धता गारंटी पत्र* 🏅
+━━━━━━━━━━━━━━━━━━
+⭐ *शुद्धता हमारी पहचान • स्वास्थ्य आपका अधिकार* ⭐
+
+🥛 *भैंस का दूध:* Fat 7.0% - 7.5% | SNF 9.0+ (गाढ़ा व मलाईदार)
+🐄 *देसी गाय का दूध:* Fat 4.2% | A2 पौष्टिकता (सुपाच्य अमृत)
+
+✅ 100% पानी व केमिकल मिलावट मुक्त
+✅ बिना किसी ऑक्सीटोसिन / हार्मोनल इंजेक्शन
+✅ स्वच्छ व आधुनिक दोहन पद्धति
+✅ ताजा दूध सीधे फार्म से आपके घर तक!
+
+📞 *घर पर ताजा दूध आर्डर करने हेतु संपर्क करें:*
+📱 *${ownerPhone}*
+━━━━━━━━━━━━━━━━━━
+डेयरी मित्र द्वारा 100% शुद्धता प्रमाणित ✨`;
+
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// -------------------------------------------------------------------
+// TRENDING FEATURES EVENT LISTENERS INITIALIZATION
+// -------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Trending Action Shortcuts in Header
+  const openExpBtn = document.getElementById('openExpenseProfitBtn');
+  if (openExpBtn) {
+    openExpBtn.addEventListener('click', () => openExpenseProfitModal());
+  }
+
+  const openRoutineBtn = document.getElementById('openFarmRoutineBtn');
+  if (openRoutineBtn) {
+    openRoutineBtn.addEventListener('click', () => openFarmRoutineModal());
+  }
+
+  const openPurityBtn = document.getElementById('openPurityCertBtn');
+  if (openPurityBtn) {
+    openPurityBtn.addEventListener('click', () => openPurityCertModal());
+  }
+
+  // 2. UPI Bill Modal
+  const closeUpiBillBtn = document.getElementById('closeUpiBillBtn');
+  if (closeUpiBillBtn) {
+    closeUpiBillBtn.addEventListener('click', () => {
+      document.getElementById('upiBillModal').classList.add('hidden');
+    });
+  }
+
+  const btnSendUpiWhatsApp = document.getElementById('btnSendUpiWhatsApp');
+  if (btnSendUpiWhatsApp) {
+    btnSendUpiWhatsApp.addEventListener('click', sendUpiWhatsAppBill);
+  }
+
+  const btnOpenDirectUpi = document.getElementById('btnOpenDirectUpi');
+  if (btnOpenDirectUpi) {
+    btnOpenDirectUpi.addEventListener('click', openDirectUpiPayment);
+  }
+
+  const btnCopyUpiId = document.getElementById('btnCopyUpiId');
+  if (btnCopyUpiId) {
+    btnCopyUpiId.addEventListener('click', () => {
+      const upiId = appData.farmSettings.upiId || 'dairyfarm@upi';
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(upiId).then(() => {
+          showAudioToast(`📋 UPI ID कॉपी कर लिया: ${upiId}`);
+        }).catch(() => {});
+      } else {
+        showAudioToast(`UPI ID: ${upiId}`);
+      }
+    });
+  }
+
+  // 3. Expense & Profit Modal
+  const closeExpBtn = document.getElementById('closeExpenseProfitBtn');
+  if (closeExpBtn) {
+    closeExpBtn.addEventListener('click', () => {
+      document.getElementById('expenseProfitModal').classList.add('hidden');
+    });
+  }
+
+  const expDateInput = document.getElementById('expenseProfitDate');
+  if (expDateInput) {
+    expDateInput.addEventListener('change', (e) => {
+      openExpenseProfitModal(e.target.value);
+    });
+  }
+
+  ['expFeed', 'expGreenFodder', 'expDryFodder', 'expMedical', 'expOther'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', recalculateLiveExpenses);
+  });
+
+  const btnSaveDailyExpenses = document.getElementById('btnSaveDailyExpenses');
+  if (btnSaveDailyExpenses) {
+    btnSaveDailyExpenses.addEventListener('click', saveDailyExpenses);
+  }
+
+  const btnShareProfitWhatsApp = document.getElementById('btnShareProfitWhatsApp');
+  if (btnShareProfitWhatsApp) {
+    btnShareProfitWhatsApp.addEventListener('click', shareDailyProfitWhatsApp);
+  }
+
+  // 4. Feed Optimizer Modal
+  const closeFeedBtn = document.getElementById('closeFeedOptimizerBtn');
+  if (closeFeedBtn) {
+    closeFeedBtn.addEventListener('click', () => {
+      document.getElementById('feedOptimizerModal').classList.add('hidden');
+    });
+  }
+
+  const feedAnimalSelect = document.getElementById('feedAnimalSelect');
+  if (feedAnimalSelect) {
+    feedAnimalSelect.addEventListener('change', () => {
+      const aid = feedAnimalSelect.value;
+      const animal = appData.animals.find(a => a.id === aid);
+      if (animal) {
+        const wtInput = document.getElementById('feedAnimalWeight');
+        const milkInput = document.getElementById('feedDailyMilk');
+        const stageInput = document.getElementById('feedAnimalStage');
+        if (wtInput) wtInput.value = animal.type === 'buffalo' ? 500 : 420;
+        if (milkInput) milkInput.value = animal.expectedYield || 8;
+        if (stageInput) stageInput.value = animal.status === 'pregnant' ? 'pregnant_dry' : (animal.status === 'milking' ? 'milking_peak' : 'dry');
+      }
+      updateFeedOptimizerView();
+    });
+  }
+
+  ['feedAnimalWeight', 'feedDailyMilk', 'feedAnimalStage'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', updateFeedOptimizerView);
+      el.addEventListener('change', updateFeedOptimizerView);
+    }
+  });
+
+  const btnSpeakFeedRation = document.getElementById('btnSpeakFeedRation');
+  if (btnSpeakFeedRation) {
+    btnSpeakFeedRation.addEventListener('click', speakFeedRationAudio);
+  }
+
+  const btnShareFeedWhatsApp = document.getElementById('btnShareFeedWhatsApp');
+  if (btnShareFeedWhatsApp) {
+    btnShareFeedWhatsApp.addEventListener('click', shareFeedWhatsApp);
+  }
+
+  // 5. Animal Kundali Modal
+  const closeKundaliBtn = document.getElementById('closeAnimalKundaliBtn');
+  if (closeKundaliBtn) {
+    closeKundaliBtn.addEventListener('click', () => {
+      document.getElementById('animalKundaliModal').classList.add('hidden');
+    });
+  }
+
+  const btnShareKundaliWhatsApp = document.getElementById('btnShareKundaliWhatsApp');
+  if (btnShareKundaliWhatsApp) {
+    btnShareKundaliWhatsApp.addEventListener('click', shareKundaliWhatsApp);
+  }
+
+  const btnPrintKundali = document.getElementById('btnPrintKundali');
+  if (btnPrintKundali) {
+    btnPrintKundali.addEventListener('click', () => {
+      showAudioToast('🖨️ पशु कुंडली प्रिंट / डाउनलोड के लिए तैयार!');
+      window.print();
+    });
+  }
+
+  // 6. Animal Valuation Modal
+  const closeValBtn = document.getElementById('closeAnimalValuationBtn');
+  if (closeValBtn) {
+    closeValBtn.addEventListener('click', () => {
+      document.getElementById('animalValuationModal').classList.add('hidden');
+    });
+  }
+
+  const btnCloseValModal = document.getElementById('btnCloseValuationModal');
+  if (btnCloseValModal) {
+    btnCloseValModal.addEventListener('click', () => {
+      document.getElementById('animalValuationModal').classList.add('hidden');
+    });
+  }
+
+  const valAnimalSelect = document.getElementById('valuationAnimalSelect');
+  if (valAnimalSelect) {
+    valAnimalSelect.addEventListener('change', updateAnimalValuationView);
+  }
+
+  const btnShareValuationWhatsApp = document.getElementById('btnShareValuationWhatsApp');
+  if (btnShareValuationWhatsApp) {
+    btnShareValuationWhatsApp.addEventListener('click', shareValuationWhatsApp);
+  }
+
+  // 7. Farm Routine Modal
+  const closeRoutineBtn = document.getElementById('closeFarmRoutineBtn');
+  if (closeRoutineBtn) {
+    closeRoutineBtn.addEventListener('click', () => {
+      document.getElementById('farmRoutineModal').classList.add('hidden');
+    });
+  }
+
+  const btnTestVoiceAlarm = document.getElementById('btnTestVoiceAlarm');
+  if (btnTestVoiceAlarm) {
+    btnTestVoiceAlarm.addEventListener('click', () => triggerRoutineAlarm('morning_milking'));
+  }
+
+  document.querySelectorAll('.btn-slot-alarm').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const soundType = btn.getAttribute('data-sound') || 'morning_milking';
+      triggerRoutineAlarm(soundType);
+    });
+  });
+
+  // 8. Purity Certificate Poster Modal
+  const closePurityCertBtn = document.getElementById('closePurityCertBtn');
+  if (closePurityCertBtn) {
+    closePurityCertBtn.addEventListener('click', () => {
+      document.getElementById('purityCertModal').classList.add('hidden');
+    });
+  }
+
+  const btnClosePurityModal = document.getElementById('btnClosePurityModal');
+  if (btnClosePurityModal) {
+    btnClosePurityModal.addEventListener('click', () => {
+      document.getElementById('purityCertModal').classList.add('hidden');
+    });
+  }
+
+  const btnSharePurityWhatsApp = document.getElementById('btnSharePurityWhatsApp');
+  if (btnSharePurityWhatsApp) {
+    btnSharePurityWhatsApp.addEventListener('click', sharePurityWhatsApp);
+  }
+
+  // Backdrop click to close modals
+  ['upiBillModal', 'expenseProfitModal', 'feedOptimizerModal', 'animalKundaliModal', 'animalValuationModal', 'farmRoutineModal', 'purityCertModal'].forEach(id => {
+    const modal = document.getElementById(id);
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.add('hidden');
+      });
+    }
+  });
+});

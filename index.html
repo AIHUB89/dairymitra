@@ -17,13 +17,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=5.2">
+  <link rel="stylesheet" href="styles.css?v=6.1">
   <script>
     // Force clear old cached SW assets so updates appear immediately
     if ('caches' in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'dairymitra-cache-v5.2') caches.delete(k);
+          if (k !== 'dairymitra-cache-v6.1') caches.delete(k);
         });
       });
     }
@@ -97,6 +97,22 @@
           <span class="stat-label">आज का हिसाब</span>
           <span class="stat-val rupee" id="statEarnings">₹0</span>
         </div>
+      </div>
+
+      <!-- Trending Quick Action Shortcuts -->
+      <div class="trending-actions-bar">
+        <button type="button" class="trending-action-btn btn-trend-profit" id="openExpenseProfitBtn" title="आज का खर्च व शुद्ध मुनाफा">
+          <span class="btn-trend-icon">💰</span>
+          <span class="btn-trend-text">खर्च व मुनाफा</span>
+        </button>
+        <button type="button" class="trending-action-btn btn-trend-routine" id="openFarmRoutineBtn" title="स्मार्ट फार्म रूटीन व अलार्म">
+          <span class="btn-trend-icon">⏰</span>
+          <span class="btn-trend-text">फार्म रूटीन</span>
+        </button>
+        <button type="button" class="trending-action-btn btn-trend-purity" id="openPurityCertBtn" title="100% शुद्धता स्टेटस पोस्टर">
+          <span class="btn-trend-icon">🥛</span>
+          <span class="btn-trend-text">शुद्धता पोस्टर</span>
+        </button>
       </div>
     </header>
 
@@ -315,9 +331,14 @@
         <div class="quick-topics-section">
           <h3 class="section-heading">अक्सर पूछे जाने वाले सवाल (1-टैप में जानें):</h3>
           <div class="quick-topic-chips">
+            <button class="topic-chip" data-query="आज का दिन पशुओं के लिए कैसा है और मौसम के अनुसार क्या सावधानी रखें?">🌤️ आज का दिन व पशु देखभाल</button>
+            <button class="topic-chip" data-query="कौन सी पशु गाभिन है और किसकी डिलीवरी होने वाली है?">🤰 गाभिन व प्रसव स्थिति</button>
             <button class="topic-chip" data-query="दूध का फैट और मात्रा कैसे बढ़ाएं?">🥛 दूध और फैट बढ़ाने के उपाय</button>
-            <button class="topic-chip" data-query="गाभिन गाय को क्या खुराक देनी चाहिए?">🤰 गाभिन पशु का संतुलित आहार</button>
             <button class="topic-chip" data-query="थनैल (Mastitis) रोग के लक्षण और घरेलू उपचार">🩺 थनैल (Mastitis) से बचाव</button>
+            <button class="topic-chip" data-query="पेट फूलना (अफारा) और दस्त का तुरंत घरेलू इलाज क्या है?">💨 अफारा व पेट फूलने का इलाज</button>
+            <button class="topic-chip" data-query="गाभिन गाय को क्या खुराक देनी चाहिए?">🤰 गाभिन पशु का संतुलित आहार</button>
+            <button class="topic-chip" data-query="सीमन लगाने का सही समय (AM-PM नियम) क्या है?">🧬 सीमन लगवाने का सही समय</button>
+            <button class="topic-chip" data-query="पशु को पेट के कीड़े (Deworming) की दवा कब और कैसे दें?">🪱 पेट के कीड़े (Deworming)</button>
             <button class="topic-chip" data-query="हरा चारा और दाने का सही अनुपात क्या होना चाहिए?">🌾 दाना और चारे का सही हिसाब</button>
             <button class="topic-chip" data-query="खुरपका-मुंहपका (FMD) का टीका कब लगाना चाहिए?">💉 टीकाकरण का सही समय</button>
           </div>
@@ -1349,13 +1370,514 @@
     </div>
   </div>
 
+  <!-- Modal: 1-Click Instant Payment QR & WhatsApp Milk Slip -->
+  <div class="modal-backdrop hidden" id="upiBillModal" style="z-index: 130;">
+    <div class="modal-card modal-upi-bill">
+      <div class="modal-header">
+        <h3 id="upiBillTitle">⚡ 1-क्लिक UPI QR कोड व डिजिटल पर्ची</h3>
+        <button class="modal-close-btn" id="closeUpiBillBtn">✕</button>
+      </div>
+      
+      <div class="upi-slip-card" id="upiSlipPrintArea">
+        <div class="upi-slip-header">
+          <div class="upi-slip-logo">🥛 श्री कृष्णा डेयरी फार्म</div>
+          <div class="upi-slip-tagline">100% शुद्ध व ताजा दूध सेवा</div>
+        </div>
+        
+        <div class="upi-slip-divider"></div>
+        
+        <div class="upi-slip-body">
+          <div class="upi-slip-row">
+            <span class="slip-label">ग्राहक:</span>
+            <span class="slip-val" id="upiBillCustomerName">सुरेश कुमार</span>
+          </div>
+          <div class="upi-slip-row">
+            <span class="slip-label">बिल माह:</span>
+            <span class="slip-val highlight" id="upiBillMonthLabel">अक्टूबर 2026</span>
+          </div>
+          <div class="upi-slip-row">
+            <span class="slip-label">कुल दूध:</span>
+            <span class="slip-val" id="upiBillTotalMilk">0.0 L</span>
+          </div>
+          <div class="upi-slip-row">
+            <span class="slip-label">दूध भाव:</span>
+            <span class="slip-val" id="upiBillMilkRate">₹60/L</span>
+          </div>
+          
+          <div class="upi-slip-total-box">
+            <span class="slip-total-label">भुगतान राशि (Total Due):</span>
+            <span class="slip-total-val" id="upiBillTotalAmount">₹0</span>
+          </div>
+          
+          <!-- Live QR Code -->
+          <div class="upi-qr-section">
+            <div class="upi-qr-wrapper">
+              <img id="upiDynamicQrImg" src="" alt="UPI Payment QR Code" class="upi-qr-image">
+              <div class="upi-scan-hint">📲 किसी भी UPI ऐप से स्कैन करें</div>
+            </div>
+            <div class="upi-id-badge">
+              <span>UPI ID: </span>
+              <strong id="upiDisplayId">dairymitra@upi</strong>
+              <button type="button" class="btn-copy-upi" id="btnCopyUpiId" title="कॉपी करें">📋</button>
+            </div>
+            <div class="upi-app-badges">
+              <span class="upi-badge gpay">GPay</span>
+              <span class="upi-badge phonepe">PhonePe</span>
+              <span class="upi-badge paytm">Paytm</span>
+              <span class="upi-badge bhim">BHIM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="upi-actions-row">
+        <button type="button" class="btn-whatsapp-green" id="btnSendUpiWhatsApp">
+          <span class="btn-icon">💬</span> WhatsApp पर बिल व QR भेजें
+        </button>
+        <button type="button" class="btn-direct-upi" id="btnOpenDirectUpi">
+          <span class="btn-icon">📱</span> UPI ऐप से सीधा भुगतान
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Daily Expenses & Profit/Loss (दैनिक खर्च व शुद्ध मुनाफा) -->
+  <div class="modal-backdrop hidden" id="expenseProfitModal" style="z-index: 130;">
+    <div class="modal-card modal-expense-profit">
+      <div class="modal-header">
+        <h3>💰 आज का खर्च व शुद्ध मुनाफा कैलकुलेटर</h3>
+        <button class="modal-close-btn" id="closeExpenseProfitBtn">✕</button>
+      </div>
+
+      <div class="profit-calc-body">
+        <!-- Date Selector -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="expenseProfitDate" style="font-weight: 700; font-size: 13px;">📅 तारीख चुनें:</label>
+          <input type="date" id="expenseProfitDate" class="form-input">
+        </div>
+
+        <!-- Milk Revenue Summary Strip -->
+        <div class="profit-revenue-card">
+          <div class="kpi-mini">
+            <span class="kpi-title">कुल दूध बिका</span>
+            <span class="kpi-num" id="expSummaryMilkSold">0.0 L</span>
+          </div>
+          <div class="kpi-mini">
+            <span class="kpi-title">कुल दूध आय (A)</span>
+            <span class="kpi-num green" id="expSummaryMilkRevenue">₹0</span>
+          </div>
+          <div class="kpi-mini">
+            <span class="kpi-title">घर में बचा दूध</span>
+            <span class="kpi-num" id="expSummaryMilkHome">0.0 L</span>
+          </div>
+        </div>
+
+        <!-- Expense Inputs Group -->
+        <div class="expense-inputs-card">
+          <div class="section-title-sm">🌾 आज के पशु खर्च (दैनिक लागत B)</div>
+          
+          <div class="expense-grid">
+            <div class="expense-input-item">
+              <label for="expFeed">🌾 दाना/खल/चोकर (₹)</label>
+              <input type="number" id="expFeed" placeholder="0" min="0" step="10">
+            </div>
+            <div class="expense-input-item">
+              <label for="expGreenFodder">🌿 हरा चारा (₹)</label>
+              <input type="number" id="expGreenFodder" placeholder="0" min="0" step="10">
+            </div>
+            <div class="expense-input-item">
+              <label for="expDryFodder">🍂 सूखा भूसा/पुआल (₹)</label>
+              <input type="number" id="expDryFodder" placeholder="0" min="0" step="10">
+            </div>
+            <div class="expense-input-item">
+              <label for="expMedical">💉 दवाई/डॉक्टर/मिनरल (₹)</label>
+              <input type="number" id="expMedical" placeholder="0" min="0" step="10">
+            </div>
+            <div class="expense-input-item" style="grid-column: span 2;">
+              <label for="expOther">🛠️ मजदूरी/बिजली/अन्य खर्च (₹)</label>
+              <input type="number" id="expOther" placeholder="0" min="0" step="10">
+            </div>
+          </div>
+        </div>
+
+        <!-- Net Profit Analysis Card -->
+        <div class="net-profit-hero-card" id="netProfitHeroCard">
+          <div class="hero-profit-header">
+            <span>दैनिक शुद्ध लाभ (Net Profit):</span>
+            <span class="hero-profit-val" id="netProfitHeroVal">₹0</span>
+          </div>
+          <div class="hero-profit-sub" id="netProfitHeroSub">कुल आमदनी ₹0 - कुल खर्च ₹0</div>
+          
+          <div class="hero-kpi-split">
+            <div class="hero-kpi-pill">
+              <span class="pill-label">1L दूध लागत (Cost/L)</span>
+              <span class="pill-val" id="kpiCostPerLitre">₹0.0</span>
+            </div>
+            <div class="hero-kpi-pill">
+              <span class="pill-label">1L पर शुद्ध मुनाफा</span>
+              <span class="pill-val green" id="kpiProfitPerLitre">₹0.0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 14px;">
+          <button type="button" class="btn-primary" id="btnSaveDailyExpenses">
+            💾 खर्च सेव करें
+          </button>
+          <button type="button" class="btn-whatsapp-green" id="btnShareProfitWhatsApp">
+            📲 WhatsApp बैलेंस शीट
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: AI Pashu Poshan & Feed Optimizer (AI आहार व पोषण अनुकूलक) -->
+  <div class="modal-backdrop hidden" id="feedOptimizerModal" style="z-index: 130;">
+    <div class="modal-card modal-feed-optimizer">
+      <div class="modal-header">
+        <h3>🌾 AI पशु आहार व पोषण अनुकूलक</h3>
+        <button class="modal-close-btn" id="closeFeedOptimizerBtn">✕</button>
+      </div>
+
+      <div class="feed-calc-body">
+        <div class="feed-animal-selector">
+          <label for="feedAnimalSelect" style="font-weight: 700; font-size: 13px;">पशु चुनें:</label>
+          <select id="feedAnimalSelect" class="form-input"></select>
+        </div>
+
+        <div class="feed-inputs-row">
+          <div class="form-group">
+            <label for="feedAnimalWeight">अनुमानित वजन (kg)</label>
+            <input type="number" id="feedAnimalWeight" value="450" step="25" min="200" max="800">
+          </div>
+          <div class="form-group">
+            <label for="feedDailyMilk">दैनिक दूध (लीटर)</label>
+            <input type="number" id="feedDailyMilk" value="10" step="0.5" min="0" max="40">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="feedAnimalStage">अवस्था (Lactation Stage)</label>
+          <select id="feedAnimalStage" class="form-input">
+            <option value="milking_peak" selected>दूध चालू (उच्च उत्पादन)</option>
+            <option value="milking_normal">दूध चालू (सामान्य)</option>
+            <option value="pregnant_dry">गाभिन (सूखा काल - अंतिम 2 माह)</option>
+            <option value="dry">खाली / शुष्क पशु</option>
+          </select>
+        </div>
+
+        <div class="feed-ration-card">
+          <div class="ration-card-title">✨ आज का संतुलित आहार चार्ट (Daily Ration)</div>
+          <div class="ration-grid">
+            <div class="ration-item">
+              <span class="ration-icon">🌿</span>
+              <div class="ration-info">
+                <span class="ration-name">हरा चारा (बरसीम, नेपियर)</span>
+                <span class="ration-qty" id="rationGreenFodder">20-25 किग्रा</span>
+              </div>
+            </div>
+            <div class="ration-item">
+              <span class="ration-icon">🍂</span>
+              <div class="ration-info">
+                <span class="ration-name">सूखा भूसा (गेहूं / पुआल)</span>
+                <span class="ration-qty" id="rationDryFodder">4-5 किग्रा</span>
+              </div>
+            </div>
+            <div class="ration-item">
+              <span class="ration-icon">🌾</span>
+              <div class="ration-info">
+                <span class="ration-name">संतुलित दाना मिश्रण (खल, दलिया, चोकर)</span>
+                <span class="ration-qty highlight" id="rationConcentrate">4.5 किग्रा</span>
+              </div>
+            </div>
+            <div class="ration-item">
+              <span class="ration-icon">⚪</span>
+              <div class="ration-info">
+                <span class="ration-name">मिनरल मिक्चर (खनिज लवण)</span>
+                <span class="ration-qty" id="rationMineral">50 ग्राम</span>
+              </div>
+            </div>
+            <div class="ration-item">
+              <span class="ration-icon">🧂</span>
+              <div class="ration-info">
+                <span class="ration-name">मीठा सोडा + साधारण नमक</span>
+                <span class="ration-qty" id="rationSalt">30g सोडा + 30g नमक</span>
+              </div>
+            </div>
+            <div class="ration-item">
+              <span class="ration-icon">💧</span>
+              <div class="ration-info">
+                <span class="ration-name">ताजा व स्वच्छ पीने का पानी</span>
+                <span class="ration-qty" id="rationWater">65-80 लीटर</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="feed-benefit-banner">
+            🎯 <strong>फायदे:</strong> दूध में 1 से 1.5 लीटर की वृद्धि, फैट (Fat) में 0.3-0.5% का सुधार और पशु का स्वास्थ्य व बांझपन से बचाव!
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 14px;">
+          <button type="button" class="btn-voice-speak" id="btnSpeakFeedRation">
+            🔊 बोलकर सुनाएं
+          </button>
+          <button type="button" class="btn-whatsapp-green" id="btnShareFeedWhatsApp">
+            📲 WhatsApp पर भेजें
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Digital Animal Kundali (डिजिटल पशु कुंडली व हेल्थ कार्ड) -->
+  <div class="modal-backdrop hidden" id="animalKundaliModal" style="z-index: 130;">
+    <div class="modal-card modal-kundali">
+      <div class="modal-header">
+        <h3>🪪 डिजिटल पशु कुंडली व हेल्थ कार्ड</h3>
+        <button class="modal-close-btn" id="closeAnimalKundaliBtn">✕</button>
+      </div>
+
+      <div class="kundali-card-wrapper" id="kundaliCardArea">
+        <div class="kundali-badge-gold">PASSPORT &amp; KUNDALI</div>
+        <div class="kundali-header-row">
+          <div class="kundali-avatar-box">
+            <span class="kundali-avatar-emoji" id="kundaliAvatarEmoji">🐄</span>
+          </div>
+          <div class="kundali-title-box">
+            <h4 id="kundaliAnimalName">लाली (गाय)</h4>
+            <div class="kundali-tag" id="kundaliTagId">टैग: #DM-101</div>
+            <div class="kundali-breed" id="kundaliBreed">साहीवाल नस्ल (देशी गोवंश)</div>
+          </div>
+        </div>
+
+        <div class="kundali-divider"></div>
+
+        <div class="kundali-grid">
+          <div class="kundali-cell">
+            <span class="k-label">ब्यात (Lactation):</span>
+            <span class="k-val" id="kundaliLactation">दूसरा ब्यात</span>
+          </div>
+          <div class="kundali-cell">
+            <span class="k-label">दैनिक दूध:</span>
+            <span class="k-val highlight" id="kundaliDailyYield">8.0 L / दिन</span>
+          </div>
+          <div class="kundali-cell">
+            <span class="k-label">अधिकतम रिकॉर्ड:</span>
+            <span class="k-val" id="kundaliPeakYield">12.0 L / दिन</span>
+          </div>
+          <div class="kundali-cell">
+            <span class="k-label">वर्तमान स्थिति:</span>
+            <span class="k-val status-pill" id="kundaliCurrentStatus">दूध चालू</span>
+          </div>
+          <div class="kundali-cell" style="grid-column: span 2;">
+            <span class="k-label">गर्भाधान व सीमेन रिकॉर्ड:</span>
+            <span class="k-val" id="kundaliSemenRecord">उच्च नस्ल सीमेन बुल #A2-402</span>
+          </div>
+        </div>
+
+        <div class="kundali-health-strip">
+          <div class="health-item"><span class="h-icon">💉</span> FMD टीका: <strong class="green">अपडेटेड</strong></div>
+          <div class="health-item"><span class="h-icon">🛡️</span> HS/BQ टीका: <strong class="green">अपडेटेड</strong></div>
+          <div class="health-item"><span class="h-icon">💊</span> डीवॉर्मिंग: <strong class="green">संपन्न</strong></div>
+        </div>
+
+        <div class="kundali-footer">
+          <span>फार्म: श्री कृष्णा डेयरी हाउस</span>
+          <span>डेयरी मित्र डिजिटल प्रमाणित</span>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 14px;">
+        <button type="button" class="btn-whatsapp-green" id="btnShareKundaliWhatsApp">
+          📲 WhatsApp पर कुंडली भेजें
+        </button>
+        <button type="button" class="btn-secondary" id="btnPrintKundali">
+          🖨️ प्रिंट / डाउनलोड
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: AI Animal Market Valuation (AI पशु बाजार भाव कैलकुलेटर) -->
+  <div class="modal-backdrop hidden" id="animalValuationModal" style="z-index: 130;">
+    <div class="modal-card modal-valuation">
+      <div class="modal-header">
+        <h3>🏷️ AI पशु बाजार भाव कैलकुलेटर</h3>
+        <button class="modal-close-btn" id="closeAnimalValuationBtn">✕</button>
+      </div>
+
+      <div class="valuation-body">
+        <div class="form-group">
+          <label for="valuationAnimalSelect" style="font-weight: 700; font-size: 13px;">पशु चुनें:</label>
+          <select id="valuationAnimalSelect" class="form-input"></select>
+        </div>
+
+        <div class="valuation-hero-price">
+          <div class="v-label">अनुमानित उचित बाजार मूल्य (Fair Value):</div>
+          <div class="v-price-range" id="valuationPriceRange">₹68,000 - ₹78,000</div>
+          <div class="v-fair-pill">औसत भाव: <strong id="valuationFairPrice">₹73,000</strong></div>
+        </div>
+
+        <div class="valuation-factors-card">
+          <div class="section-title-sm">📊 AI मूल्य निर्धारण विश्लेषण (Valuation Factors):</div>
+          <div class="v-factors-list" id="valuationFactorsList">
+            <!-- Dynamic factors -->
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 14px;">
+          <button type="button" class="btn-whatsapp-green" id="btnShareValuationWhatsApp">
+            📲 WhatsApp पर भाव भेजें
+          </button>
+          <button type="button" class="btn-secondary" id="btnCloseValuationModal">
+            बंद करें
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Smart Farm Routine & Voice Reminders (फार्म रूटीन व अलार्म) -->
+  <div class="modal-backdrop hidden" id="farmRoutineModal" style="z-index: 130;">
+    <div class="modal-card modal-farm-routine">
+      <div class="modal-header">
+        <h3>⏰ स्मार्ट फार्म रूटीन व वॉइस अलार्म</h3>
+        <button class="modal-close-btn" id="closeFarmRoutineBtn">✕</button>
+      </div>
+
+      <div class="farm-routine-body">
+        <div class="routine-banner">
+          📢 डेयरी फार्म का समयबद्ध कार्यक्रम — सही समय पर चारा, दूध व सप्लाई से दूध उत्पादन 15% तक बढ़ता है!
+        </div>
+
+        <div class="routine-timeline">
+          <div class="timeline-slot active">
+            <span class="slot-time">🌅 05:00 AM</span>
+            <div class="slot-info">
+              <strong>सुबह का दूध दोहन (Morning Milking)</strong>
+              <p>धार निकालने से पहले थनों की सफाई, पोटाश पानी व पहला दूध चेक।</p>
+            </div>
+            <button type="button" class="btn-slot-alarm" data-sound="morning_milking" title="अलार्म टेस्ट">🔔</button>
+          </div>
+
+          <div class="timeline-slot">
+            <span class="slot-time">🚚 06:30 AM</span>
+            <div class="slot-info">
+              <strong>सुबह की दूध सप्लाई (Customer Delivery)</strong>
+              <p>ग्राहकों के घर पर ताजा दूध वितरण व डेयरी मित्र में एंट्री।</p>
+            </div>
+            <button type="button" class="btn-slot-alarm" data-sound="morning_delivery" title="अलार्म टेस्ट">🔔</button>
+          </div>
+
+          <div class="timeline-slot">
+            <span class="slot-time">🌾 08:00 AM</span>
+            <div class="slot-info">
+              <strong>सुबह का सानी व दाना-पानी (Feeding)</strong>
+              <p>भूसा, हरा चारा, दलिया व मिनरल मिक्चर का संतुलित मिश्रण।</p>
+            </div>
+            <button type="button" class="btn-slot-alarm" data-sound="feed_time" title="अलार्म टेस्ट">🔔</button>
+          </div>
+
+          <div class="timeline-slot">
+            <span class="slot-time">☀️ 12:00 PM</span>
+            <div class="slot-info">
+              <strong>दोपहर का पानी व नहलाना (Washing &amp; Rest)</strong>
+              <p>पशुओं को ताजा पानी पिलाएं और खुरों व बाड़े की सफाई करें।</p>
+            </div>
+            <button type="button" class="btn-slot-alarm" data-sound="water_rest" title="अलार्म टेस्ट">🔔</button>
+          </div>
+
+          <div class="timeline-slot">
+            <span class="slot-time">🌆 04:30 PM</span>
+            <div class="slot-info">
+              <strong>शाम का दूध दोहन (Evening Milking)</strong>
+              <p>शाम की धार व दूध का वजन/लीटर माप दर्ज करें।</p>
+            </div>
+            <button type="button" class="btn-slot-alarm" data-sound="evening_milking" title="अलार्म टेस्ट">🔔</button>
+          </div>
+
+          <div class="timeline-slot">
+            <span class="slot-time">🚚 06:00 PM</span>
+            <div class="slot-info">
+              <strong>शाम की दूध सप्लाई (Evening Delivery)</strong>
+              <p>शाम की डिलीवरी व बहीखाता अपडेट।</p>
+            </div>
+            <button type="button" class="btn-slot-alarm" data-sound="evening_delivery" title="अलार्म टेस्ट">🔔</button>
+          </div>
+        </div>
+
+        <div class="routine-controls">
+          <button type="button" class="btn-primary" id="btnTestVoiceAlarm">
+            🔔 लाइव वॉइस अलार्म टेस्ट करें
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 100% Purity Guarantee WhatsApp Poster (शुद्धता गारंटी स्टेटस पोस्टर) -->
+  <div class="modal-backdrop hidden" id="purityCertModal" style="z-index: 130;">
+    <div class="modal-card modal-purity-cert">
+      <div class="modal-header">
+        <h3>🥛 100% शुद्धता गारंटी स्टेटस पोस्टर</h3>
+        <button class="modal-close-btn" id="closePurityCertBtn">✕</button>
+      </div>
+
+      <div class="purity-cert-wrapper" id="purityCertArea">
+        <div class="cert-gold-frame">
+          <div class="cert-badge-royal">⭐ 100% PURE &amp; NATURAL ⭐</div>
+          <h2 class="cert-farm-title">श्री कृष्णा डेयरी फार्म</h2>
+          <div class="cert-subtitle">शुद्धता हमारी पहचान • स्वास्थ्य आपका अधिकार</div>
+
+          <div class="cert-seal-art">🥛 🏅 🐄</div>
+
+          <div class="cert-highlights-grid">
+            <div class="cert-box">
+              <span class="cert-box-title">भैंस का दूध</span>
+              <span class="cert-box-val">Fat 7.0 - 7.5%</span>
+              <span class="cert-box-sub">SNF 9.0+ मलाईदार</span>
+            </div>
+            <div class="cert-box">
+              <span class="cert-box-title">देसी गाय का दूध</span>
+              <span class="cert-box-val">A2 पौष्टिकता</span>
+              <span class="cert-box-sub">Fat 4.2% • सुपाच्य अमृत</span>
+            </div>
+          </div>
+
+          <div class="cert-checklist">
+            <div>✅ 100% केमिकल व मिलावट मुक्त</div>
+            <div>✅ कोई ऑक्सीटोसिन या हार्मोनल इंजेक्शन नहीं</div>
+            <div>✅ स्वच्छ व आधुनिक दोहन पद्धति</div>
+            <div>✅ ताजा दूध सीधे फार्म से आपके घर तक</div>
+          </div>
+
+          <div class="cert-footer-banner">
+            <span>📞 होम डिलीवरी व ऑर्डर हेतु संपर्क करें</span>
+            <div class="cert-phone" id="certOwnerPhone">📱 98765 43210</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 14px;">
+        <button type="button" class="btn-whatsapp-green" id="btnSharePurityWhatsApp">
+          📲 WhatsApp स्टेटस पर शेयर करें
+        </button>
+        <button type="button" class="btn-secondary" id="btnClosePurityModal">
+          बंद करें
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="app.js?v=5.2"></script>
+  <script src="app.js?v=6.1"></script>
   <script>
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=5.2').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=6.1').then(reg => {
           reg.update(); // Force check for latest sw.js
         }).catch(() => {});
       });
