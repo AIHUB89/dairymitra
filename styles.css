@@ -2845,6 +2845,12 @@ html, body {
   color: #065f46;
 }
 
+.naga-alert-banner.note-neutral {
+  background: #f8fafc;
+  border-left-color: #94a3b8;
+  color: #475569;
+}
+
 /* Legend */
 .cal-legend {
   display: flex;
@@ -2873,6 +2879,7 @@ html, body {
 .dot-delivered { background: #10b981; }
 .dot-skipped { background: #ef4444; }
 .dot-custom { background: #f59e0b; }
+.dot-unrecorded { background: #ffffff; border: 1.5px dashed #94a3b8; }
 .dot-future { background: #cbd5e1; }
 
 /* 30-Day Grid */
@@ -2960,6 +2967,32 @@ html, body {
 
 .cal-day-cell.cell-custom .day-qty-badge {
   background: #d97706;
+}
+
+.cal-day-cell.cell-unrecorded {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+.cal-day-cell.cell-unrecorded .day-num {
+  color: #64748b;
+}
+
+.cal-day-cell.cell-unrecorded .day-qty-badge {
+  background: #f8fafc;
+  color: #94a3b8;
+  border: 1px dashed #cbd5e1;
+}
+
+.cal-day-cell.cell-unrecorded .day-shifts-mini {
+  color: #cbd5e1;
+}
+
+.cal-day-cell.cell-unrecorded:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
 .cal-day-cell.cell-today_pending {
   background: #eff6ff;
   border-color: #3b82f6;
