@@ -17,13 +17,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=6.1">
+  <link rel="stylesheet" href="styles.css?v=6.2">
   <script>
     // Force clear old cached SW assets so updates appear immediately
     if ('caches' in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'dairymitra-cache-v6.1') caches.delete(k);
+          if (k !== 'dairymitra-cache-v6.2') caches.delete(k);
         });
       });
     }
@@ -44,6 +44,10 @@
           </div>
         </div>
         <div class="header-actions">
+          <button class="pro-crown-btn" id="openProModalBtn" title="डेयरी मित्र प्रो व रेफरल (1 महीना मुफ़्त)">
+            <span class="crown-icon">👑</span>
+            <span id="proBtnText">प्रो • रेफर</span>
+          </button>
           <button class="fat-calc-pill-btn" id="openFatCalcBtn" title="फैट व SNF कैलकुलेटर">
             <span>🧪 फैट टेस्ट</span>
           </button>
@@ -112,6 +116,14 @@
         <button type="button" class="trending-action-btn btn-trend-purity" id="openPurityCertBtn" title="100% शुद्धता स्टेटस पोस्टर">
           <span class="btn-trend-icon">🥛</span>
           <span class="btn-trend-text">शुद्धता पोस्टर</span>
+        </button>
+        <button type="button" class="trending-action-btn btn-trend-mela" id="openPashuMelaBtn" title="डिजिटल पशु मेला (गाय/भैंस खरीद-बिक्री कार्ड)">
+          <span class="btn-trend-icon">🎪</span>
+          <span class="btn-trend-text">पशु मेला</span>
+        </button>
+        <button type="button" class="trending-action-btn btn-trend-pro" id="openProShortcutBtn" title="डेयरी मित्र प्रो (रेफर करें और 1 महीना मुफ़्त पाएं)">
+          <span class="btn-trend-icon">👑</span>
+          <span class="btn-trend-text">प्रो व रेफरल</span>
         </button>
       </div>
     </header>
@@ -263,6 +275,9 @@
             </button>
             <button class="action-btn-small btn-ai-primary" id="openAddBreedingModalBtn" title="नया सीमन या गर्भाधान दर्ज करें">
               🤰 सीमन / AI
+            </button>
+            <button class="action-btn-small btn-pashu-mela-header" id="openPashuMelaHeaderBtn" title="डिजिटल पशु मेला - बिकाऊ गाय व भैंस विज्ञापन">
+              🎪 पशु मेला
             </button>
             <button class="action-btn-small" id="addCattleFromTabBtn" title="नया पशु जोड़ें">
               ➕ नया पशु
@@ -1873,13 +1888,380 @@
     </div>
   </div>
 
+  <!-- Modal: Digital Pashu Mela (पशु मेला - गाय/भैंस खरीद-बिक्री WhatsApp विज्ञापन) -->
+  <div class="modal-backdrop hidden" id="pashuMelaModal" style="z-index: 130;">
+    <div class="modal-card modal-pashu-mela">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin: 0;">🎪 डिजिटल पशु मेला • खरीद-बिक्री कार्ड</h3>
+          <span style="font-size: 11px; color: #b91c1c; font-weight: 700;">बिना दलाल के, सीधे किसान से किसान तक 🤝</span>
+        </div>
+        <button class="modal-close-btn" id="closePashuMelaBtn">✕</button>
+      </div>
+
+      <div class="pashu-mela-body">
+        <!-- Animal Selector & Quick Pre-fill -->
+        <div class="form-group">
+          <label for="melaAnimalSelect" style="font-weight: 700; font-size: 13px;">बिकाऊ पशु चुनें:</label>
+          <select id="melaAnimalSelect" class="form-input"></select>
+        </div>
+
+        <!-- Sale Details Form Grid -->
+        <div class="mela-form-grid">
+          <div class="form-group">
+            <label for="melaLactationSelect">ब्यात (Lactation):</label>
+            <select id="melaLactationSelect" class="form-input">
+              <option value="1st ब्यात (पहला ब्यात)">1st ब्यात (पहला ब्यात)</option>
+              <option value="2nd ब्यात (दूसरा ब्यात)" selected>2nd ब्यात (दूसरा ब्यात)</option>
+              <option value="3rd ब्यात (तीसरा ब्यात)">3rd ब्यात (तीसरा ब्यात)</option>
+              <option value="4th ब्यात (चौथा ब्यात)">4th ब्यात (चौथा ब्यात)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="melaCalfSelect">बच्चा / बछड़ा स्थिति:</label>
+            <select id="melaCalfSelect" class="form-input">
+              <option value="बछड़ी साथ में (Female Calf)" selected>बछड़ी साथ में (Female)</option>
+              <option value="बछड़ा साथ में (Male Calf)">बछड़ा साथ में (Male)</option>
+              <option value="बिना बच्चे के (Without Calf)">बिना बच्चे के</option>
+              <option value="ताज़ी ब्याई (10-15 दिन)">ताज़ी ब्याई (10-15 दिन)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="melaPregnancySelect">गाभिन स्थिति:</label>
+            <select id="melaPregnancySelect" class="form-input">
+              <option value="खाली (ताजा दूध चालू)" selected>खाली (दूध चालू)</option>
+              <option value="2 माह की गाभिन">2 माह की गाभिन</option>
+              <option value="3 माह की गाभिन">3 माह की गाभिन</option>
+              <option value="4 माह की गाभिन">4 माह की गाभिन</option>
+              <option value="5+ माह की गाभिन">5+ माह की गाभिन</option>
+              <option value="सूखी / ड्राई (सीमन लगा)">सूखी / ड्राई (सीमन लगा)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="melaMilkYield">दैनिक दूध (लीटर/दिन):</label>
+            <input type="number" id="melaMilkYield" class="form-input" step="0.5" value="12.0" min="1">
+          </div>
+        </div>
+
+        <!-- Asking Price & AI Valuation Guidance -->
+        <div class="mela-price-section">
+          <div class="label-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label for="melaAskingPrice" style="font-weight: 700; font-size: 13px;">माँग कीमत (Asking Price ₹):</label>
+            <button type="button" class="btn-use-fair-price" id="btnUseFairPrice" title="AI बाज़ार भाव से भरें">
+              💡 AI भाव: <span id="melaFairPriceDisplay">₹68,000</span> (क्लिक करें)
+            </button>
+          </div>
+          <div class="price-input-row" style="display: flex; gap: 8px; align-items: center;">
+            <div style="position: relative; flex: 1;">
+              <span style="position: absolute; left: 10px; top: 9px; font-weight: 700; color: #475569;">₹</span>
+              <input type="number" id="melaAskingPrice" class="form-input" style="padding-left: 26px; font-size: 16px; font-weight: 800; color: #166534;" step="500" value="68000">
+            </div>
+            <select id="melaNegotiableSelect" class="form-input" style="width: 140px; font-size: 12px;">
+              <option value="नेगोशिएबल (थोड़ी गुंजाइश)">नेगोशिएबल (गुंजाइश)</option>
+              <option value="फिक्स रेट (पक्का भाव)">फिक्स रेट (पक्का)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Specialty / Temperament Tags -->
+        <div class="form-group" style="margin-top: 10px;">
+          <label style="font-weight: 700; font-size: 12px; margin-bottom: 6px; display: block;">खासियत व स्वभाव (चुनें):</label>
+          <div class="mela-tags-cloud" id="melaTagsCloud">
+            <button type="button" class="mela-tag-chip active" data-tag="बिल्कुल सीधी व शांत">😇 बिल्कुल सीधी व शांत</button>
+            <button type="button" class="mela-tag-chip active" data-tag="हाथ व मशीन दोनों से दुहाई">⚡ हाथ व मशीन दोनों दुहाई</button>
+            <button type="button" class="mela-tag-chip active" data-tag="दोनों समय की पक्की दुहाई">🥛 दोनों समय पक्की दुहाई</button>
+            <button type="button" class="mela-tag-chip active" data-tag="100% स्वस्थ व एक्टिव">🏥 100% स्वस्थ व एक्टिव</button>
+            <button type="button" class="mela-tag-chip" data-tag="बिना सींग / छोटे सींग">✨ बिना सींग / छोटे सींग</button>
+            <button type="button" class="mela-tag-chip" data-tag="FMD टीका लगा हुआ">💉 FMD टीका लगा</button>
+          </div>
+        </div>
+
+        <!-- Seller Contact & Location -->
+        <div class="mela-form-grid" style="margin-top: 10px;">
+          <div class="form-group">
+            <label for="melaSellerPhone">संपर्क फ़ोन नंबर (कॉल / WhatsApp):</label>
+            <input type="tel" id="melaSellerPhone" class="form-input" placeholder="9876543210">
+          </div>
+          <div class="form-group">
+            <label for="melaLocation">स्थान (गाँव, जिला, राज्य):</label>
+            <input type="text" id="melaLocation" class="form-input" placeholder="गाँव, जिला, राज्य">
+          </div>
+        </div>
+
+        <!-- Mark For Sale Checkbox -->
+        <div class="mela-checkbox-row" style="margin: 12px 0 6px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; font-weight: 700; color: #991b1b;">
+            <input type="checkbox" id="melaForSaleCheckbox" checked style="width: 18px; height: 18px; accent-color: #dc2626;">
+            <span>फार्म पर इस पशु को 'बिकाऊ' के रूप में मार्क करें</span>
+          </label>
+        </div>
+
+        <!-- LIVE AD CARD PREVIEW (HD WhatsApp Ready Poster) -->
+        <div class="mela-ad-preview-wrap">
+          <div class="mela-preview-label">👁️ विज्ञापन कार्ड पूर्वावलोकन (Preview):</div>
+          <div class="mela-ad-card" id="melaAdCardPreview">
+            <div class="mela-card-top-strip">
+              <span class="mela-strip-badge">🔴 बिकाऊ है • FOR SALE</span>
+              <span class="mela-strip-trust">🤝 0% दलाली • सीधा किसान से</span>
+            </div>
+
+            <div class="mela-card-hero">
+              <div class="mela-card-avatar" id="melaCardAvatar">
+                <!-- Image or icon -->
+              </div>
+              <div class="mela-card-title-box">
+                <h4 class="mela-animal-title" id="melaCardTitle">लाली (मुर्रा नस्ल)</h4>
+                <div class="mela-animal-sub" id="melaCardSubtitle">भैंस • 2nd ब्यात • ताज़ी ब्याई</div>
+                <div class="mela-card-price-pill">
+                  <span class="mela-price-lbl">माँग कीमत:</span>
+                  <strong class="mela-price-num" id="melaCardPrice">₹68,000</strong>
+                  <small id="melaCardNego">(नेगोशिएबल)</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="mela-card-specs-grid">
+              <div class="mela-spec-box">
+                <span class="mela-spec-icon">🥛</span>
+                <div class="mela-spec-text">
+                  <span class="mela-spec-label">दैनिक दूध</span>
+                  <strong id="melaCardMilk">12.0 L/दिन</strong>
+                </div>
+              </div>
+              <div class="mela-spec-box">
+                <span class="mela-spec-icon">🍼</span>
+                <div class="mela-spec-text">
+                  <span class="mela-spec-label">ब्यात / अवस्था</span>
+                  <strong id="melaCardLactation">2nd ब्यात</strong>
+                </div>
+              </div>
+              <div class="mela-spec-box">
+                <span class="mela-spec-icon">🐮</span>
+                <div class="mela-spec-text">
+                  <span class="mela-spec-label">बच्चा / बछड़ा</span>
+                  <strong id="melaCardCalf">बछड़ी साथ में</strong>
+                </div>
+              </div>
+              <div class="mela-spec-box">
+                <span class="mela-spec-icon">🤰</span>
+                <div class="mela-spec-text">
+                  <span class="mela-spec-label">गाभिन स्थिति</span>
+                  <strong id="melaCardPregnancy">खाली (दूध चालू)</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="mela-card-tags-list" id="melaCardTagsPreview">
+              <!-- Render selected tags -->
+            </div>
+
+            <div class="mela-card-contact-row">
+              <div class="mela-contact-item">
+                <span class="mela-contact-icon">📍</span>
+                <span id="melaCardLocationText">हरियाणा</span>
+              </div>
+              <div class="mela-contact-item">
+                <span class="mela-contact-icon">📞</span>
+                <strong id="melaCardPhoneText">9876543210</strong>
+              </div>
+            </div>
+
+            <div class="mela-card-brand-footer">
+              <span>डेयरी मित्र डिजिटल पशु मेला द्वारा प्रमाणित विज्ञापन ⭐</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mela-actions-row">
+          <button type="button" class="btn-whatsapp-green" id="btnShareMelaWhatsApp">
+            📲 1-क्लिक WhatsApp पर विज्ञापन शेयर करें
+          </button>
+          <div class="mela-secondary-actions">
+            <button type="button" class="btn-secondary" id="btnCopyMelaText" title="विज्ञापन टेक्स्ट कॉपी करें">
+              📋 टेक्स्ट कॉपी
+            </button>
+            <button type="button" class="btn-secondary" id="btnSaveMelaStatus" title="बिकाऊ स्थिति सुरक्षित करें">
+              💾 स्थिति सेव करें
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: DairyMitra Pro & Referral Program (डेयरी मित्र प्रो व रेफरल) -->
+  <div class="modal-backdrop hidden" id="proSubscriptionModal" style="z-index: 130;">
+    <div class="modal-card modal-pro-subscription">
+      <div class="modal-header pro-header-bg">
+        <div class="pro-header-title-box">
+          <span class="pro-sparkle-icon">👑</span>
+          <div>
+            <h3 class="pro-main-title">डेयरी मित्र प्रो (VIP Suite)</h3>
+            <p class="pro-sub-title">असीमित रिकॉर्ड्स, ब्रांडिंग व रेफरल रिवॉर्ड</p>
+          </div>
+        </div>
+        <button class="modal-close-btn pro-close-btn" id="closeProModalBtn">✕</button>
+      </div>
+
+      <div class="pro-modal-body">
+        <!-- Current Pro Status Card -->
+        <div class="pro-status-card" id="proCurrentStatusCard">
+          <div class="pro-status-top">
+            <span class="pro-status-badge" id="proStatusBadge">⚪ फ्री प्लान (सीमित)</span>
+            <span class="pro-status-expiry" id="proExpiryDisplay">अपग्रेड उपलब्ध</span>
+          </div>
+          <div class="pro-status-desc" id="proStatusDesc">
+            अभी आपका फार्म फ्री प्लान पर है। 1 मित्र को रेफर करें और <strong>1 महीना प्रो मुफ़्त</strong> पाएँ!
+          </div>
+        </div>
+
+        <!-- VIRAL REFERRAL SYSTEM (रेफर करें और 1 महीना मुफ़्त पाएं) -->
+        <div class="referral-reward-box">
+          <div class="referral-header">
+            <span class="referral-gift-icon">🎁</span>
+            <div>
+              <h4 class="referral-title">दोस्त को जोड़ें — 1 महीना प्रो मुफ़्त पाएँ!</h4>
+              <p class="referral-sub">हर 1 सफल रेफर पर आपको +30 दिन डेयरी मित्र प्रो मुफ़्त मिलेगा।</p>
+            </div>
+          </div>
+
+          <div class="referral-code-card">
+            <span class="ref-code-lbl">आपका पर्सनल रेफरल कोड:</span>
+            <div class="ref-code-row">
+              <span class="ref-code-val" id="myReferralCode">DM-KRISHNA78</span>
+              <button type="button" class="btn-ref-copy" id="btnCopyReferralCode" title="कोड कॉपी करें">
+                📋 कॉपी
+              </button>
+            </div>
+            <div class="ref-stats-strip">
+              <span>👥 सफल रेफरल्स: <strong id="refCountDisplay">0</strong> फार्म</span>
+              <span class="ref-bonus-highlight">⭐ कुल बोनस: <strong id="refEarnedMonths">0</strong> माह मुफ़्त</span>
+            </div>
+          </div>
+
+          <div class="ref-invite-actions-row">
+            <button type="button" class="btn-whatsapp-invite" id="btnSendReferralWhatsApp">
+              💬 WhatsApp पर इनवाइट भेजें (1-क्लिक)
+            </button>
+            <button type="button" class="btn-test-referral" id="btnTestAddReferral" title="टेस्ट करें: 1 दोस्त जुड़ा (+1 महीना पाएँ)">
+              🎁 +1 दोस्त जुड़ा (टेस्ट)
+            </button>
+          </div>
+
+          <!-- Redeem Code Section -->
+          <div class="redeem-code-box">
+            <span class="redeem-lbl">क्या आपके पास मित्र का रेफरल कोड है?</span>
+            <div class="redeem-input-row">
+              <input type="text" id="inputReferralCode" class="redeem-input" placeholder="उदा. DM-RAMESH12">
+              <button type="button" class="btn-redeem-apply" id="btnApplyReferralCode">
+                लागू करें
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pro Features Showcase -->
+        <div class="pro-perks-section">
+          <h4 class="perks-heading">💎 प्रो प्लान की खास सुविधाएं:</h4>
+          <div class="pro-perks-grid">
+            <div class="pro-perk-item">
+              <span class="perk-icon">🚀</span>
+              <div class="perk-info">
+                <strong>असीमित पशु व ग्राहक</strong>
+                <small>बिना किसी संख्या सीमा के पूरा फार्म चलाएं</small>
+              </div>
+            </div>
+            <div class="pro-perk-item">
+              <span class="perk-icon">🎨</span>
+              <div class="perk-info">
+                <strong>कस्टम डेयरी लोगो व नाम</strong>
+                <small>WhatsApp बिल पर अपनी डेयरी की ब्रांडिंग</small>
+              </div>
+            </div>
+            <div class="pro-perk-item">
+              <span class="perk-icon">📊</span>
+              <div class="perk-info">
+                <strong>1-क्लिक Excel व PDF रिपोर्ट</strong>
+                <small>बैंक लोन, KCC व ऑडिट रिपोर्ट डाउनलोड</small>
+              </div>
+            </div>
+            <div class="pro-perk-item">
+              <span class="perk-icon">☁️</span>
+              <div class="perk-info">
+                <strong>0% डेटा लॉस ऑटो बैकअप</strong>
+                <small>फोन बदलने पर भी डेटा सुरक्षित</small>
+              </div>
+            </div>
+            <div class="pro-perk-item">
+              <span class="perk-icon">🎪</span>
+              <div class="perk-info">
+                <strong>पशु मेला VIP लिस्टिंग</strong>
+                <small>बिकाऊ गाय-भैंस विज्ञापन पर VIP स्टार बैज</small>
+              </div>
+            </div>
+            <div class="pro-perk-item">
+              <span class="perk-icon">🖨️</span>
+              <div class="perk-info">
+                <strong>ब्लूटूथ थर्मल प्रिंटर सपोर्ट</strong>
+                <small>1 सेकंड में थर्मल पर्ची प्रिंट करें</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subscription Pricing Plans -->
+        <div class="pro-plans-grid">
+          <div class="pro-plan-card" id="planCardMonthly">
+            <span class="plan-period">1 महीना</span>
+            <div class="plan-price">₹49<small>/माह</small></div>
+            <p class="plan-note">महीने-दर-महीने कभी भी बंद करें</p>
+            <button type="button" class="btn-select-plan" id="btnSelectMonthlyPlan">
+              मासिक प्लान लें (₹49)
+            </button>
+          </div>
+
+          <div class="pro-plan-card featured" id="planCardYearly">
+            <span class="plan-badge-deal">👑 सबसे लोकप्रिय • 33% छूट</span>
+            <span class="plan-period">12 महीने (वार्षिक)</span>
+            <div class="plan-price">₹399<small>/वर्ष</small></div>
+            <p class="plan-note">केवल ₹33/महीना (4 महीने मुफ़्त)</p>
+            <button type="button" class="btn-select-plan btn-plan-gold" id="btnSelectYearlyPlan">
+              👑 वार्षिक प्लान लें (₹399)
+            </button>
+          </div>
+        </div>
+
+        <!-- 1-Click Activate Demo / UPI Support -->
+        <div class="pro-direct-activate-box">
+          <div class="activate-sub-note">
+            <span>💡 1-क्लिक में सुरक्षित UPI (PhonePe / GPay / Paytm) भुगतान करें:</span>
+          </div>
+          <div class="activate-btns-row">
+            <button type="button" class="btn-activate-upi" id="btnPayProUpi">
+              ⚡ UPI से ₹399 भुगतान करें
+            </button>
+            <button type="button" class="btn-activate-instant" id="btnInstantActivatePro" title="तुरंत 30 दिन प्रो एक्टिवेट करें">
+              🚀 तुरंत 30 दिन एक्टिवेट करें
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
-  <script src="app.js?v=6.1"></script>
+  <script src="app.js?v=6.2"></script>
   <script>
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=6.1').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=6.2').then(reg => {
           reg.update(); // Force check for latest sw.js
         }).catch(() => {});
       });

@@ -16,7 +16,13 @@ const DEFAULT_STATE = {
     defaultSnfRate: 0.0,
     upiId: 'dairyfarm@upi',
     ownerPhone: '9876543210',
-    audioFeedback: true
+    audioFeedback: true,
+    isPro: false,
+    proValidUntil: null,
+    referralCode: 'DM-KRISHNA78',
+    referralsCount: 0,
+    referredBy: null,
+    hasUsedReferral: false
   },
   animals: [
     { id: 'a1', name: 'लाली (मुर्रा)', type: 'buffalo', breed: 'मुर्रा', status: 'milking', expectedYield: 8.0, photo: '' },
@@ -184,6 +190,25 @@ function loadData() {
             delete data.dailyRecords[k];
           }
         });
+      }
+
+      // Ensure DairyMitra Pro & Referral Settings exist
+      if (!data.farmSettings) data.farmSettings = {};
+      if (typeof data.farmSettings.isPro === 'undefined') data.farmSettings.isPro = false;
+      if (typeof data.farmSettings.referralsCount === 'undefined') data.farmSettings.referralsCount = 0;
+      if (!data.farmSettings.referralCode) {
+        let cleanName = (data.farmSettings.farmName || 'KRISHNA').replace(/[^a-zA-Z0-9]/g, '').slice(0, 7).toUpperCase();
+        if (!cleanName || cleanName.length < 3) cleanName = 'DAIRY';
+        const randNum = Math.floor(10 + Math.random() * 90);
+        data.farmSettings.referralCode = `DM-${cleanName}${randNum}`;
+      }
+      if (data.farmSettings.proValidUntil) {
+        const expDate = new Date(data.farmSettings.proValidUntil);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        if (expDate < now) {
+          data.farmSettings.isPro = false;
+        }
       }
 
       return data;
@@ -577,7 +602,8 @@ function isVoiceQuery(text) {
     'बाजार भाव', 'कीमत', 'मूल्य', 'भाव', 'वैल्यू', 'valuation',
     'कुंडली', 'kundali', 'हेल्थ कार्ड', 'आईडी कार्ड',
     'रूटीन', 'routine', 'अलार्म', 'alarm', 'शेड्यूल',
-    'शुद्धता', 'गारंटी', 'सर्टिफिकेट', 'पोस्टर', 'poster', 'qr', 'upi'
+    'शुद्धता', 'गारंटी', 'सर्टिफिकेट', 'पोस्टर', 'poster', 'qr', 'upi',
+    'प्रो', 'pro', 'सब्सक्रिप्शन', 'subscription', 'रेफरल', 'referral', 'vip'
   ];
   return queryTriggers.some(t => text.includes(t));
 }
@@ -1153,6 +1179,25 @@ function handleDairyAiVoiceQuery(text, rawText) {
   const dateRange = extractDayRange(text);
 
   // ===================================================================
+  // 0.0 PRO SUBSCRIPTION & REFERRAL QUERY (Priority 0.0)
+  // उदा. "प्रो प्लान क्या है", "रेफरल कोड बताओ", "सब्सक्रिप्शन कैसे लें"
+  // ===================================================================
+  if (text.includes('प्रो') || text.includes('pro') || text.includes('सब्सक्रिप्शन') || text.includes('रेफरल') || text.includes('referral') || text.includes('vip')) {
+    openProSubscriptionModal();
+    const isPro = isProMember();
+    const daysLeft = getProDaysRemaining();
+    const myCode = appData.farmSettings.referralCode || 'DM-KRISHNA78';
+    let reply = '';
+    if (isPro) {
+      reply = `👑 आप डेयरी मित्र प्रो VIP सदस्य हैं! आपके पास अभी ${daysLeft} दिन की वैद्यता शेष है। किसी भी मित्र को अपना रेफरल कोड ${myCode} शेयर करके आप +30 दिन (1 महीना) मुफ़्त और बढ़ा सकते हैं।`;
+    } else {
+      reply = `डेयरी मित्र प्रो व रेफरल प्लान खुला है। अपना रेफरल कोड ${myCode} किसी भी 1 मित्र को शेयर करें और तुरंत पाएँ 1 महीना प्रो बिल्कुल मुफ़्त!`;
+    }
+    showAiVoiceReply('👑 डेयरी मित्र प्रो व रेफरल', reply);
+    return true;
+  }
+
+  // ===================================================================
   // 0. TODAY'S CATTLE BULLETIN & WEATHER CARE QUERY (Priority 0)
   // उदा. "आज का दिन पशु लोगों के लिए कैसा है", "आज कौन सा दिन है", "मौसम के अनुसार सलाह"
   // ===================================================================
@@ -1277,6 +1322,15 @@ function handleDairyAiVoiceQuery(text, rawText) {
     openPurityCertModal();
     const reply = `100% शुद्धता गारंटी स्टेटस पोस्टर तैयार है! आप इसे 1-क्लिक में WhatsApp स्टेटस पर शेयर कर सकते हैं।`;
     showAiVoiceReply('🥛 शुद्धता गारंटी पोस्टर', reply);
+    return true;
+  }
+
+  // 7. Digital Pashu Mela / Cattle Sale Ad
+  if (text.includes('पशु मेला') || text.includes('बिकाऊ') || text.includes('बेचना') || text.includes('बेचनी') || text.includes('pashu mela') || text.includes('mela') || text.includes('sell')) {
+    const targetA = matchedAnimal || appData.animals[0];
+    openPashuMelaModal(targetA ? targetA.id : null);
+    const reply = `${targetA.name} का बिकाऊ विज्ञापन कार्ड खुल गया है। आप इसे 1-क्लिक में WhatsApp पर शेयर कर सकते हैं।`;
+    showAiVoiceReply('🎪 डिजिटल पशु मेला', reply);
     return true;
   }
 
@@ -2958,6 +3012,8 @@ function renderCattleRegister() {
       ? `🤖 AI औसत: <strong>${stats.avgDailyMilk} L/दिन</strong> ${stats.milkedDays > 0 ? `(${stats.milkedDays} दिन का दूध)` : ''}`
       : `⚪ ${animal.status === 'pregnant' ? 'गाभिन' : 'सूखी (ड्राई)'}`;
 
+    const forSaleBadge = animal.forSale ? `<span class="badge-for-sale">🔴 बिकाऊ: ₹${((animal.salePrice || Math.round((animal.expectedYield || 8) * 6000)) || 60000).toLocaleString('en-IN')}</span>` : '';
+
     card.innerHTML = `
       <div class="cattle-main-row">
         <div class="cattle-icon-large ${isCow ? 'cow' : 'buffalo'}" data-edit-animal="${animal.id}" title="फोटो या नाम बदलने के लिए दबाएं">
@@ -2967,6 +3023,7 @@ function renderCattleRegister() {
           <div class="cattle-title-row">
             <div class="animal-name">
               ${animal.name}
+              ${forSaleBadge}
               <button class="btn-edit-badge" data-edit-animal="${animal.id}">✏️ नाम/फोटो</button>
             </div>
             <div class="cattle-actions">
@@ -2988,6 +3045,9 @@ function renderCattleRegister() {
         </button>
         <button type="button" class="btn-smart-action btn-animal-valuation" data-val-aid="${animal.id}" title="AI बाजार भाव कैलकुलेटर">
           🏷️ बाजार भाव
+        </button>
+        <button type="button" class="btn-smart-action btn-pashu-mela ${animal.forSale ? 'is-active' : ''}" data-mela-aid="${animal.id}" title="डिजिटल पशु मेला - बिकाऊ विज्ञापन बनाएं">
+          📢 ${animal.forSale ? 'बिकाऊ कार्ड' : 'बिकाऊ बनाएं'}
         </button>
       </div>
       ${breedingHtml}
@@ -3029,6 +3089,15 @@ function renderCattleRegister() {
       e.stopPropagation();
       const aid = btn.getAttribute('data-val-aid');
       openAnimalValuationModal(aid);
+    });
+  });
+
+  // Pashu Mela Listeners
+  container.querySelectorAll('[data-mela-aid]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const aid = btn.getAttribute('data-mela-aid');
+      openPashuMelaModal(aid);
     });
   });
 
@@ -6876,6 +6945,554 @@ function sharePurityWhatsApp() {
 }
 
 // -------------------------------------------------------------------
+// 8. Digital Pashu Mela (पशु मेला - गाय/भैंस खरीद-बिक्री कार्ड)
+// -------------------------------------------------------------------
+let currentMelaAnimalId = null;
+
+function openPashuMelaModal(animalId) {
+  const selectEl = document.getElementById('melaAnimalSelect');
+  if (!selectEl) return;
+
+  selectEl.innerHTML = '';
+  appData.animals.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.id;
+    const saleTag = a.forSale ? ' [🔴 बिकाऊ]' : '';
+    opt.innerText = `${a.name} (${a.breed || (a.type === 'cow' ? 'गाय' : 'भैंस')})${saleTag}`;
+    selectEl.appendChild(opt);
+  });
+
+  const targetId = animalId || (appData.animals[0] ? appData.animals[0].id : null);
+  if (targetId) selectEl.value = targetId;
+  currentMelaAnimalId = targetId;
+
+  // Pre-fill form from selected animal's data or smart defaults
+  const animal = appData.animals.find(a => a.id === targetId) || appData.animals[0];
+  if (animal) {
+    const yieldInput = document.getElementById('melaMilkYield');
+    if (yieldInput) yieldInput.value = animal.expectedYield || 10.0;
+
+    const priceInput = document.getElementById('melaAskingPrice');
+    const val = calculateAnimalMarketValue(animal);
+    if (priceInput) priceInput.value = animal.salePrice || val.fair || 65000;
+
+    const fairDisplay = document.getElementById('melaFairPriceDisplay');
+    if (fairDisplay) fairDisplay.innerText = `₹${(val.fair || 65000).toLocaleString('en-IN')}`;
+
+    const lactSelect = document.getElementById('melaLactationSelect');
+    if (lactSelect) lactSelect.value = animal.saleLactation || '2nd ब्यात (दूसरा ब्यात)';
+
+    const calfSelect = document.getElementById('melaCalfSelect');
+    if (calfSelect) calfSelect.value = animal.saleCalf || 'बछड़ी साथ में (Female Calf)';
+
+    const pregSelect = document.getElementById('melaPregnancySelect');
+    if (pregSelect) pregSelect.value = animal.salePregnancy || (animal.status === 'pregnant' ? '3 माह की गाभिन' : 'खाली (ताजा दूध चालू)');
+
+    const phoneInput = document.getElementById('melaSellerPhone');
+    if (phoneInput) phoneInput.value = animal.salePhone || appData.farmSettings.ownerPhone || '9876543210';
+
+    const locInput = document.getElementById('melaLocation');
+    if (locInput) locInput.value = animal.saleLocation || 'गाँव-रामपुर, जिला-करनाल (हरियाणा)';
+
+    const cb = document.getElementById('melaForSaleCheckbox');
+    if (cb) cb.checked = (animal.forSale !== false);
+
+    // Populate or reset tags
+    const activeTags = (animal.saleTags && Array.isArray(animal.saleTags) && animal.saleTags.length > 0)
+      ? animal.saleTags
+      : ['बिल्कुल सीधी व शांत', 'हाथ व मशीन दोनों से दुहाई', 'दोनों समय की पक्की दुहाई', '100% स्वस्थ व एक्टिव'];
+
+    document.querySelectorAll('#melaTagsCloud .mela-tag-chip').forEach(chip => {
+      chip.classList.toggle('active', activeTags.includes(chip.getAttribute('data-tag')));
+    });
+  }
+
+  updatePashuMelaView();
+
+  const modal = document.getElementById('pashuMelaModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function updatePashuMelaView() {
+  const selectEl = document.getElementById('melaAnimalSelect');
+  const aid = selectEl ? selectEl.value : currentMelaAnimalId;
+  const animal = appData.animals.find(a => a.id === aid) || appData.animals[0];
+  if (!animal) return;
+
+  const lactation = document.getElementById('melaLactationSelect')?.value || '2nd ब्यात';
+  const calf = document.getElementById('melaCalfSelect')?.value || 'बछड़ी साथ में';
+  const pregnancy = document.getElementById('melaPregnancySelect')?.value || 'खाली (दूध चालू)';
+  const milkYield = parseFloat(document.getElementById('melaMilkYield')?.value) || (animal.expectedYield || 10.0);
+  const askingPrice = parseInt(document.getElementById('melaAskingPrice')?.value, 10) || 65000;
+  const nego = document.getElementById('melaNegotiableSelect')?.value || 'नेगोशिएबल (थोड़ी गुंजाइश)';
+  const phone = document.getElementById('melaSellerPhone')?.value || appData.farmSettings.ownerPhone || '9876543210';
+  const location = document.getElementById('melaLocation')?.value || 'हरियाणा';
+
+  // Update AI Price display button
+  const val = calculateAnimalMarketValue(animal);
+  const fairDisplay = document.getElementById('melaFairPriceDisplay');
+  if (fairDisplay) fairDisplay.innerText = `₹${(val.fair || 65000).toLocaleString('en-IN')}`;
+
+  // Update Card Hero
+  const titleEl = document.getElementById('melaCardTitle');
+  const subEl = document.getElementById('melaCardSubtitle');
+  const priceEl = document.getElementById('melaCardPrice');
+  const negoEl = document.getElementById('melaCardNego');
+  const avatarEl = document.getElementById('melaCardAvatar');
+
+  if (titleEl) titleEl.innerText = `${animal.name} (${animal.breed || (animal.type === 'cow' ? 'गाय' : 'भैंस')})`;
+  if (subEl) subEl.innerText = `${animal.type === 'cow' ? '🐄 देशी गाय' : '🐃 मुर्रा/देशी भैंस'} • ${lactation} • ${calf}`;
+  if (priceEl) priceEl.innerText = `₹${askingPrice.toLocaleString('en-IN')}`;
+  if (negoEl) negoEl.innerText = `(${nego.includes('नेगोशिएबल') ? 'नेगोशिएबल' : 'फिक्स भाव'})`;
+
+  if (avatarEl) {
+    if (animal.photo) {
+      avatarEl.innerHTML = `<img src="${animal.photo}" alt="${animal.name}">`;
+    } else {
+      avatarEl.innerHTML = animal.type === 'cow' ? '🐄' : '🐃';
+    }
+  }
+
+  // Update Specs Grid
+  const milkCard = document.getElementById('melaCardMilk');
+  const lactCard = document.getElementById('melaCardLactation');
+  const calfCard = document.getElementById('melaCardCalf');
+  const pregCard = document.getElementById('melaCardPregnancy');
+
+  if (milkCard) milkCard.innerText = `${milkYield.toFixed(1)} L/दिन`;
+  if (lactCard) lactCard.innerText = lactation;
+  if (calfCard) calfCard.innerText = calf;
+  if (pregCard) pregCard.innerText = pregnancy;
+
+  // Update Tags Preview
+  const tagsListEl = document.getElementById('melaCardTagsPreview');
+  if (tagsListEl) {
+    tagsListEl.innerHTML = '';
+    document.querySelectorAll('#melaTagsCloud .mela-tag-chip.active').forEach(chip => {
+      const span = document.createElement('span');
+      span.className = 'tag-pill';
+      span.innerText = chip.innerText;
+      tagsListEl.appendChild(span);
+    });
+  }
+
+  // Update Location and Phone
+  const locEl = document.getElementById('melaCardLocationText');
+  const phoneEl = document.getElementById('melaCardPhoneText');
+  if (locEl) locEl.innerText = location;
+  if (phoneEl) phoneEl.innerText = phone;
+}
+
+function getFormattedPashuMelaAdText() {
+  const selectEl = document.getElementById('melaAnimalSelect');
+  const aid = selectEl ? selectEl.value : currentMelaAnimalId;
+  const animal = appData.animals.find(a => a.id === aid) || appData.animals[0];
+  if (!animal) return '';
+
+  const lactation = document.getElementById('melaLactationSelect')?.value || '2nd ब्यात';
+  const calf = document.getElementById('melaCalfSelect')?.value || 'बछड़ी साथ में';
+  const pregnancy = document.getElementById('melaPregnancySelect')?.value || 'खाली (दूध चालू)';
+  const milkYield = parseFloat(document.getElementById('melaMilkYield')?.value) || (animal.expectedYield || 10.0);
+  const askingPrice = parseInt(document.getElementById('melaAskingPrice')?.value, 10) || 65000;
+  const nego = document.getElementById('melaNegotiableSelect')?.value || 'नेगोशिएबल (थोड़ी गुंजाइश)';
+  const phone = (document.getElementById('melaSellerPhone')?.value || appData.farmSettings.ownerPhone || '9876543210').trim();
+  const location = (document.getElementById('melaLocation')?.value || 'गाँव-रामपुर, जिला-करनाल (हरियाणा)').trim();
+
+  const selectedTags = [];
+  document.querySelectorAll('#melaTagsCloud .mela-tag-chip.active').forEach(chip => {
+    selectedTags.push(chip.getAttribute('data-tag'));
+  });
+
+  const isCow = animal.type === 'cow';
+  const animalTypeLabel = isCow ? 'गाय (Cow)' : 'भैंस (Buffalo)';
+  const cleanPhone = phone.replace(/\D/g, '');
+  const waTarget = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+  const chatUrl = `https://wa.me/${waTarget}?text=${encodeURIComponent(`नमस्ते जी! मुझे आपकी बिकाऊ ${animalTypeLabel} (${animal.name}) के बारे में बात करनी है। क्या यह अभी उपलब्ध है?`)}`;
+
+  const msg = 
+`🔴 *बिकाऊ है (FOR SALE) • डिजिटल पशु मेला* ${isCow ? '🐄' : '🐃'}
+━━━━━━━━━━━━━━━━━━━━━━
+📢 *पशु:* ${animal.name} (${animal.breed || 'शुद्ध नस्ल'} ${animalTypeLabel})
+💰 *माँग कीमत:* *₹${askingPrice.toLocaleString('en-IN')}* (${nego})
+🤝 *0% दलाली • सीधे किसान से खरीदें*
+━━━━━━━━━━━━━━━━━━━━━━
+📊 *पशु की मुख्य जानकारी:*
+🥛 *दैनिक दूध क्षमता:* ${milkYield.toFixed(1)} लीटर/दिन (दोनों समय की पक्की दुहाई)
+🍼 *ब्यात (Lactation):* ${lactation}
+🐮 *बच्चा / स्थिति:* ${calf}
+🤰 *गाभिन स्थिति:* ${pregnancy}
+${animal.expectedYield ? `🏆 *अधिकतम रिकॉर्ड:* ${(animal.expectedYield * 1.3).toFixed(1)} लीटर/दिन\n` : ''}✨ *खासियत व स्वभाव:*
+${selectedTags.map(t => `✅ ${t}`).join('\n')}
+
+📍 *स्थान (पता):* ${location}
+📞 *मालिक से सीधे संपर्क करें:* ${phone}
+💬 *सीधा WhatsApp चैट लिंक:*
+${chatUrl}
+━━━━━━━━━━━━━━━━━━━━━━
+✨ *डेयरी मित्र - डिजिटल पशु मेला* (किसान का अपना मंच)`;
+
+  return msg;
+}
+
+function sharePashuMelaWhatsApp() {
+  const msg = getFormattedPashuMelaAdText();
+  if (!msg) return;
+
+  savePashuMelaStatus(false);
+  showAudioToast('📲 WhatsApp पशु मेला विज्ञापन खुल रहा है...');
+  speakAudio('पशु मेला विज्ञापन तैयार है। WhatsApp पर शेयर करें।');
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function copyPashuMelaText() {
+  const msg = getFormattedPashuMelaAdText();
+  if (!msg) return;
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(msg).then(() => {
+      showAudioToast('📋 विज्ञापन कॉपी हो गया! WhatsApp ग्रुप में पेस्ट करें');
+      speakAudio('विज्ञापन टेक्स्ट कॉपी हो गया');
+    }).catch(() => {
+      showAudioToast('📋 टेक्स्ट कॉपी किया गया');
+    });
+  } else {
+    showAudioToast('📋 टेक्स्ट कॉपी किया गया');
+  }
+}
+
+function savePashuMelaStatus(showFeedback = true) {
+  const selectEl = document.getElementById('melaAnimalSelect');
+  const aid = selectEl ? selectEl.value : currentMelaAnimalId;
+  const animal = appData.animals.find(a => a.id === aid) || appData.animals[0];
+  if (!animal) return;
+
+  const forSale = document.getElementById('melaForSaleCheckbox')?.checked ?? true;
+  const askingPrice = parseInt(document.getElementById('melaAskingPrice')?.value, 10) || 65000;
+  const lactation = document.getElementById('melaLactationSelect')?.value || '2nd ब्यात';
+  const calf = document.getElementById('melaCalfSelect')?.value || 'बछड़ी साथ में';
+  const pregnancy = document.getElementById('melaPregnancySelect')?.value || 'खाली (दूध चालू)';
+  const phone = document.getElementById('melaSellerPhone')?.value || appData.farmSettings.ownerPhone || '9876543210';
+  const location = document.getElementById('melaLocation')?.value || 'हरियाणा';
+
+  const selectedTags = [];
+  document.querySelectorAll('#melaTagsCloud .mela-tag-chip.active').forEach(chip => {
+    selectedTags.push(chip.getAttribute('data-tag'));
+  });
+
+  animal.forSale = forSale;
+  animal.salePrice = askingPrice;
+  animal.saleLactation = lactation;
+  animal.saleCalf = calf;
+  animal.salePregnancy = pregnancy;
+  animal.salePhone = phone;
+  animal.saleLocation = location;
+  animal.saleTags = selectedTags;
+
+  saveData();
+  renderCattleRegister();
+
+  if (showFeedback) {
+    showAudioToast(`💾 ${animal.name} की बिकाऊ स्थिति फार्म पर सेव हो गई!`);
+    speakAudio(`${animal.name} की स्थिति सुरक्षित हो गई`);
+    const modal = document.getElementById('pashuMelaModal');
+    if (modal) modal.classList.add('hidden');
+  }
+}
+
+// ===================================================================
+// FEATURE 9: DAIRYMITRA PRO SUBSCRIPTION & VIRAL REFERRAL SYSTEM
+// ===================================================================
+
+function playCelebrationChime() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+      // Fanfare: C5, E5, G5, C6
+      const freqs = [523.25, 659.25, 783.99, 1046.50];
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+        gain.gain.setValueAtTime(0.35, now + idx * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.6);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.12);
+        osc.stop(now + idx * 0.12 + 0.65);
+      });
+    }
+  } catch (e) {
+    console.error('Celebration audio error:', e);
+  }
+}
+
+function isProMember() {
+  if (!appData.farmSettings.isPro) return false;
+  if (!appData.farmSettings.proValidUntil) return true;
+  const exp = new Date(appData.farmSettings.proValidUntil);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return exp >= now;
+}
+
+function getProDaysRemaining() {
+  if (!appData.farmSettings.isPro || !appData.farmSettings.proValidUntil) return 0;
+  const exp = new Date(appData.farmSettings.proValidUntil);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diffTime = exp.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+}
+
+function addProDays(days) {
+  let baseDate = new Date();
+  baseDate.setHours(0, 0, 0, 0);
+  if (appData.farmSettings.isPro && appData.farmSettings.proValidUntil) {
+    const existing = new Date(appData.farmSettings.proValidUntil);
+    if (existing > baseDate) {
+      baseDate = existing;
+    }
+  }
+  baseDate.setDate(baseDate.getDate() + days);
+  const validUntilStr = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}-${String(baseDate.getDate()).padStart(2, '0')}`;
+  appData.farmSettings.isPro = true;
+  appData.farmSettings.proValidUntil = validUntilStr;
+  saveData();
+  updateHeaderProBadge();
+  updateProModalUI();
+  return validUntilStr;
+}
+
+function openProSubscriptionModal() {
+  updateProModalUI();
+  const modal = document.getElementById('proSubscriptionModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeProSubscriptionModal() {
+  const modal = document.getElementById('proSubscriptionModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function updateProModalUI() {
+  const isPro = isProMember();
+  const daysLeft = getProDaysRemaining();
+  const validUntil = appData.farmSettings.proValidUntil;
+
+  // Status Card
+  const card = document.getElementById('proCurrentStatusCard');
+  const badge = document.getElementById('proStatusBadge');
+  const expiry = document.getElementById('proExpiryDisplay');
+  const desc = document.getElementById('proStatusDesc');
+
+  if (card && badge && expiry && desc) {
+    if (isPro) {
+      card.classList.add('active-pro');
+      badge.innerText = '👑 प्रो सदस्य सक्रिय (VIP)';
+      const expDateObj = validUntil ? new Date(validUntil) : null;
+      const formattedExp = expDateObj ? `${expDateObj.getDate()} ${getHindiMonthName(expDateObj.getMonth() + 1)} ${expDateObj.getFullYear()}` : 'आजीवन सक्रिय';
+      expiry.innerText = `⏳ ${daysLeft} दिन शेष (${formattedExp} तक)`;
+      desc.innerHTML = `बधाई! आपका फार्म <strong>डेयरी मित्र प्रो VIP</strong> पर सक्रिय है। असीमित रिकॉर्ड्स, ऑटो बैकअप व VIP पशु मेला सुविधाएं अनलॉक हैं।`;
+    } else {
+      card.classList.remove('active-pro');
+      badge.innerText = '⚪ फ्री प्लान (सीमित)';
+      expiry.innerText = 'अपग्रेड उपलब्ध';
+      desc.innerHTML = `अभी आपका फार्म फ्री प्लान पर है। 1 मित्र को रेफर करें और <strong>1 महीना प्रो मुफ़्त</strong> पाएँ!`;
+    }
+  }
+
+  // Personal Referral Code
+  const myCodeEl = document.getElementById('myReferralCode');
+  if (myCodeEl) {
+    myCodeEl.innerText = appData.farmSettings.referralCode || 'DM-KRISHNA78';
+  }
+
+  const refCountEl = document.getElementById('refCountDisplay');
+  const refEarnedEl = document.getElementById('refEarnedMonths');
+  const count = appData.farmSettings.referralsCount || 0;
+  if (refCountEl) refCountEl.innerText = count;
+  if (refEarnedEl) refEarnedEl.innerText = count;
+
+  // Redeem Input Box
+  const inputCode = document.getElementById('inputReferralCode');
+  const applyBtn = document.getElementById('btnApplyReferralCode');
+  if (appData.farmSettings.hasUsedReferral) {
+    if (inputCode) {
+      inputCode.value = appData.farmSettings.referredBy || 'सफल';
+      inputCode.disabled = true;
+    }
+    if (applyBtn) {
+      applyBtn.innerText = '✓ लागू है';
+      applyBtn.disabled = true;
+      applyBtn.style.background = '#10b981';
+      applyBtn.style.cursor = 'default';
+    }
+  } else {
+    if (inputCode) {
+      inputCode.disabled = false;
+    }
+    if (applyBtn) {
+      applyBtn.innerText = 'लागू करें';
+      applyBtn.disabled = false;
+      applyBtn.style.background = '';
+      applyBtn.style.cursor = 'pointer';
+    }
+  }
+}
+
+function updateHeaderProBadge() {
+  const btn = document.getElementById('openProModalBtn');
+  const btnText = document.getElementById('proBtnText');
+  if (!btn) return;
+  const isPro = isProMember();
+  const daysLeft = getProDaysRemaining();
+
+  if (isPro) {
+    btn.classList.add('is-active-pro');
+    if (btnText) {
+      btnText.innerText = daysLeft > 0 ? `👑 VIP (${daysLeft}d)` : `👑 PRO VIP`;
+    }
+  } else {
+    btn.classList.remove('is-active-pro');
+    if (btnText) {
+      btnText.innerText = `👑 प्रो • रेफर`;
+    }
+  }
+}
+
+function copyReferralCode() {
+  const code = appData.farmSettings.referralCode || 'DM-KRISHNA78';
+  const copyBtn = document.getElementById('btnCopyReferralCode');
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(() => {
+      if (copyBtn) {
+        const orig = copyBtn.innerText;
+        copyBtn.innerText = '✓ कॉपी हुआ!';
+        setTimeout(() => { copyBtn.innerText = orig; }, 2000);
+      }
+      showAudioToast(`📋 रेफरल कोड ${code} कॉपी हो गया! दोस्तों को भेजें और 1 महीना प्रो मुफ़्त पाएँ!`);
+      speakAudio('रेफरल कोड कॉपी हो गया');
+    }).catch(() => {
+      showAudioToast(`📋 रेफरल कोड: ${code}`);
+    });
+  } else {
+    showAudioToast(`📋 रेफरल कोड: ${code}`);
+  }
+}
+
+function shareReferralWhatsApp() {
+  const code = appData.farmSettings.referralCode || 'DM-KRISHNA78';
+  const appUrl = window.location.href.split('#')[0];
+  const msg = 
+`🥛 *डेयरी मित्र प्रो (DairyMitra Pro)* 👑
+━━━━━━━━━━━━━━━━━━━━━━
+नमस्ते किसान भाई! 🙏
+मैं अपने डेयरी फार्म का पूरा दूध हिसाब, पशु रिकॉर्ड और 1-क्लिक WhatsApp पर्ची *डेयरी मित्र ऐप* से बहुत आसानी से चला रहा हूँ।
+
+🎁 *आपके लिए खास 1 महीना प्रो मुफ़्त उपहार:*
+ऐप में मेरा रेफरल कोड डालें और तुरंत पाएँ *1 महीना DairyMitra Pro VIP मुफ़्त!*
+
+🔑 *रेफरल कोड:* *${code}*
+
+📲 *डेयरी मित्र ऐप खोलें:*
+${appUrl}
+
+(कोड कॉपी करके ऐप के "प्रो • रेफर" बटन में डालें और 30 दिन का VIP आनंद लें!)
+━━━━━━━━━━━━━━━━━━━━━━
+डेयरी मित्र - किसान का अपना डिजिटल साथी ✨`;
+
+  showAudioToast('📲 WhatsApp इनवाइट खुल रहा है...');
+  speakAudio('WhatsApp इनवाइट तैयार है। अपने मित्रों को शेयर करें।');
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function applyReferralCode() {
+  const input = document.getElementById('inputReferralCode');
+  if (!input) return;
+  const rawCode = input.value.trim().toUpperCase();
+
+  if (!rawCode) {
+    showAudioToast('⚠️ कृपया अपने मित्र का रेफरल कोड दर्ज करें!');
+    return;
+  }
+
+  if (rawCode === (appData.farmSettings.referralCode || '').toUpperCase()) {
+    showAudioToast('❌ आप अपना खुद का रेफरल कोड उपयोग नहीं कर सकते!');
+    speakAudio('आप अपना खुद का रेफरल कोड उपयोग नहीं कर सकते');
+    return;
+  }
+
+  if (appData.farmSettings.hasUsedReferral) {
+    showAudioToast('ℹ️ आप पहले ही रेफरल बोनस प्राप्त कर चुके हैं!');
+    return;
+  }
+
+  if (rawCode.length < 4) {
+    showAudioToast('⚠️ अमान्य रेफरल कोड! कोड कम से कम 4 अक्षरों का होना चाहिए।');
+    return;
+  }
+
+  // Grant 1 month (30 days) free Pro!
+  appData.farmSettings.hasUsedReferral = true;
+  appData.farmSettings.referredBy = rawCode;
+  const expiryDateStr = addProDays(30);
+
+  playCelebrationChime();
+  showAudioToast(`🎉 बधाई हो! रेफरल कोड सफल! 1 महीना (30 दिन) प्रो मुफ़्त मिला! 👑`);
+  speakAudio('बधाई हो! रेफरल कोड लागू हो गया है और आपको 1 महीना प्रो मुफ़्त मिला है।');
+
+  updateProModalUI();
+}
+
+function simulateFriendJoined() {
+  appData.farmSettings.referralsCount = (appData.farmSettings.referralsCount || 0) + 1;
+  addProDays(30);
+  playCelebrationChime();
+  showAudioToast(`🎁 1 मित्र जुड़ा! आपके खाते में +30 दिन (1 महीना) प्रो मुफ़्त जुड़ गया! 👑`);
+  speakAudio('बधाई हो! एक मित्र आपके रेफरल से जुड़ा है। आपके खाते में एक महीना प्रो मुफ़्त जुड़ गया है।');
+  updateProModalUI();
+}
+
+function activateProSubscription(planType = 'monthly') {
+  let days = 30;
+  let label = 'मासिक (₹49)';
+  if (planType === 'yearly') {
+    days = 365;
+    label = 'वार्षिक (₹399)';
+  } else if (planType === 'instant') {
+    days = 30;
+    label = '30 दिन तुरंत एक्टिवेशन';
+  }
+
+  addProDays(days);
+  playCelebrationChime();
+  showAudioToast(`👑 बधाई हो! डेयरी मित्र प्रो (${label}) सक्रिय हो गया!`);
+  speakAudio(`बधाई हो! आपका प्रो प्लान सक्रिय हो गया है।`);
+  updateProModalUI();
+}
+
+function payProUpi() {
+  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
+  const upiId = appData.farmSettings.upiId || 'dairyfarm@upi';
+  const note = encodeURIComponent(`DairyMitra Pro Annual VIP - ${farmName}`);
+  const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(farmName)}&am=399&cu=INR&tn=${note}`;
+
+  showAudioToast('⚡ UPI पेमेंट ऐप खुल रहा है (₹399)...');
+  window.location.href = upiUrl;
+
+  setTimeout(() => {
+    if (confirm('क्या आपका UPI भुगतान पूरा हो गया है? तुरंत 1 वर्ष प्रो सक्रिय करें?')) {
+      activateProSubscription('yearly');
+    }
+  }, 2500);
+}
+
+// -------------------------------------------------------------------
 // TRENDING FEATURES EVENT LISTENERS INITIALIZATION
 // -------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
@@ -6893,6 +7510,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const openPurityBtn = document.getElementById('openPurityCertBtn');
   if (openPurityBtn) {
     openPurityBtn.addEventListener('click', () => openPurityCertModal());
+  }
+
+  const openMelaBtn = document.getElementById('openPashuMelaBtn');
+  if (openMelaBtn) {
+    openMelaBtn.addEventListener('click', () => openPashuMelaModal());
+  }
+
+  const openMelaHeaderBtn = document.getElementById('openPashuMelaHeaderBtn');
+  if (openMelaHeaderBtn) {
+    openMelaHeaderBtn.addEventListener('click', () => openPashuMelaModal());
   }
 
   // 2. UPI Bill Modal
@@ -7087,8 +7714,130 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSharePurityWhatsApp.addEventListener('click', sharePurityWhatsApp);
   }
 
+  // 9. Digital Pashu Mela Modal Listeners
+  const closePashuMelaBtn = document.getElementById('closePashuMelaBtn');
+  if (closePashuMelaBtn) {
+    closePashuMelaBtn.addEventListener('click', () => {
+      document.getElementById('pashuMelaModal').classList.add('hidden');
+    });
+  }
+
+  const melaAnimalSelect = document.getElementById('melaAnimalSelect');
+  if (melaAnimalSelect) {
+    melaAnimalSelect.addEventListener('change', () => {
+      openPashuMelaModal(melaAnimalSelect.value);
+    });
+  }
+
+  ['melaLactationSelect', 'melaCalfSelect', 'melaPregnancySelect', 'melaMilkYield', 'melaAskingPrice', 'melaNegotiableSelect', 'melaSellerPhone', 'melaLocation', 'melaForSaleCheckbox'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', updatePashuMelaView);
+      el.addEventListener('change', updatePashuMelaView);
+    }
+  });
+
+  document.querySelectorAll('#melaTagsCloud .mela-tag-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('active');
+      updatePashuMelaView();
+    });
+  });
+
+  const btnUseFairPrice = document.getElementById('btnUseFairPrice');
+  if (btnUseFairPrice) {
+    btnUseFairPrice.addEventListener('click', () => {
+      const selectEl = document.getElementById('melaAnimalSelect');
+      const aid = selectEl ? selectEl.value : currentMelaAnimalId;
+      const animal = appData.animals.find(a => a.id === aid) || appData.animals[0];
+      if (animal) {
+        const val = calculateAnimalMarketValue(animal);
+        const priceInput = document.getElementById('melaAskingPrice');
+        if (priceInput && val.fair) {
+          priceInput.value = val.fair;
+          updatePashuMelaView();
+          showAudioToast(`💡 AI उचित भाव ₹${val.fair.toLocaleString('en-IN')} भर दिया गया!`);
+        }
+      }
+    });
+  }
+
+  const btnShareMelaWhatsApp = document.getElementById('btnShareMelaWhatsApp');
+  if (btnShareMelaWhatsApp) {
+    btnShareMelaWhatsApp.addEventListener('click', sharePashuMelaWhatsApp);
+  }
+
+  const btnCopyMelaText = document.getElementById('btnCopyMelaText');
+  if (btnCopyMelaText) {
+    btnCopyMelaText.addEventListener('click', copyPashuMelaText);
+  }
+
+  const btnSaveMelaStatus = document.getElementById('btnSaveMelaStatus');
+  if (btnSaveMelaStatus) {
+    btnSaveMelaStatus.addEventListener('click', () => savePashuMelaStatus(true));
+  }
+
+  // 10. DairyMitra Pro & Referral Program Listeners
+  const openProModalBtn = document.getElementById('openProModalBtn');
+  if (openProModalBtn) {
+    openProModalBtn.addEventListener('click', openProSubscriptionModal);
+  }
+
+  const openProShortcutBtn = document.getElementById('openProShortcutBtn');
+  if (openProShortcutBtn) {
+    openProShortcutBtn.addEventListener('click', openProSubscriptionModal);
+  }
+
+  const closeProModalBtn = document.getElementById('closeProModalBtn');
+  if (closeProModalBtn) {
+    closeProModalBtn.addEventListener('click', closeProSubscriptionModal);
+  }
+
+  const btnCopyReferralCode = document.getElementById('btnCopyReferralCode');
+  if (btnCopyReferralCode) {
+    btnCopyReferralCode.addEventListener('click', copyReferralCode);
+  }
+
+  const btnSendReferralWhatsApp = document.getElementById('btnSendReferralWhatsApp');
+  if (btnSendReferralWhatsApp) {
+    btnSendReferralWhatsApp.addEventListener('click', shareReferralWhatsApp);
+  }
+
+  const btnTestAddReferral = document.getElementById('btnTestAddReferral');
+  if (btnTestAddReferral) {
+    btnTestAddReferral.addEventListener('click', simulateFriendJoined);
+  }
+
+  const btnApplyReferralCode = document.getElementById('btnApplyReferralCode');
+  if (btnApplyReferralCode) {
+    btnApplyReferralCode.addEventListener('click', applyReferralCode);
+  }
+
+  const btnSelectMonthlyPlan = document.getElementById('btnSelectMonthlyPlan');
+  if (btnSelectMonthlyPlan) {
+    btnSelectMonthlyPlan.addEventListener('click', () => activateProSubscription('monthly'));
+  }
+
+  const btnSelectYearlyPlan = document.getElementById('btnSelectYearlyPlan');
+  if (btnSelectYearlyPlan) {
+    btnSelectYearlyPlan.addEventListener('click', () => activateProSubscription('yearly'));
+  }
+
+  const btnPayProUpi = document.getElementById('btnPayProUpi');
+  if (btnPayProUpi) {
+    btnPayProUpi.addEventListener('click', payProUpi);
+  }
+
+  const btnInstantActivatePro = document.getElementById('btnInstantActivatePro');
+  if (btnInstantActivatePro) {
+    btnInstantActivatePro.addEventListener('click', () => activateProSubscription('instant'));
+  }
+
+  // Update Header Pro Badge on initial load
+  updateHeaderProBadge();
+
   // Backdrop click to close modals
-  ['upiBillModal', 'expenseProfitModal', 'feedOptimizerModal', 'animalKundaliModal', 'animalValuationModal', 'farmRoutineModal', 'purityCertModal'].forEach(id => {
+  ['upiBillModal', 'expenseProfitModal', 'feedOptimizerModal', 'animalKundaliModal', 'animalValuationModal', 'farmRoutineModal', 'purityCertModal', 'pashuMelaModal', 'proSubscriptionModal'].forEach(id => {
     const modal = document.getElementById(id);
     if (modal) {
       modal.addEventListener('click', (e) => {
