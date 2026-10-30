@@ -17,13 +17,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=6.2">
+  <link rel="stylesheet" href="styles.css?v=6.4">
   <script>
     // Force clear old cached SW assets so updates appear immediately
     if ('caches' in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'dairymitra-cache-v6.2') caches.delete(k);
+          if (k !== 'dairymitra-cache-v6.4') caches.delete(k);
         });
       });
     }
@@ -39,7 +39,13 @@
         <div class="brand">
           <span class="brand-logo">🥛</span>
           <div>
-            <h1 class="brand-name">डेयरी मित्र</h1>
+            <div class="brand-title-row">
+              <h1 class="brand-name">डेयरी मित्र</h1>
+              <div class="cloud-sync-badge" id="cloudSyncBadge" title="2-डिवाइस लाइव क्लाउड सिंक सक्रिय">
+                <span class="cloud-sync-dot"></span>
+                <span class="cloud-sync-text" id="cloudSyncText">लाइव सिंक</span>
+              </div>
+            </div>
             <p class="brand-tagline" id="farmNameDisplay">श्री कृष्णा डेयरी फार्म</p>
           </div>
         </div>
@@ -2249,6 +2255,347 @@
               🚀 तुरंत 30 दिन एक्टिवेट करें
             </button>
           </div>
+          <div class="activate-btns-row" style="margin-top: 8px;">
+            <button type="button" class="btn-receipt-open" id="btnViewProInvoiceModal" title="प्रो सदस्यता रसीद देखें व डाउनलोड करें">
+              🖨️ प्रो सदस्यता रसीद (Tax Invoice) प्रिंट करें
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  <!-- Modal: Farmer Onboarding & Database Registration (साइन-अप व प्रोफाइल सेटअप) -->
+  <div class="modal-backdrop hidden" id="onboardingModal" style="z-index: 150;">
+    <div class="modal-card modal-onboarding-card">
+      <div class="modal-header onboard-header-bg">
+        <div class="onboard-header-title">
+          <span class="onboard-icon">🌾</span>
+          <div>
+            <h3 class="onboard-title">डेयरी मित्र में आपका स्वागत है</h3>
+            <p class="onboard-sub">100% सुरक्षित क्लाउड बहीखाता • 2-फोन लाइव सिंक</p>
+          </div>
+        </div>
+      </div>
+
+      <form class="modal-body onboard-body" id="onboardingForm">
+        <div class="form-group">
+          <label for="onboardName" class="form-label">👤 किसान / मालिक का नाम *</label>
+          <input type="text" id="onboardName" class="form-control" placeholder="उदा. रमेश यादव" required>
+        </div>
+
+        <div class="form-group">
+          <label for="onboardFarmName" class="form-label">🥛 डेयरी / फार्म का नाम *</label>
+          <input type="text" id="onboardFarmName" class="form-control" placeholder="उदा. श्री कृष्णा डेयरी फार्म" required>
+        </div>
+
+        <div class="form-group">
+          <label for="onboardPhone" class="form-label">📱 10 अंकों का मोबाइल नंबर *</label>
+          <div class="phone-input-wrap">
+            <span class="country-code">+91</span>
+            <input type="tel" id="onboardPhone" class="form-control phone-input" placeholder="9876543210" maxlength="10" pattern="[0-9]{10}" required>
+          </div>
+          <small class="field-hint">इसी नंबर से दोनों फोन (बेटा व पिताजी) सिंक होंगे</small>
+        </div>
+
+        <div class="form-group">
+          <label for="onboardCity" class="form-label">📍 गाँव / जिला व राज्य</label>
+          <input type="text" id="onboardCity" class="form-control" placeholder="उदा. करनाल, हरियाणा">
+        </div>
+
+        <div class="form-group referral-opt-box">
+          <label for="onboardReferralCode" class="form-label">🎁 मित्र का रेफरल कोड (वैकल्पिक)</label>
+          <input type="text" id="onboardReferralCode" class="form-control ref-input-styled" placeholder="उदा. DM-RAMESH12">
+          <small class="ref-bonus-tag">💡 दोस्त का कोड डालने पर तुरंत 1 महीना प्रो VIP मुफ़्त मिलेगा!</small>
+        </div>
+
+        <!-- Permissions & Trust Info -->
+        <div class="onboard-trust-strip">
+          <div class="trust-item"><span>🎙️ माइक</span> <small>बोलकर एंट्री</small></div>
+          <div class="trust-item"><span>🔔 अलार्म</span> <small>दोहन समय</small></div>
+          <div class="trust-item"><span>☁️ बैकअप</span> <small>डेटा सुरक्षित</small></div>
+          <div class="trust-item"><span>📱 2 फोन</span> <small>लाइव सिंक</small></div>
+        </div>
+
+        <button type="submit" class="btn-primary btn-onboard-action" id="btnOnboardSubmit">
+          🚀 फार्म बहीखाता शुरू करें
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Hotstar-like 2-Device Limit Alert (डिवाइस सीमा पार) -->
+  <div class="modal-backdrop hidden" id="deviceLimitModal" style="z-index: 160;">
+    <div class="modal-card modal-device-limit-card">
+      <div class="modal-header device-limit-header">
+        <span class="device-limit-icon">🛑</span>
+        <div>
+          <h3 class="device-limit-title">डिवाइस सीमा पार (Device Limit Exceeded)</h3>
+          <p class="device-limit-sub">अधिकतम 2 फोन पर ही एक खाता चल सकता है</p>
+        </div>
+      </div>
+      <div class="modal-body device-limit-body">
+        <p class="device-limit-desc">
+          आपका डेयरी मित्र खाता पहले से <strong>2 सक्रिय डिवाइस</strong> पर चल रहा है। इस नए फोन में चलाने के लिए नीचे दिए गए किसी पुराने फोन से लॉगआउट करें:
+        </p>
+
+        <div class="active-devices-list" id="activeDevicesList">
+          <!-- Populated dynamically with active devices and logout buttons -->
+        </div>
+
+        <div class="device-limit-actions" style="margin-top: 14px;">
+          <button type="button" class="btn-secondary" id="btnRetryDeviceCheck" style="width: 100%;">
+            🔄 दोबारा चेक करें
+          </button>
+        </div>
+      </div>
+    </div>
+  <!-- Modal: Settings & Multi-Device Manager (सेटिंग्स व 2-फोन डिवाइस प्रबंधन) -->
+  <div class="modal-backdrop hidden" id="settingsModal" style="z-index: 140;">
+    <div class="modal-card modal-settings-card">
+      <div class="modal-header settings-header-bg">
+        <div class="settings-header-title">
+          <span class="settings-icon">⚙️</span>
+          <div>
+            <h3 class="settings-title">फार्म सेटिंग्स व डिवाइस प्रबंधन</h3>
+            <p class="settings-sub">2-फोन लाइव सिंक • प्रोफाइल व बैकअप</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="closeSettingsModalBtn">✕</button>
+      </div>
+
+      <div class="modal-body settings-body">
+        
+        <!-- Section 1: Farmer & Farm Profile -->
+        <div class="settings-section">
+          <h4 class="settings-sec-title">👤 किसान व डेयरी प्रोफाइल</h4>
+          <div class="settings-profile-form">
+            <div class="form-group">
+              <label for="settingsOwnerName" class="form-label">किसान / मालिक का नाम</label>
+              <input type="text" id="settingsOwnerName" class="form-control" placeholder="उदा. रमेश यादव">
+            </div>
+            <div class="form-group">
+              <label for="settingsFarmName" class="form-label">डेयरी / फार्म का नाम</label>
+              <input type="text" id="settingsFarmName" class="form-control" placeholder="उदा. श्री कृष्णा डेयरी फार्म">
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="settingsCity" class="form-label">गाँव / शहर</label>
+                <input type="text" id="settingsCity" class="form-control" placeholder="उदा. करनाल, हरियाणा">
+              </div>
+              <div class="form-group flex-1">
+                <label for="settingsPhone" class="form-label">पंजीकृत मोबाइल नंबर</label>
+                <input type="text" id="settingsPhone" class="form-control" readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 600;">
+              </div>
+            </div>
+            <button type="button" class="btn-primary" id="btnSaveSettingsProfile" style="margin-top: 4px;">
+              💾 प्रोफाइल सुरक्षित करें
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 2: Active Devices (Hotstar 2-Device Limit) -->
+        <div class="settings-section">
+          <div class="sec-header-with-badge">
+            <h4 class="settings-sec-title">📱 जुड़े हुए डिवाइस (Hotstar-Style Limit)</h4>
+            <span class="device-pill-count" id="settingsDeviceCount">2 / 2 डिवाइस</span>
+          </div>
+          <p class="settings-sec-desc">
+            एक खाते से अधिकतम 2 फोन (जैसे डेयरी पर बेटा और घर पर पिताजी) लाइव सिंक होते हैं।
+          </p>
+          
+          <div class="settings-devices-list" id="settingsDevicesList">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <div style="margin-top: 8px;">
+            <button type="button" class="btn-secondary btn-small" id="btnRefreshSettingsDevices">
+              🔄 डिवाइस सूची रिफ्रेश करें
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 3: Pro Membership Status -->
+        <div class="settings-section">
+          <h4 class="settings-sec-title">👑 प्रो मेंबरशिप स्थिति</h4>
+          <div class="settings-pro-card" id="settingsProCard">
+            <div class="settings-pro-info">
+              <span class="pro-badge-styled" id="settingsProBadge">⚪ फ्री प्लान</span>
+              <span class="pro-valid-styled" id="settingsProExpiry">4 पशु सीमा (सीमित)</span>
+            </div>
+            <div class="settings-pro-actions">
+              <button type="button" class="btn-primary btn-small" id="btnOpenProFromSettings">
+                👑 प्रो प्लान देखें / अपग्रेड
+              </button>
+              <button type="button" class="btn-secondary btn-small" id="btnOpenInvoiceFromSettings">
+                🖨️ सदस्यता रसीद (Invoice)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Referral Rewards -->
+        <div class="settings-section">
+          <h4 class="settings-sec-title">🎁 आपका पर्सनल रेफरल कोड</h4>
+          <div class="settings-ref-box">
+            <div class="settings-ref-code" id="settingsReferralCode">DM-KRISHNA78</div>
+            <div class="settings-ref-btns">
+              <button type="button" class="btn-secondary btn-small" id="btnSettingsCopyRef">📋 कॉपी</button>
+              <button type="button" class="btn-whatsapp-green btn-small" id="btnSettingsShareRef">📲 WhatsApp इनवाइट</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 5: Cloud Data Sync & Backup -->
+        <div class="settings-section">
+          <h4 class="settings-sec-title">☁️ डेटा सिंक व बैकअप</h4>
+          <div class="settings-sync-status-box" id="settingsSyncStatus">
+            <span class="sync-dot sync-dot-online"></span>
+            <span id="settingsSyncStatusText">🟢 2-डिवाइस लाइव क्लाउड सिंक सक्रिय (SQLite DB)</span>
+          </div>
+
+          <div class="settings-backup-grid">
+            <button type="button" class="btn-secondary" id="btnForceSyncNow">
+              🔄 अभी लाइव सिंक करें
+            </button>
+            <button type="button" class="btn-secondary" id="btnDownloadBackupJson">
+              📥 बैकअप डाउनलोड करें (JSON)
+            </button>
+            <label class="btn-secondary" for="restoreBackupInput" style="text-align: center; cursor: pointer; margin: 0;">
+              📤 बैकअप रिस्टोर करें
+            </label>
+            <input type="file" id="restoreBackupInput" accept=".json" class="hidden-file-input">
+            <button type="button" class="btn-danger-outline" id="btnLogoutAccount">
+              🚪 लॉगआउट (फोन बदलें)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Official Pro Subscription Tax Invoice / Receipt (प्रो सदस्यता रसीद) -->
+  <div class="modal-backdrop hidden" id="proInvoiceModal" style="z-index: 155;">
+    <div class="modal-card modal-invoice-card">
+      <div class="modal-header">
+        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+          <span>🧾</span> आधिकारिक सदस्यता रसीद (Tax Invoice)
+        </h3>
+        <button class="modal-close-btn" id="closeInvoiceModalBtn">✕</button>
+      </div>
+
+      <div class="modal-body invoice-body">
+        <!-- Printable Receipt Slip Area -->
+        <div class="invoice-slip-wrapper" id="printableReceiptArea">
+          <div class="invoice-slip">
+            
+            <!-- Invoice Brand Header -->
+            <div class="invoice-header">
+              <div class="inv-brand-box">
+                <span class="inv-logo">🥛</span>
+                <div>
+                  <h2 class="inv-brand-title">डेयरी मित्र (DairyMitra)</h2>
+                  <p class="inv-brand-tag">डिजिटल डेयरी व पशु बहीखाता • GST Exempted Dairy Tech</p>
+                </div>
+              </div>
+              <div class="inv-meta-box">
+                <div class="inv-badge">✅ PAID &amp; ACTIVATED</div>
+                <div class="inv-num" id="invReceiptNo">रसीद नं: DM-INV-2026-9821</div>
+                <div class="inv-date" id="invReceiptDate">दिनांक: 30 अक्टूबर 2026</div>
+              </div>
+            </div>
+
+            <hr class="inv-divider">
+
+            <!-- Customer & Farm Information -->
+            <div class="inv-customer-grid">
+              <div class="inv-cust-col">
+                <span class="inv-label">👤 ग्राहक / किसान का नाम:</span>
+                <strong class="inv-val" id="invFarmerName">रमेश यादव</strong>
+              </div>
+              <div class="inv-cust-col">
+                <span class="inv-label">🥛 डेयरी / फार्म का नाम:</span>
+                <strong class="inv-val" id="invFarmName">श्री कृष्णा डेयरी फार्म</strong>
+              </div>
+              <div class="inv-cust-col">
+                <span class="inv-label">📱 मोबाइल नंबर:</span>
+                <strong class="inv-val" id="invPhone">+91 98765 43210</strong>
+              </div>
+              <div class="inv-cust-col">
+                <span class="inv-label">📍 स्थान / शहर:</span>
+                <strong class="inv-val" id="invCity">करनाल, हरियाणा</strong>
+              </div>
+            </div>
+
+            <!-- Subscription Item Table -->
+            <div class="inv-table-wrapper">
+              <table class="inv-table">
+                <thead>
+                  <tr>
+                    <th>विवरण (Description)</th>
+                    <th>अवधि (Period)</th>
+                    <th>लाइव सिंक</th>
+                    <th style="text-align: right;">राशि (Amount)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <strong>डेयरी मित्र प्रो (VIP Suite)</strong>
+                      <small style="display: block; color: #64748b;">असीमित पशु, WhatsApp बिलिंग, डिजिटल रिपोर्ट व बैकअप</small>
+                    </td>
+                    <td id="invPlanPeriod">12 महीने (वार्षिक)</td>
+                    <td>2 फोन सक्रिय</td>
+                    <td style="text-align: right;" id="invPlanAmount">₹399.00</td>
+                  </tr>
+                  <tr class="inv-total-row">
+                    <td colspan="3" style="text-align: right;"><strong>कुल भुगतान (Total Paid):</strong></td>
+                    <td style="text-align: right;"><strong id="invTotalPaid" style="color: #065f46; font-size: 16px;">₹399.00</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Validity & Payment Details -->
+            <div class="inv-details-row">
+              <div class="inv-detail-item">
+                <span class="inv-detail-lbl">💳 भुगतान माध्यम:</span>
+                <strong class="inv-detail-val" id="invPayMode">UPI ऑटो-वेरिफाइड (PhonePe / GPay)</strong>
+              </div>
+              <div class="inv-detail-item">
+                <span class="inv-detail-lbl">🆔 पेमेंट ID:</span>
+                <strong class="inv-detail-val" id="invPayId">PAY_AUTO_9876543210</strong>
+              </div>
+              <div class="inv-detail-item">
+                <span class="inv-detail-lbl">📅 प्रो वैधता समाप्ति:</span>
+                <strong class="inv-detail-val" id="invValidUntil" style="color: #b45309;">30 अक्टूबर 2027 तक</strong>
+              </div>
+            </div>
+
+            <!-- Security Seal & Disclaimer -->
+            <div class="inv-footer-seal">
+              <div class="inv-seal-badge">
+                <span>🛡️ DAIRYMITRA VERIFIED CLOUD</span>
+              </div>
+              <p class="inv-disclaimer">
+                यह एक कम्प्यूटरीकृत डिजिटल टैक्स इनवॉइस/रसीद है। किसी भौतिक हस्ताक्षर की आवश्यकता नहीं है। सहायता हेतु WhatsApp: 9876543210 पर संपर्क करें।
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Receipt Action Buttons -->
+        <div class="modal-actions" style="margin-top: 14px;">
+          <button type="button" class="btn-primary" id="btnPrintReceiptBtn">
+            🖨️ रसीद प्रिंट / PDF सेव करें
+          </button>
+          <button type="button" class="btn-whatsapp-green" id="btnShareReceiptWhatsAppBtn">
+            📲 WhatsApp पर रसीद भेजें
+          </button>
+          <button type="button" class="btn-secondary" id="btnCloseInvoiceBtn">
+            बंद करें
+          </button>
         </div>
 
       </div>
@@ -2256,12 +2603,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="app.js?v=6.2"></script>
+  <script src="app.js?v=6.4"></script>
   <script>
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=6.2').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=6.4').then(reg => {
           reg.update(); // Force check for latest sw.js
         }).catch(() => {});
       });
