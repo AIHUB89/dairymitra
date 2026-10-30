@@ -17,13 +17,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=6.4">
+  <link rel="stylesheet" href="styles.css?v=7.0">
   <script>
     // Force clear old cached SW assets so updates appear immediately
     if ('caches' in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'dairymitra-cache-v6.4') caches.delete(k);
+          if (k !== 'dairymitra-cache-v7.0') caches.delete(k);
         });
       });
     }
@@ -50,9 +50,9 @@
           </div>
         </div>
         <div class="header-actions">
-          <button class="pro-crown-btn" id="openProModalBtn" title="डेयरी मित्र प्रो व रेफरल (1 महीना मुफ़्त)">
+          <button class="pro-crown-btn" id="openProModalBtn" title="डेयरी मित्र प्रो सब्सक्रिप्शन (12 महीने या 1 महीना)">
             <span class="crown-icon">👑</span>
-            <span id="proBtnText">प्रो • रेफर</span>
+            <span id="proBtnText">सब्सक्रिप्शन</span>
           </button>
           <button class="fat-calc-pill-btn" id="openFatCalcBtn" title="फैट व SNF कैलकुलेटर">
             <span>🧪 फैट टेस्ट</span>
@@ -127,9 +127,9 @@
           <span class="btn-trend-icon">🎪</span>
           <span class="btn-trend-text">पशु मेला</span>
         </button>
-        <button type="button" class="trending-action-btn btn-trend-pro" id="openProShortcutBtn" title="डेयरी मित्र प्रो (रेफर करें और 1 महीना मुफ़्त पाएं)">
+        <button type="button" class="trending-action-btn btn-trend-pro" id="openProShortcutBtn" title="डेयरी मित्र प्रो सब्सक्रिप्शन (12 महीने या 1 महीना)">
           <span class="btn-trend-icon">👑</span>
-          <span class="btn-trend-text">प्रो व रेफरल</span>
+          <span class="btn-trend-text">सब्सक्रिप्शन</span>
         </button>
       </div>
     </header>
@@ -167,6 +167,23 @@
 
     <!-- MAIN VIEWS CONTAINER -->
     <main class="main-content">
+
+      <!-- Prominent Pro Subscription Banner on Homepage -->
+      <div class="home-subscription-banner" id="homeSubscriptionBanner">
+        <div class="sub-banner-left">
+          <span class="sub-banner-crown">👑</span>
+          <div class="sub-banner-texts">
+            <div class="sub-banner-badge">डेयरी मित्र प्रो सब्सक्रिप्शन</div>
+            <h3 class="sub-banner-heading">2-डिवाइस मल्टी-फोन लाइव सिंक व असीमित पशु</h3>
+            <p class="sub-banner-desc">पूरे साल का प्लान केवल ₹33/माह (₹399/वर्ष) • तुरंत UPI एक्टिवेशन</p>
+          </div>
+        </div>
+        <div class="sub-banner-right">
+          <button type="button" class="btn-sub-banner-buy" id="btnBuyProHome">
+            ⚡ ₹399 में प्रो लें
+          </button>
+        </div>
+      </div>
 
       <!-- ================= TAB 1: MILKING SHIFT (दूध निकाला) ================= -->
       <section class="view-tab active" id="viewMilking">
@@ -616,12 +633,12 @@
     </div>
   </div>
 
-  <!-- Modal: App Settings -->
-  <div class="modal-backdrop hidden" id="settingsModal">
+  <!-- Modal: Legacy Rates Settings -->
+  <div class="modal-backdrop hidden" id="legacySettingsModal">
     <div class="modal-card">
       <div class="modal-header">
         <h3 class="modal-title">⚙️ फार्म सेटिंग्स</h3>
-        <button class="modal-close-btn" id="closeSettingsModalBtn">✕</button>
+        <button class="modal-close-btn" id="closeLegacySettingsModalBtn">✕</button>
       </div>
       <form id="settingsForm" class="modal-body">
         <div class="form-group">
@@ -2100,15 +2117,15 @@
     </div>
   </div>
 
-  <!-- Modal: DairyMitra Pro & Referral Program (डेयरी मित्र प्रो व रेफरल) -->
+  <!-- Modal: DairyMitra Pro & Referral Program (डेयरी मित्र प्रो सब्सक्रिप्शन) -->
   <div class="modal-backdrop hidden" id="proSubscriptionModal" style="z-index: 130;">
     <div class="modal-card modal-pro-subscription">
       <div class="modal-header pro-header-bg">
         <div class="pro-header-title-box">
           <span class="pro-sparkle-icon">👑</span>
           <div>
-            <h3 class="pro-main-title">डेयरी मित्र प्रो (VIP Suite)</h3>
-            <p class="pro-sub-title">असीमित रिकॉर्ड्स, ब्रांडिंग व रेफरल रिवॉर्ड</p>
+            <h3 class="pro-main-title">डेयरी मित्र प्रो सब्सक्रिप्शन (Pro VIP)</h3>
+            <p class="pro-sub-title">2-फोन लाइव सिंक • असीमित पशु • WhatsApp बिलिंग</p>
           </div>
         </div>
         <button class="modal-close-btn pro-close-btn" id="closeProModalBtn">✕</button>
@@ -2122,63 +2139,66 @@
             <span class="pro-status-expiry" id="proExpiryDisplay">अपग्रेड उपलब्ध</span>
           </div>
           <div class="pro-status-desc" id="proStatusDesc">
-            अभी आपका फार्म फ्री प्लान पर है। 1 मित्र को रेफर करें और <strong>1 महीना प्रो मुफ़्त</strong> पाएँ!
+            अभी आपका फार्म फ्री प्लान पर है। प्रो प्लान लेकर 2 फोन लाइव सिंक व असीमित पशु बहीखाता चालू करें!
           </div>
         </div>
 
-        <!-- VIRAL REFERRAL SYSTEM (रेफर करें और 1 महीना मुफ़्त पाएं) -->
-        <div class="referral-reward-box">
-          <div class="referral-header">
-            <span class="referral-gift-icon">🎁</span>
-            <div>
-              <h4 class="referral-title">दोस्त को जोड़ें — 1 महीना प्रो मुफ़्त पाएँ!</h4>
-              <p class="referral-sub">हर 1 सफल रेफर पर आपको +30 दिन डेयरी मित्र प्रो मुफ़्त मिलेगा।</p>
-            </div>
-          </div>
+        <!-- 1. Subscription Pricing Plans (TOP PRIORITY - RIGHT HERE!) -->
+        <div class="pro-plans-heading-box" style="margin-top: 12px; margin-bottom: 8px;">
+          <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #1e293b;">💎 अपनी डेयरी के लिए प्लान चुनें:</h4>
+        </div>
 
-          <div class="referral-code-card">
-            <span class="ref-code-lbl">आपका पर्सनल रेफरल कोड:</span>
-            <div class="ref-code-row">
-              <span class="ref-code-val" id="myReferralCode">DM-KRISHNA78</span>
-              <button type="button" class="btn-ref-copy" id="btnCopyReferralCode" title="कोड कॉपी करें">
-                📋 कॉपी
-              </button>
-            </div>
-            <div class="ref-stats-strip">
-              <span>👥 सफल रेफरल्स: <strong id="refCountDisplay">0</strong> फार्म</span>
-              <span class="ref-bonus-highlight">⭐ कुल बोनस: <strong id="refEarnedMonths">0</strong> माह मुफ़्त</span>
-            </div>
-          </div>
-
-          <div class="ref-invite-actions-row">
-            <button type="button" class="btn-whatsapp-invite" id="btnSendReferralWhatsApp">
-              💬 WhatsApp पर इनवाइट भेजें (1-क्लिक)
-            </button>
-            <button type="button" class="btn-test-referral" id="btnTestAddReferral" title="टेस्ट करें: 1 दोस्त जुड़ा (+1 महीना पाएँ)">
-              🎁 +1 दोस्त जुड़ा (टेस्ट)
+        <div class="pro-plans-grid">
+          <div class="pro-plan-card featured" id="planCardYearly">
+            <span class="plan-badge-deal">👑 सबसे लोकप्रिय • 4 महीने मुफ़्त (33% छूट)</span>
+            <span class="plan-period">12 महीने (वार्षिक VIP)</span>
+            <div class="plan-price">₹399<small>/वर्ष</small></div>
+            <p class="plan-note">केवल ₹33/महीना (2 फोन पर रियल-टाइम क्लाउड सिंक)</p>
+            <button type="button" class="btn-select-plan btn-plan-gold" id="btnSelectYearlyPlan">
+              👑 ₹399 वार्षिक VIP प्लान लें
             </button>
           </div>
 
-          <!-- Redeem Code Section -->
-          <div class="redeem-code-box">
-            <span class="redeem-lbl">क्या आपके पास मित्र का रेफरल कोड है?</span>
-            <div class="redeem-input-row">
-              <input type="text" id="inputReferralCode" class="redeem-input" placeholder="उदा. DM-RAMESH12">
-              <button type="button" class="btn-redeem-apply" id="btnApplyReferralCode">
-                लागू करें
-              </button>
-            </div>
+          <div class="pro-plan-card" id="planCardMonthly">
+            <span class="plan-period">1 महीना (मासिक)</span>
+            <div class="plan-price">₹49<small>/माह</small></div>
+            <p class="plan-note">महीने-दर-महीने कभी भी बंद करें</p>
+            <button type="button" class="btn-select-plan" id="btnSelectMonthlyPlan">
+              मासिक प्लान लें (₹49)
+            </button>
+          </div>
+        </div>
+
+        <!-- Secure UPI Checkout Action -->
+        <div class="pro-direct-activate-box">
+          <div class="activate-sub-note">
+            <span>⚡ सुरक्षित UPI (PhonePe / GPay / Paytm / QR) से भुगतान करें:</span>
+          </div>
+          <div class="activate-btns-row">
+            <button type="button" class="btn-activate-upi" id="btnPayProUpi">
+              ⚡ सुरक्षित UPI भुगतान करें (QR व ऐप्स)
+            </button>
+            <button type="button" class="btn-receipt-open" id="btnViewProInvoiceModal" title="प्रो सदस्यता रसीद देखें व डाउनलोड करें">
+              🖨️ सदस्यता रसीद
+            </button>
           </div>
         </div>
 
         <!-- Pro Features Showcase -->
         <div class="pro-perks-section">
-          <h4 class="perks-heading">💎 प्रो प्लान की खास सुविधाएं:</h4>
+          <h4 class="perks-heading">💎 प्रो प्लान में क्या-क्या मिलेगा:</h4>
           <div class="pro-perks-grid">
+            <div class="pro-perk-item">
+              <span class="perk-icon">📱</span>
+              <div class="perk-info">
+                <strong>2-डिवाइस रियल-टाइम लाइव सिंक</strong>
+                <small>डेयरी व घर दोनों डिवाइस पर एक साथ लाइव अपडेट</small>
+              </div>
+            </div>
             <div class="pro-perk-item">
               <span class="perk-icon">🚀</span>
               <div class="perk-info">
-                <strong>असीमित पशु व ग्राहक</strong>
+                <strong>असीमित पशु व ग्राहक बहीखाता</strong>
                 <small>बिना किसी संख्या सीमा के पूरा फार्म चलाएं</small>
               </div>
             </div>
@@ -2204,70 +2224,156 @@
               </div>
             </div>
             <div class="pro-perk-item">
-              <span class="perk-icon">🎪</span>
-              <div class="perk-info">
-                <strong>पशु मेला VIP लिस्टिंग</strong>
-                <small>बिकाऊ गाय-भैंस विज्ञापन पर VIP स्टार बैज</small>
-              </div>
-            </div>
-            <div class="pro-perk-item">
               <span class="perk-icon">🖨️</span>
               <div class="perk-info">
                 <strong>ब्लूटूथ थर्मल प्रिंटर सपोर्ट</strong>
-                <small>1 सेकंड में थर्मल पर्ची प्रिंट करें</small>
+                <small>1 सेकंड में दूध पर्ची प्रिंट करें</small>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Subscription Pricing Plans -->
-        <div class="pro-plans-grid">
-          <div class="pro-plan-card" id="planCardMonthly">
-            <span class="plan-period">1 महीना</span>
-            <div class="plan-price">₹49<small>/माह</small></div>
-            <p class="plan-note">महीने-दर-महीने कभी भी बंद करें</p>
-            <button type="button" class="btn-select-plan" id="btnSelectMonthlyPlan">
-              मासिक प्लान लें (₹49)
+        <!-- VIRAL REFERRAL SYSTEM (दोस्त को जोड़ें — 1 महीना प्रो मुफ़्त पाएँ!) -->
+        <div class="referral-reward-box">
+          <div class="referral-header">
+            <span class="referral-gift-icon">🎁</span>
+            <div>
+              <h4 class="referral-title">मित्र को रेफर करें — दोनों पाएँ 1 महीना मुफ़्त!</h4>
+              <p class="referral-sub">जब आपका मित्र ऐप इंस्टॉल करके पहली दूध एंट्री करेगा, तब दोनों को +30 दिन Pro VIP मिलेगा।</p>
+            </div>
+          </div>
+
+          <!-- 3 Easy Honest Steps -->
+          <div class="referral-steps-box" style="background: rgba(255,255,255,0.7); border-radius: 8px; padding: 10px 12px; font-size: 11px; color: #78350f; line-height: 1.6;">
+            <div><strong>1️⃣</strong> मित्र को WhatsApp पर अपना रेफरल कोड व ऐप लिंक भेजें।</div>
+            <div><strong>2️⃣</strong> मित्र अपने फोन पर ऐप खोले और रजिस्टर करते समय आपका कोड डाले।</div>
+            <div><strong>3️⃣</strong> मित्र जैसे ही अपनी पहली दूध एंट्री दर्ज करेगा, आप दोनों को <strong>1 महीना प्रो मुफ़्त</strong> सक्रिय हो जाएगा!</div>
+          </div>
+
+          <div class="referral-code-card">
+            <span class="ref-code-lbl">आपका पर्सनल रेफरल कोड:</span>
+            <div class="ref-code-row">
+              <span class="ref-code-val" id="myReferralCode">DM-KRISHNA78</span>
+              <button type="button" class="btn-ref-copy" id="btnCopyReferralCode" title="कोड कॉपी करें">
+                📋 कॉपी
+              </button>
+            </div>
+            <div class="ref-stats-strip">
+              <span>👥 सक्रिय रेफरल: <strong id="refCountDisplay">0</strong> फार्म</span>
+              <span>⏳ पेंडिंग: <strong id="refPendingDisplay">0</strong> मित्र</span>
+              <span class="ref-bonus-highlight">⭐ कुल बोनस: <strong id="refEarnedMonths">0</strong> माह मुफ़्त</span>
+            </div>
+          </div>
+
+          <div class="ref-invite-actions-row">
+            <button type="button" class="btn-whatsapp-invite" id="btnSendReferralWhatsApp">
+              💬 WhatsApp पर इनवाइट भेजें (1-क्लिक)
             </button>
           </div>
 
-          <div class="pro-plan-card featured" id="planCardYearly">
-            <span class="plan-badge-deal">👑 सबसे लोकप्रिय • 33% छूट</span>
-            <span class="plan-period">12 महीने (वार्षिक)</span>
-            <div class="plan-price">₹399<small>/वर्ष</small></div>
-            <p class="plan-note">केवल ₹33/महीना (4 महीने मुफ़्त)</p>
-            <button type="button" class="btn-select-plan btn-plan-gold" id="btnSelectYearlyPlan">
-              👑 वार्षिक प्लान लें (₹399)
-            </button>
+          <!-- Redeem Code Section -->
+          <div class="redeem-code-box">
+            <span class="redeem-lbl">क्या आपके पास मित्र का रेफरल कोड है?</span>
+            <div class="redeem-input-row">
+              <input type="text" id="inputReferralCode" class="redeem-input" placeholder="उदा. DM-RAMESH12">
+              <button type="button" class="btn-redeem-apply" id="btnApplyReferralCode">
+                लागू करें
+              </button>
+            </div>
+            <small style="display: block; margin-top: 4px; font-size: 10px; color: #9a3412;">
+              *पहली दूध एंट्री दर्ज होते ही 1 महीना प्रो एक्टिवेट होगा।
+            </small>
           </div>
-        </div>
 
-        <!-- 1-Click Activate Demo / UPI Support -->
-        <div class="pro-direct-activate-box">
-          <div class="activate-sub-note">
-            <span>💡 1-क्लिक में सुरक्षित UPI (PhonePe / GPay / Paytm) भुगतान करें:</span>
-          </div>
-          <div class="activate-btns-row">
-            <button type="button" class="btn-activate-upi" id="btnPayProUpi">
-              ⚡ UPI से ₹399 भुगतान करें
-            </button>
-            <button type="button" class="btn-activate-instant" id="btnInstantActivatePro" title="तुरंत 30 दिन प्रो एक्टिवेट करें">
-              🚀 तुरंत 30 दिन एक्टिवेट करें
-            </button>
-          </div>
-          <div class="activate-btns-row" style="margin-top: 8px;">
-            <button type="button" class="btn-receipt-open" id="btnViewProInvoiceModal" title="प्रो सदस्यता रसीद देखें व डाउनलोड करें">
-              🖨️ प्रो सदस्यता रसीद (Tax Invoice) प्रिंट करें
+          <!-- Safe Test Reset Link for developer / owner testing -->
+          <div style="text-align: center; margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(245, 158, 11, 0.4);">
+            <button type="button" id="btnResetProPlan" style="background: none; border: none; color: #b45309; font-size: 11px; text-decoration: underline; cursor: pointer;">
+              🔄 टेस्ट रीसेट: वापस फ्री प्लान पर जाएं (टेस्टिंग के लिए)
             </button>
           </div>
         </div>
 
       </div>
     </div>
+  </div>
+
+  <!-- Modal: Pro UPI Payment & Verification (सुरक्षित UPI भुगतान व 12-अंक UTR सत्यापन) -->
+  <div class="modal-backdrop hidden" id="proPaymentModal" style="z-index: 140;">
+    <div class="modal-card modal-pro-payment">
+      <div class="modal-header payment-header-bg">
+        <div class="payment-header-title-box">
+          <span class="payment-icon">🔒</span>
+          <div>
+            <h3 class="payment-main-title">सुरक्षित UPI भुगतान (DairyMitra Pro)</h3>
+            <p class="payment-sub-title">PhonePe • Google Pay • Paytm • BHIM QR</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="closeProPaymentModalBtn">✕</button>
+      </div>
+
+      <div class="payment-modal-body">
+        <!-- Selected Plan Summary Card -->
+        <div class="selected-plan-summary" id="paymentSelectedPlanCard">
+          <div class="plan-summary-badge" id="paymentPlanBadge">चयनित प्लान</div>
+          <div class="plan-summary-title" id="paymentPlanTitle">👑 डेयरी मित्र वार्षिक VIP (12 महीने)</div>
+          <div class="plan-summary-price" id="paymentPlanPrice">₹399 <small>(केवल ₹33/माह)</small></div>
+          <div class="plan-summary-perks">✓ 2-डिवाइस लाइव क्लाउड सिंक • ✓ असीमित पशु व ग्राहक • ✓ 0% डेटा लॉस</div>
+        </div>
+
+        <!-- Payment Method Card -->
+        <div class="payment-step-card">
+          <div class="step-content">
+            <h4 class="step-title" style="text-align: center; margin-bottom: 8px;">📲 किसी भी UPI ऐप से स्कैन या भुगतान करें</h4>
+            
+            <div class="upi-qr-wrapper">
+              <div class="upi-qr-card">
+                <img id="paymentQrCodeImg" class="upi-qr-img" src="" alt="DairyMitra UPI QR Code" />
+                <div class="qr-scan-hint">📲 PhonePe / GPay / Paytm से स्कैन करें</div>
+              </div>
+              
+              <div class="upi-id-copy-box">
+                <span class="upi-id-label">प्राप्तकर्ता UPI ID:</span>
+                <span class="upi-id-value" id="paymentUpiIdDisplay">dairymitra@upi</span>
+                <button type="button" class="btn-copy-upi" id="btnCopyProPaymentUpiId">📋 कॉपी करें</button>
+              </div>
+            </div>
+
+            <!-- 1-Click App Buttons (for mobile) -->
+            <div class="mobile-upi-apps-row">
+              <a href="#" class="btn-upi-app phonepe" id="btnPayPhonePe">
+                <span class="upi-app-icon">🟣</span> PhonePe
+              </a>
+              <a href="#" class="btn-upi-app gpay" id="btnPayGPay">
+                <span class="upi-app-icon">🔵</span> GPay
+              </a>
+              <a href="#" class="btn-upi-app paytm" id="btnPayPaytm">
+                <span class="upi-app-icon">🔷</span> Paytm
+              </a>
+              <a href="#" class="btn-upi-app bhim" id="btnPayAnyUpi">
+                <span class="upi-app-icon">⚡</span> अन्य UPI
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seamless Confirmation Button (Zero manual UTR typing!) -->
+        <div class="payment-instant-action-box" style="margin-top: 4px;">
+          <button type="button" class="btn-confirm-payment-done" id="btnConfirmPaymentDone">
+            ⚡ भुगतान पूरा हुआ — प्रो प्लान तुरंत चालू करें
+          </button>
+          <div style="text-align: center; margin-top: 8px; font-size: 11px; color: #64748b;">
+            🔒 100% सुरक्षित भुगतान • तुरंत आधिकारिक टैक्स इनवॉइस रसीद मिलेगी
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Farmer Onboarding & Database Registration (साइन-अप व प्रोफाइल सेटअप) -->
   <div class="modal-backdrop hidden" id="onboardingModal" style="z-index: 150;">
     <div class="modal-card modal-onboarding-card">
-      <div class="modal-header onboard-header-bg">
+      <div class="modal-header onboard-header-bg" style="display: flex; justify-content: space-between; align-items: flex-start;">
         <div class="onboard-header-title">
           <span class="onboard-icon">🌾</span>
           <div>
@@ -2275,6 +2381,7 @@
             <p class="onboard-sub">100% सुरक्षित क्लाउड बहीखाता • 2-फोन लाइव सिंक</p>
           </div>
         </div>
+        <button type="button" class="modal-close-btn" id="closeOnboardingModalBtn" title="बंद करें / बाद में करें" style="color: white; font-size: 20px; background: none; border: none; cursor: pointer;">✕</button>
       </div>
 
       <form class="modal-body onboard-body" id="onboardingForm">
@@ -2294,7 +2401,7 @@
             <span class="country-code">+91</span>
             <input type="tel" id="onboardPhone" class="form-control phone-input" placeholder="9876543210" maxlength="10" pattern="[0-9]{10}" required>
           </div>
-          <small class="field-hint">इसी नंबर से दोनों फोन (बेटा व पिताजी) सिंक होंगे</small>
+          <small class="field-hint">इसी मोबाइल नंबर से आपके दोनों डिवाइस लाइव सिंक होंगे</small>
         </div>
 
         <div class="form-group">
@@ -2318,6 +2425,10 @@
 
         <button type="submit" class="btn-primary btn-onboard-action" id="btnOnboardSubmit">
           🚀 फार्म बहीखाता शुरू करें
+        </button>
+
+        <button type="button" class="btn-skip-onboard" id="btnSkipOnboarding" style="width: 100%; margin-top: 10px; background: none; border: 1px dashed #cbd5e1; padding: 8px; border-radius: 8px; color: #475569; font-size: 12px; font-weight: 700; cursor: pointer;">
+          👀 पहले ऐप चलाकर देखें (अतिथि मोड)
         </button>
       </form>
     </div>
@@ -2349,6 +2460,8 @@
         </div>
       </div>
     </div>
+  </div>
+
   <!-- Modal: Settings & Multi-Device Manager (सेटिंग्स व 2-फोन डिवाइस प्रबंधन) -->
   <div class="modal-backdrop hidden" id="settingsModal" style="z-index: 140;">
     <div class="modal-card modal-settings-card">
@@ -2387,6 +2500,16 @@
                 <input type="text" id="settingsPhone" class="form-control" readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 600;">
               </div>
             </div>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="settingsDefaultRate" class="form-label">डिफ़ॉल्ट दूध भाव (₹/लीटर)</label>
+                <input type="number" id="settingsDefaultRate" class="form-control" placeholder="60">
+              </div>
+              <div class="form-group flex-1">
+                <label for="settingsFarmerUpi" class="form-label">बिल प्राप्ति UPI ID (वैकल्पिक)</label>
+                <input type="text" id="settingsFarmerUpi" class="form-control" placeholder="उदा. 9876543210@paytm">
+              </div>
+            </div>
             <button type="button" class="btn-primary" id="btnSaveSettingsProfile" style="margin-top: 4px;">
               💾 प्रोफाइल सुरक्षित करें
             </button>
@@ -2400,7 +2523,7 @@
             <span class="device-pill-count" id="settingsDeviceCount">2 / 2 डिवाइस</span>
           </div>
           <p class="settings-sec-desc">
-            एक खाते से अधिकतम 2 फोन (जैसे डेयरी पर बेटा और घर पर पिताजी) लाइव सिंक होते हैं।
+            एक खाते से अधिकतम 2 मोबाइल डिवाइस (जैसे डेयरी व घर) पर लाइव सिंक की सुविधा मिलती है।
           </p>
           
           <div class="settings-devices-list" id="settingsDevicesList">
@@ -2603,12 +2726,12 @@
   </div>
 
   <!-- Scripts -->
-  <script src="app.js?v=6.4"></script>
+  <script src="app.js?v=7.0"></script>
   <script>
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=6.4').then(reg => {
+        navigator.serviceWorker.register('./sw.js?v=7.0').then(reg => {
           reg.update(); // Force check for latest sw.js
         }).catch(() => {});
       });

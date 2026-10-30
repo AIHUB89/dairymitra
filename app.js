@@ -15,7 +15,7 @@ const DEFAULT_STATE = {
     defaultFatRate: 8.0,
     defaultSnfRate: 0.0,
     upiId: 'dairyfarm@upi',
-    ownerPhone: '9876543210',
+    ownerPhone: '',
     audioFeedback: true,
     isPro: false,
     proValidUntil: null,
@@ -3692,32 +3692,6 @@ function setupModals() {
     }
   });
 
-  // Settings Modal
-  document.getElementById('settingsBtn').addEventListener('click', () => {
-    document.getElementById('settingFarmName').value = appData.farmSettings.farmName;
-    document.getElementById('settingDefaultRate').value = appData.farmSettings.defaultRate;
-    document.getElementById('settingUpiId').value = appData.farmSettings.upiId || '';
-    document.getElementById('settingFatRate').value = appData.farmSettings.defaultFatRate || 8.0;
-    document.getElementById('settingSnfRate').value = appData.farmSettings.defaultSnfRate || 0.0;
-    document.getElementById('settingOwnerPhone').value = appData.farmSettings.ownerPhone || '';
-    document.getElementById('settingsModal').classList.remove('hidden');
-  });
-  document.getElementById('closeSettingsModalBtn').addEventListener('click', () => {
-    document.getElementById('settingsModal').classList.add('hidden');
-  });
-  document.getElementById('settingsForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    appData.farmSettings.farmName = document.getElementById('settingFarmName').value.trim();
-    appData.farmSettings.defaultRate = parseFloat(document.getElementById('settingDefaultRate').value) || 60;
-    appData.farmSettings.defaultFatRate = parseFloat(document.getElementById('settingFatRate').value) || 8.0;
-    appData.farmSettings.defaultSnfRate = parseFloat(document.getElementById('settingSnfRate').value) || 0.0;
-    appData.farmSettings.upiId = document.getElementById('settingUpiId').value.trim();
-    appData.farmSettings.ownerPhone = document.getElementById('settingOwnerPhone').value.trim();
-    saveData();
-    document.getElementById('settingsModal').classList.add('hidden');
-    updateStatsHeader();
-    speakAudio('फार्म सेटिंग्स सुरक्षित कर दी गई हैं');
-  });
 
   // Reset Data Handler
   document.getElementById('resetDataBtn').addEventListener('click', () => {
@@ -7324,9 +7298,12 @@ function updateProModalUI() {
   }
 
   const refCountEl = document.getElementById('refCountDisplay');
+  const refPendingEl = document.getElementById('refPendingDisplay');
   const refEarnedEl = document.getElementById('refEarnedMonths');
   const count = appData.farmSettings.referralsCount || 0;
+  const pendingCount = appData.farmSettings.referralsPending || 0;
   if (refCountEl) refCountEl.innerText = count;
+  if (refPendingEl) refPendingEl.innerText = pendingCount;
   if (refEarnedEl) refEarnedEl.innerText = count;
 
   // Redeem Input Box
@@ -7359,19 +7336,39 @@ function updateProModalUI() {
 function updateHeaderProBadge() {
   const btn = document.getElementById('openProModalBtn');
   const btnText = document.getElementById('proBtnText');
-  if (!btn) return;
   const isPro = isProMember();
   const daysLeft = getProDaysRemaining();
 
-  if (isPro) {
-    btn.classList.add('is-active-pro');
-    if (btnText) {
-      btnText.innerText = daysLeft > 0 ? `👑 VIP (${daysLeft}d)` : `👑 PRO VIP`;
+  if (btn) {
+    if (isPro) {
+      btn.classList.add('is-active-pro');
+      if (btnText) {
+        btnText.innerText = daysLeft > 0 ? `👑 VIP (${daysLeft}d)` : `👑 PRO VIP`;
+      }
+    } else {
+      btn.classList.remove('is-active-pro');
+      if (btnText) {
+        btnText.innerText = `👑 सब्सक्रिप्शन`;
+      }
     }
-  } else {
-    btn.classList.remove('is-active-pro');
-    if (btnText) {
-      btnText.innerText = `👑 प्रो • रेफर`;
+  }
+
+  // Update Homepage Subscription Hero Banner
+  const homeBanner = document.getElementById('homeSubscriptionBanner');
+  if (homeBanner) {
+    const heading = homeBanner.querySelector('.sub-banner-heading');
+    const desc = homeBanner.querySelector('.sub-banner-desc');
+    const buyBtn = document.getElementById('btnBuyProHome');
+    if (isPro) {
+      homeBanner.classList.add('pro-active');
+      if (heading) heading.innerText = '👑 प्रो VIP प्लान सक्रिय है';
+      if (desc) desc.innerText = `2-फोन लाइव सिंक सक्रिय • वैधता: ${appData.farmSettings.proValidUntil || 'सक्रिय'} तक`;
+      if (buyBtn) buyBtn.innerText = '🖨️ रसीद देखें';
+    } else {
+      homeBanner.classList.remove('pro-active');
+      if (heading) heading.innerText = '2-डिवाइस मल्टी-फोन लाइव सिंक व असीमित पशु';
+      if (desc) desc.innerText = 'पूरे साल का प्लान केवल ₹33/माह (₹399/वर्ष) • तुरंत UPI एक्टिवेशन';
+      if (buyBtn) buyBtn.innerText = '⚡ ₹399 में प्रो लें';
     }
   }
 }
@@ -7423,10 +7420,11 @@ ${appUrl}
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
-function applyReferralCode() {
+async function applyReferralCode() {
   const input = document.getElementById('inputReferralCode');
   if (!input) return;
   const rawCode = input.value.trim().toUpperCase();
+  const phone = appData.farmSettings.ownerPhone || localStorage.getItem('dm_registered_phone') || '9876543210';
 
   if (!rawCode) {
     showAudioToast('⚠️ कृपया अपने मित्र का रेफरल कोड दर्ज करें!');
@@ -7444,43 +7442,135 @@ function applyReferralCode() {
     return;
   }
 
-  if (rawCode.length < 4) {
-    showAudioToast('⚠️ अमान्य रेफरल कोड! कोड कम से कम 4 अक्षरों का होना चाहिए।');
-    return;
-  }
-
-  // Grant 1 month (30 days) free Pro!
-  appData.farmSettings.hasUsedReferral = true;
-  appData.farmSettings.referredBy = rawCode;
-  const expiryDateStr = addProDays(30);
-
-  playCelebrationChime();
-  showAudioToast(`🎉 बधाई हो! रेफरल कोड सफल! 1 महीना (30 दिन) प्रो मुफ़्त मिला! 👑`);
-  speakAudio('बधाई हो! रेफरल कोड लागू हो गया है और आपको 1 महीना प्रो मुफ़्त मिला है।');
-
-  updateProModalUI();
-}
-
-function simulateFriendJoined() {
-  appData.farmSettings.referralsCount = (appData.farmSettings.referralsCount || 0) + 1;
-  addProDays(30);
-  playCelebrationChime();
-  showAudioToast(`🎁 1 मित्र जुड़ा! आपके खाते में +30 दिन (1 महीना) प्रो मुफ़्त जुड़ गया! 👑`);
-  speakAudio('बधाई हो! एक मित्र आपके रेफरल से जुड़ा है। आपके खाते में एक महीना प्रो मुफ़्त जुड़ गया है।');
-  updateProModalUI();
-}
-
-async function activateProSubscription(planType = 'yearly') {
-  const phone = appData.farmSettings.ownerPhone || localStorage.getItem('dm_registered_phone') || '9876543210';
-  const amount = planType === 'yearly' ? 399.0 : 49.0;
-  const paymentId = 'PAY_AUTO_' + Math.random().toString(36).substring(2, 9).toUpperCase();
-
-  showAudioToast('⚡ पेमेंट प्रोसेस हो रही है...');
+  showAudioToast('⏳ रेफरल कोड जांचा जा रहा है...');
   try {
-    const res = await fetch('/api/subscribe', {
+    const res = await fetch('/api/apply-referral', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, plan_type: planType, amount, payment_id: paymentId })
+      body: JSON.stringify({ phone, referral_code: rawCode })
+    });
+    const data = await res.json();
+    if (data.success) {
+      appData.farmSettings.hasUsedReferral = true;
+      appData.farmSettings.referredBy = rawCode;
+      if (data.is_pro) {
+        appData.farmSettings.isPro = true;
+        appData.farmSettings.proValidUntil = data.pro_valid_until;
+        playCelebrationChime();
+        showAudioToast(data.message || '🎉 बधाई! 1 महीना प्रो मुफ़्त मिला! 👑');
+        speakAudio('बधाई हो! रेफरल कोड सफल! 1 महीना प्रो मुफ़्त मिला!');
+      } else {
+        showAudioToast(data.message || 'ℹ️ कोड सुरक्षित हो गया! पहली दूध एंट्री पर 1 महीना प्रो मिलेगा।');
+      }
+      saveData();
+      updateProModalUI();
+      updateHeaderProBadge();
+    } else {
+      showAudioToast(data.error || '❌ रेफरल कोड अमान्य है!');
+    }
+  } catch (e) {
+    showAudioToast('⚠️ सर्वर से संपर्क नहीं हो पाया।');
+  }
+}
+
+let currentCheckoutPlan = 'yearly';
+let activeAdminUpiId = 'dairymitra@upi';
+let activeAdminName = 'DairyMitra Pro';
+
+async function fetchPaymentConfig() {
+  try {
+    const res = await fetch('/api/payment-config');
+    const data = await res.json();
+    if (data && data.admin_upi_id) {
+      activeAdminUpiId = data.admin_upi_id;
+      activeAdminName = data.admin_name || 'DairyMitra Pro';
+    }
+  } catch (e) {
+    console.warn('Could not fetch payment config:', e);
+  }
+}
+
+async function openProPaymentModal(planType = 'yearly') {
+  currentCheckoutPlan = planType;
+  const modal = document.getElementById('proPaymentModal');
+  if (!modal) return;
+
+  await fetchPaymentConfig();
+
+  const planTitle = document.getElementById('paymentPlanTitle');
+  const planPrice = document.getElementById('paymentPlanPrice');
+  const planBadge = document.getElementById('paymentPlanBadge');
+  const qrImg = document.getElementById('paymentQrCodeImg');
+  const upiIdDisplay = document.getElementById('paymentUpiIdDisplay');
+
+  const amount = planType === 'yearly' ? 399 : 49;
+  const title = planType === 'yearly' ? '👑 डेयरी मित्र वार्षिक VIP (12 महीने)' : 'डेयरी मित्र मासिक प्लान (1 महीना)';
+  const price = planType === 'yearly' ? '₹399 <small>(केवल ₹33/माह • 33% छूट)</small>' : '₹49 <small>(महीने-दर-महीने कभी भी बंद करें)</small>';
+  const badge = planType === 'yearly' ? '⭐ सबसे लोकप्रिय वार्षिक' : 'मासिक प्लान';
+
+  if (planTitle) planTitle.innerText = title;
+  if (planPrice) planPrice.innerHTML = price;
+  if (planBadge) planBadge.innerText = badge;
+  if (upiIdDisplay) upiIdDisplay.innerText = activeAdminUpiId;
+
+  const upiId = activeAdminUpiId;
+  const recipientName = activeAdminName;
+  const qrData = encodeURIComponent(`upi://pay?pa=${upiId}&pn=${encodeURIComponent(recipientName)}&am=${amount}&cu=INR&tn=${encodeURIComponent('DairyMitra Pro ' + planType)}`);
+  if (qrImg) {
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${qrData}`;
+  }
+
+  // Set deep links for mobile buttons
+  const phonePeBtn = document.getElementById('btnPayPhonePe');
+  const gpayBtn = document.getElementById('btnPayGPay');
+  const paytmBtn = document.getElementById('btnPayPaytm');
+  const bhimBtn = document.getElementById('btnPayAnyUpi');
+
+  const rawUpi = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(recipientName)}&am=${amount}&cu=INR&tn=${encodeURIComponent('DairyMitra ' + planType)}`;
+  if (phonePeBtn) phonePeBtn.href = rawUpi;
+  if (gpayBtn) gpayBtn.href = rawUpi;
+  if (paytmBtn) paytmBtn.href = rawUpi;
+  if (bhimBtn) bhimBtn.href = rawUpi;
+
+  modal.classList.remove('hidden');
+}
+
+function closeProPaymentModal() {
+  const modal = document.getElementById('proPaymentModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function copyUpiId() {
+  const upiId = activeAdminUpiId || 'dairymitra@upi';
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(upiId).then(() => {
+      showAudioToast(`📋 UPI ID कॉपी हुई: ${upiId}`);
+    }).catch(() => {
+      showAudioToast(`📋 UPI ID: ${upiId}`);
+    });
+  } else {
+    showAudioToast(`📋 UPI ID: ${upiId}`);
+  }
+}
+
+async function submitPaymentUtr() {
+  const utrInput = document.getElementById('inputPaymentUtr');
+  const utr = utrInput ? utrInput.value.trim().toUpperCase() : '';
+  const phone = appData.farmSettings.ownerPhone || localStorage.getItem('dm_registered_phone') || '9876543210';
+  const amount = currentCheckoutPlan === 'yearly' ? 399.0 : 49.0;
+
+  showAudioToast('⏳ भुगतान सत्यापित किया जा रहा है...');
+  try {
+    const res = await fetch('/api/submit-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: phone,
+        plan_type: currentCheckoutPlan,
+        amount: amount,
+        utr: utr,
+        device_id: getDeviceId()
+      })
     });
     const data = await res.json();
     if (data.success) {
@@ -7488,39 +7578,41 @@ async function activateProSubscription(planType = 'yearly') {
       appData.farmSettings.proValidUntil = data.pro_valid_until;
       saveData();
       playCelebrationChime();
-      showAudioToast(`👑 बधाई! डेटाबेस में प्रो सक्रिय हो गया (${data.pro_valid_until} तक वैध)!`);
-      speakAudio('बधाई हो! आपका प्रो सब्सक्रिप्शन डेटाबेस में सक्रिय हो गया है।');
+      showAudioToast(`🎉 बधाई हो! ₹${parseInt(amount)} का भुगतान सफल हुआ और प्रो सक्रिय हो गया! 👑`);
+      speakAudio('बधाई हो! प्रो प्लान सक्रिय हो गया है');
+      closeProPaymentModal();
+      closeProSubscriptionModal();
       updateProModalUI();
       updateHeaderProBadge();
-      return;
+      // Instantly show official digital tax invoice receipt
+      openProInvoiceModal();
+    } else {
+      showAudioToast(data.error || '❌ भुगतान सत्यापन विफल रहा!');
     }
   } catch (e) {
-    console.warn('Backend offline, activating locally:', e);
+    showAudioToast('⚠️ सर्वर से संपर्क नहीं हुआ। कृपया इंटरनेट कनेक्शन जांचें।');
   }
-
-  // Fallback if offline
-  const days = planType === 'yearly' ? 365 : 30;
-  addProDays(days);
-  playCelebrationChime();
-  showAudioToast(`👑 बधाई हो! प्रो सक्रिय हो गया!`);
-  updateProModalUI();
-  updateHeaderProBadge();
 }
 
-function payProUpi() {
-  showAudioToast('⚡ PhonePe / GPay ऑटोमैटिक पेमेंट खुल रहा है...');
-  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
-  const upiId = appData.farmSettings.upiId || 'dairyfarm@upi';
-  const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(farmName)}&am=399&cu=INR&tn=${encodeURIComponent('DairyMitra Pro Annual VIP')}`;
-
+async function resetProPlan() {
+  const phone = appData.farmSettings.ownerPhone || localStorage.getItem('dm_registered_phone') || '9876543210';
+  showAudioToast('⏳ खाता फ्री प्लान पर रीसेट हो रहा है...');
   try {
-    window.location.href = upiUrl;
+    await fetch('/api/reset-pro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
   } catch (e) {}
 
-  setTimeout(() => {
-    // 100% Automatic payment gateway activation - zero manual UTR typing!
-    activateProSubscription('yearly');
-  }, 1600);
+  appData.farmSettings.isPro = false;
+  appData.farmSettings.proValidUntil = null;
+  appData.farmSettings.hasUsedReferral = false;
+  appData.farmSettings.referredBy = null;
+  saveData();
+  showAudioToast('🔄 खाता सफलतापूर्वक फ्री प्लान पर रीसेट हो गया है!');
+  updateProModalUI();
+  updateHeaderProBadge();
 }
 
 // ===================================================================
@@ -7552,16 +7644,17 @@ function getDeviceName() {
 }
 
 async function checkUserRegistration() {
-  const phone = appData.farmSettings.ownerPhone || localStorage.getItem('dm_registered_phone');
+  const registeredPhone = localStorage.getItem('dm_registered_phone');
   const deviceId = getDeviceId();
   const deviceName = getDeviceName();
 
-  // If user hasn't completed onboarding registration yet
-  if (!phone || phone === '9876543210' && !localStorage.getItem('dm_registered_phone')) {
+  // If user hasn't explicitly registered/logged in with their phone yet:
+  if (!registeredPhone || registeredPhone === '9876543210') {
     openOnboardingModal();
     return;
   }
 
+  const phone = registeredPhone;
   try {
     const res = await fetch(`/api/user-status?phone=${encodeURIComponent(phone)}&device_id=${encodeURIComponent(deviceId)}`);
     const data = await res.json();
@@ -7581,6 +7674,8 @@ async function checkUserRegistration() {
       // Sync Pro status from database
       appData.farmSettings.isPro = data.is_pro;
       appData.farmSettings.proValidUntil = data.pro_valid_until;
+      if (data.referrals_count !== undefined) appData.farmSettings.referralsCount = data.referrals_count;
+      if (data.referrals_pending !== undefined) appData.farmSettings.referralsPending = data.referrals_pending;
       if (data.referral_code) appData.farmSettings.referralCode = data.referral_code;
       if (data.user) {
         if (data.user.name) appData.farmSettings.ownerName = data.user.name;
@@ -7817,7 +7912,7 @@ async function syncLocalDataToCloud() {
   try {
     const nowStr = new Date().toISOString();
     lastCloudSyncTime = nowStr;
-    await fetch('/api/sync-data', {
+    const res = await fetch('/api/sync-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -7826,6 +7921,12 @@ async function syncLocalDataToCloud() {
         updated_at: nowStr
       })
     });
+    const sData = await res.json();
+    if (sData && sData.referral_rewarded) {
+      showAudioToast('🎉 बधाई! आपने ऐप इस्तेमाल करना शुरू किया, आपको 1 महीना Pro VIP मुफ़्त मिल गया! 👑');
+      playCelebrationChime();
+      checkUserRegistration();
+    }
     updateCloudSyncBadge(true, 'सिंक हुआ');
   } catch (e) {
     console.warn('Cloud sync push postponed (offline):', e);
@@ -7840,20 +7941,27 @@ async function syncLocalDataToCloud() {
 // -------------------------------------------------------------------
 let currentActiveDevices = [];
 
-async function openSettingsModal() {
+function openSettingsModal() {
   const modal = document.getElementById('settingsModal');
   if (!modal) return;
+
+  // Open instantly
+  modal.classList.remove('hidden');
 
   const phone = appData.farmSettings.ownerPhone || localStorage.getItem('dm_registered_phone') || '';
   const ownerNameInput = document.getElementById('settingsOwnerName');
   const farmNameInput = document.getElementById('settingsFarmName');
   const cityInput = document.getElementById('settingsCity');
   const phoneInput = document.getElementById('settingsPhone');
+  const rateInput = document.getElementById('settingsDefaultRate');
+  const farmerUpiInput = document.getElementById('settingsFarmerUpi');
 
   if (ownerNameInput) ownerNameInput.value = appData.farmSettings.ownerName || '';
   if (farmNameInput) farmNameInput.value = appData.farmSettings.farmName || '';
   if (cityInput) cityInput.value = appData.farmSettings.city || '';
   if (phoneInput) phoneInput.value = phone ? `+91 ${phone}` : '+91 (अज्ञात)';
+  if (rateInput) rateInput.value = appData.farmSettings.defaultRate || 60;
+  if (farmerUpiInput) farmerUpiInput.value = appData.farmSettings.upiId || '';
 
   // Pro status
   const badgeEl = document.getElementById('settingsProBadge');
@@ -7877,9 +7985,7 @@ async function openSettingsModal() {
   }
 
   // Load Active Devices
-  await refreshSettingsDevices();
-
-  modal.classList.remove('hidden');
+  refreshSettingsDevices();
 }
 
 function closeSettingsModal() {
@@ -7976,14 +8082,20 @@ async function saveSettingsProfile() {
     return;
   }
 
+  const rateVal = parseFloat(document.getElementById('settingsDefaultRate')?.value) || 60;
+  const upiVal = document.getElementById('settingsFarmerUpi')?.value.trim() || '';
+
   appData.farmSettings.ownerName = ownerName;
   appData.farmSettings.farmName = farmName;
   if (city) appData.farmSettings.city = city;
+  appData.farmSettings.defaultRate = rateVal;
+  appData.farmSettings.upiId = upiVal;
 
   const farmDisplay = document.getElementById('farmNameDisplay');
   if (farmDisplay) farmDisplay.innerText = farmName;
 
   saveData();
+  updateStatsHeader();
 
   if (phone) {
     try {
@@ -7997,8 +8109,8 @@ async function saveSettingsProfile() {
     }
   }
 
-  showAudioToast('✅ फार्म प्रोफाइल सुरक्षित हो गई!');
-  speakAudio('फार्म प्रोफाइल सुरक्षित हो गई है।');
+  showAudioToast('✅ किसान व डेयरी प्रोफाइल सुरक्षित हो गई!');
+  speakAudio('किसान व डेयरी प्रोफाइल सुरक्षित हो गई है।');
 }
 
 async function forceSyncNow() {
@@ -8128,7 +8240,7 @@ function shareProInvoiceWhatsApp() {
     `👑 *प्लान:* 12 महीने प्रो VIP (₹399)\n` +
     `⚡ *भुगतान:* UPI ऑटो-वेरिफाइड ✅\n` +
     `📅 *वैधता:* ${validUntil} तक\n` +
-    `📱 *2-फोन लाइव सिंक:* सक्रिय (पिताजी + बेटा)\n` +
+    `📱 *2-फोन लाइव सिंक:* सक्रिय (2 डिवाइस रियल-टाइम सिंक)\n` +
     `-----------------------------------------\n` +
     `🛡️ DairyMitra Cloud Verified • www.dairymitra.in`;
 
@@ -8447,11 +8559,6 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSendReferralWhatsApp.addEventListener('click', shareReferralWhatsApp);
   }
 
-  const btnTestAddReferral = document.getElementById('btnTestAddReferral');
-  if (btnTestAddReferral) {
-    btnTestAddReferral.addEventListener('click', simulateFriendJoined);
-  }
-
   const btnApplyReferralCode = document.getElementById('btnApplyReferralCode');
   if (btnApplyReferralCode) {
     btnApplyReferralCode.addEventListener('click', applyReferralCode);
@@ -8459,22 +8566,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnSelectMonthlyPlan = document.getElementById('btnSelectMonthlyPlan');
   if (btnSelectMonthlyPlan) {
-    btnSelectMonthlyPlan.addEventListener('click', () => activateProSubscription('monthly'));
+    btnSelectMonthlyPlan.addEventListener('click', () => openProPaymentModal('monthly'));
   }
 
   const btnSelectYearlyPlan = document.getElementById('btnSelectYearlyPlan');
   if (btnSelectYearlyPlan) {
-    btnSelectYearlyPlan.addEventListener('click', () => activateProSubscription('yearly'));
+    btnSelectYearlyPlan.addEventListener('click', () => openProPaymentModal('yearly'));
   }
 
   const btnPayProUpi = document.getElementById('btnPayProUpi');
   if (btnPayProUpi) {
-    btnPayProUpi.addEventListener('click', payProUpi);
+    btnPayProUpi.addEventListener('click', () => openProPaymentModal('yearly'));
   }
 
-  const btnInstantActivatePro = document.getElementById('btnInstantActivatePro');
-  if (btnInstantActivatePro) {
-    btnInstantActivatePro.addEventListener('click', () => activateProSubscription('instant'));
+  const closeProPaymentModalBtn = document.getElementById('closeProPaymentModalBtn');
+  if (closeProPaymentModalBtn) {
+    closeProPaymentModalBtn.addEventListener('click', closeProPaymentModal);
+  }
+
+  const btnSubmitPaymentUtr = document.getElementById('btnSubmitPaymentUtr');
+  if (btnSubmitPaymentUtr) {
+    btnSubmitPaymentUtr.addEventListener('click', submitPaymentUtr);
+  }
+
+  const btnConfirmPaymentDone = document.getElementById('btnConfirmPaymentDone');
+  if (btnConfirmPaymentDone) {
+    btnConfirmPaymentDone.addEventListener('click', submitPaymentUtr);
+  }
+
+  const btnCopyProPaymentUpiId = document.getElementById('btnCopyProPaymentUpiId');
+  if (btnCopyProPaymentUpiId) {
+    btnCopyProPaymentUpiId.addEventListener('click', copyUpiId);
+  }
+
+  const btnResetProPlan = document.getElementById('btnResetProPlan');
+  if (btnResetProPlan) {
+    btnResetProPlan.addEventListener('click', resetProPlan);
   }
 
   // 11. Onboarding & Device Check Listeners
@@ -8587,6 +8714,34 @@ document.addEventListener('DOMContentLoaded', () => {
     btnShareReceiptWhatsAppBtn.addEventListener('click', shareProInvoiceWhatsApp);
   }
 
+  // 14. Homepage Subscription Hero Banner Listeners
+  const homeSubscriptionBanner = document.getElementById('homeSubscriptionBanner');
+  if (homeSubscriptionBanner) {
+    homeSubscriptionBanner.addEventListener('click', openProSubscriptionModal);
+  }
+
+  const btnBuyProHome = document.getElementById('btnBuyProHome');
+  if (btnBuyProHome) {
+    btnBuyProHome.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openProSubscriptionModal();
+    });
+  }
+
+  // 15. Onboarding Modal Close & Skip
+  const closeOnboardBtn = document.getElementById('closeOnboardingModalBtn');
+  if (closeOnboardBtn) {
+    closeOnboardBtn.addEventListener('click', closeOnboardingModal);
+  }
+
+  const btnSkipOnboard = document.getElementById('btnSkipOnboarding');
+  if (btnSkipOnboard) {
+    btnSkipOnboard.addEventListener('click', () => {
+      closeOnboardingModal();
+      showAudioToast('👀 आप अतिथि मोड में हैं। बाद में सेटिंग्स से कभी भी खाता जोड़ सकते हैं।');
+    });
+  }
+
   // Update Header Pro Badge on initial load
   updateHeaderProBadge();
 
@@ -8594,7 +8749,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkUserRegistration();
 
   // Backdrop click to close modals
-  ['upiBillModal', 'expenseProfitModal', 'feedOptimizerModal', 'animalKundaliModal', 'animalValuationModal', 'farmRoutineModal', 'purityCertModal', 'pashuMelaModal', 'proSubscriptionModal', 'settingsModal', 'proInvoiceModal'].forEach(id => {
+  ['upiBillModal', 'expenseProfitModal', 'feedOptimizerModal', 'animalKundaliModal', 'animalValuationModal', 'farmRoutineModal', 'purityCertModal', 'pashuMelaModal', 'proSubscriptionModal', 'settingsModal', 'proInvoiceModal', 'onboardingModal'].forEach(id => {
     const modal = document.getElementById(id);
     if (modal) {
       modal.addEventListener('click', (e) => {

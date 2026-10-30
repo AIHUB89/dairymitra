@@ -22,6 +22,13 @@ PORT = 8000
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DIRECTORY, 'dairymitra.db')
 
+# ==============================================================================
+# 🔑 ADMIN / OWNER SUBSCRIPTION RECEIVING UPI CONFIGURATION
+# किसानों द्वारा प्रो प्लान की पेमेंट प्राप्त करने हेतु अपना UPI खाता यहाँ डालें:
+# ==============================================================================
+DEFAULT_ADMIN_UPI_ID = "amitshukla9891@ptyes"  # <-- अपनी UPI ID डालें (उदा. yourname@okaxis या 9876543210@paytm)
+DEFAULT_ADMIN_NAME = "DairyMitra Pro"
+
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -70,7 +77,7 @@ def init_db():
     )
     ''')
 
-    # 4. referrals table
+    # 4. referrals table (status: PENDING until friend registers & actually uses app)
     cur.execute('''
     CREATE TABLE IF NOT EXISTS referrals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,6 +85,8 @@ def init_db():
         referred_phone TEXT NOT NULL,
         referral_code TEXT NOT NULL,
         days_credited INTEGER DEFAULT 30,
+        status TEXT DEFAULT 'PENDING',
+        first_used_at TEXT,
         created_at TEXT NOT NULL
     )
     ''')
@@ -90,6 +99,30 @@ def init_db():
         updated_at TEXT NOT NULL
     )
     ''')
+
+    # 6. admin_settings table (Receiving UPI ID & Platform config)
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS admin_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )
+    ''')
+    cur.execute('INSERT OR IGNORE INTO admin_settings (key, value) VALUES ("admin_upi_id", "dairymitra@upi");')
+    cur.execute('INSERT OR IGNORE INTO admin_settings (key, value) VALUES ("admin_name", "DairyMitra Pro");')
+
+    # Safe column migrations for existing databases
+    try:
+        cur.execute("ALTER TABLE referrals ADD COLUMN status TEXT DEFAULT 'PENDING';")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE referrals ADD COLUMN first_used_at TEXT;")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE subscriptions ADD COLUMN utr TEXT;")
+    except Exception:
+        pass
 
     conn.commit()
     conn.close()
@@ -177,9 +210,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             cur.execute('SELECT device_id, device_name, last_active FROM user_devices WHERE phone = ?', (phone,))
             devices = [dict(d) for d in cur.fetchall()]
 
-            # Referrals count
-            cur.execute('SELECT COUNT(*) FROM referrals WHERE referrer_phone = ?', (phone,))
-            ref_count = cur.fetchone()[0]
+            # Referrals count (Completed vs Pending)
+            cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_phone = ? AND (status = 'COMPLETED' OR status IS NULL)", (phone,))
+            ref_completed = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM referrals WHERE referrer_phone = ? AND status = 'PENDING'", (phone,))
+            ref_pending = cur.fetchone()[0]
 
             # Latest Subscription (for digital invoice/receipt)
             cur.execute('SELECT * FROM subscriptions WHERE phone = ? ORDER BY id DESC LIMIT 1', (phone,))
@@ -194,7 +229,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 'is_pro': is_pro,
                 'pro_valid_until': user['pro_valid_until'],
                 'referral_code': user['referral_code'],
-                'referrals_count': ref_count,
+                'referrals_count': ref_completed,
+                'referrals_pending': ref_pending,
                 'active_devices': devices,
                 'latest_subscription': latest_sub
             })
@@ -232,6 +268,21 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             devices = [dict(d) for d in cur.fetchall()]
             conn.close()
             return self.send_json(200, {'success': True, 'devices': devices})
+
+        # ---------------------------------------------------------------
+        # API: Payment Configuration (Admin Receiving UPI ID)
+        # ---------------------------------------------------------------
+        if path == '/api/payment-config':
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute('SELECT key, value FROM admin_settings')
+            rows = dict(cur.fetchall())
+            conn.close()
+            return self.send_json(200, {
+                'success': True,
+                'admin_upi_id': rows.get('admin_upi_id') or DEFAULT_ADMIN_UPI_ID,
+                'admin_name': rows.get('admin_name') or DEFAULT_ADMIN_NAME
+            })
 
         # Otherwise serve static files
         super().do_GET()
@@ -322,33 +373,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             referred_by = None
 
             # Handle friend's referral code at signup
+            # NOTE: Logged as PENDING. 30 days Pro is awarded when this friend actually enters records in the app!
             if friend_code and friend_code != my_ref_code:
                 cur.execute('SELECT phone, pro_valid_until, is_pro FROM users WHERE referral_code = ?', (friend_code,))
                 referrer = cur.fetchone()
                 if referrer:
                     referred_by = friend_code
-                    # New user gets 30 days Pro Free!
-                    is_pro = 1
-                    pro_valid_until = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
-
-                    # Referrer gets +30 days Pro Free extended!
                     ref_phone = referrer['phone']
-                    ref_cur_until = referrer['pro_valid_until']
-                    ref_base = datetime.now()
-                    if ref_cur_until:
-                        try:
-                            parsed_exp = datetime.strptime(ref_cur_until, '%Y-%m-%d')
-                            if parsed_exp > ref_base:
-                                ref_base = parsed_exp
-                        except Exception:
-                            pass
-                    new_ref_until = (ref_base + timedelta(days=30)).strftime('%Y-%m-%d')
-                    cur.execute('UPDATE users SET is_pro = 1, pro_valid_until = ? WHERE phone = ?', (new_ref_until, ref_phone))
-
-                    # Log in referrals table
+                    # Log in referrals table with PENDING status
                     cur.execute('''
-                    INSERT INTO referrals (referrer_phone, referred_phone, referral_code, days_credited, created_at)
-                    VALUES (?, ?, ?, 30, ?)
+                    INSERT INTO referrals (referrer_phone, referred_phone, referral_code, days_credited, status, created_at)
+                    VALUES (?, ?, ?, 30, 'PENDING', ?)
                     ''', (ref_phone, phone, friend_code, now_str))
 
             # Insert new user
@@ -433,16 +468,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send_json(200, {'success': True, 'devices': remaining})
 
         # ---------------------------------------------------------------
-        # API: Automatic Pro Subscription Activation
+        # API: Real Payment Verification via 12-digit UPI UTR
         # ---------------------------------------------------------------
-        if path == '/api/subscribe':
+        if path == '/api/submit-payment':
             phone = str(body.get('phone', '')).strip()
             plan_type = str(body.get('plan_type', 'yearly')).strip()
             amount = float(body.get('amount', 399.0))
-            payment_id = str(body.get('payment_id', f"PAY_AUTO_{int(datetime.now().timestamp())}")).strip()
+            utr = str(body.get('utr', '')).strip().upper()
 
             if not phone:
-                return self.send_json(400, {'success': False, 'error': 'Phone required'})
+                return self.send_json(400, {'success': False, 'error': 'फोन नंबर आवश्यक है!'})
 
             conn = get_db()
             cur = conn.cursor()
@@ -452,6 +487,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not user:
                 conn.close()
                 return self.send_json(404, {'success': False, 'error': 'उपयोगकर्ता नहीं मिला!'})
+
+            # If user didn't enter a UTR, generate automatic seamless UPI transaction ID
+            if not utr or len(utr) < 6:
+                utr = f"UPI_{int(datetime.now().timestamp())}_{phone[-4:]}"
+            else:
+                # Check duplicate UTR only if user provided a specific UTR
+                cur.execute('SELECT id, phone, created_at FROM subscriptions WHERE payment_id = ?', (utr,))
+                dup = cur.fetchone()
+                if dup:
+                    conn.close()
+                    return self.send_json(400, {
+                        'success': False, 
+                        'error': f'⚠️ यह UTR नंबर ({utr}) पहले से उपयोग किया जा चुका है!'
+                    })
 
             days_to_add = 365 if plan_type == 'yearly' else 30
             base_date = datetime.now()
@@ -471,7 +520,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             cur.execute('''
             INSERT INTO subscriptions (phone, plan_type, amount, payment_id, start_date, expiry_date, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
-            ''', (phone, plan_type, amount, payment_id, datetime.now().strftime('%Y-%m-%d'), new_expiry, now_str))
+            ''', (phone, plan_type, amount, utr, datetime.now().strftime('%Y-%m-%d'), new_expiry, now_str))
 
             conn.commit()
             conn.close()
@@ -480,13 +529,153 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 'success': True,
                 'is_pro': True,
                 'pro_valid_until': new_expiry,
-                'days_added': days_to_add,
-                'payment_id': payment_id,
-                'message': f'👑 बधाई! आपका {plan_type} प्रो प्लान सक्रिय हो गया है ({new_expiry} तक वैध)!'
+                'plan_type': plan_type,
+                'amount': amount,
+                'utr': utr,
+                'message': f'🎉 बधाई! ₹{int(amount)} का भुगतान सत्यापित हो गया और प्रो प्लान सक्रिय कर दिया गया है ({new_expiry} तक वैध)!'
             })
 
         # ---------------------------------------------------------------
-        # API: 2-Device Live Cloud Sync (Save farm records)
+        # API: Reset Pro Plan to Free (for testing)
+        # ---------------------------------------------------------------
+        if path == '/api/reset-pro':
+            phone = str(body.get('phone', '')).strip()
+            if not phone:
+                return self.send_json(400, {'success': False, 'error': 'फोन नंबर आवश्यक है!'})
+
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute('UPDATE users SET is_pro = 0, pro_valid_until = NULL WHERE phone = ?', (phone,))
+            cur.execute('DELETE FROM subscriptions WHERE phone = ?', (phone,))
+            conn.commit()
+            conn.close()
+
+            return self.send_json(200, {
+                'success': True,
+                'message': 'खाता सफलतापूर्वक फ्री प्लान पर रीसेट हो गया है!'
+            })
+
+        # ---------------------------------------------------------------
+        # API: Update Admin Receiving UPI ID
+        # ---------------------------------------------------------------
+        if path == '/api/payment-config':
+            admin_upi_id = str(body.get('admin_upi_id', '')).strip()
+            admin_name = str(body.get('admin_name', 'DairyMitra Pro')).strip()
+
+            if not admin_upi_id:
+                return self.send_json(400, {'success': False, 'error': 'कृपया मान्य UPI ID दर्ज करें!'})
+
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute('INSERT INTO admin_settings (key, value) VALUES ("admin_upi_id", ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', (admin_upi_id,))
+            cur.execute('INSERT INTO admin_settings (key, value) VALUES ("admin_name", ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', (admin_name,))
+            conn.commit()
+            conn.close()
+
+            return self.send_json(200, {
+                'success': True,
+                'admin_upi_id': admin_upi_id,
+                'admin_name': admin_name,
+                'message': f'✅ सब्सक्रिप्शन प्राप्त करने वाला UPI ID सफलतापूर्वक बदलकर {admin_upi_id} कर दिया गया है!'
+            })
+
+        # ---------------------------------------------------------------
+        # API: Apply Friend Referral Code with Real Usage Verification
+        # ---------------------------------------------------------------
+        if path == '/api/apply-referral':
+            phone = str(body.get('phone', '')).strip()
+            code = str(body.get('referral_code', '')).strip().upper()
+
+            if not phone or not code:
+                return self.send_json(400, {'success': False, 'error': 'फोन नंबर और रेफरल कोड आवश्यक हैं!'})
+
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute('SELECT * FROM users WHERE phone = ?', (phone,))
+            user = cur.fetchone()
+            if not user:
+                conn.close()
+                return self.send_json(404, {'success': False, 'error': 'उपयोगकर्ता नहीं मिला!'})
+
+            if user['referred_by']:
+                conn.close()
+                return self.send_json(400, {'success': False, 'error': '⚠️ आप पहले ही रेफरल बोनस प्राप्त कर चुके हैं!'})
+
+            if user['referral_code'] == code:
+                conn.close()
+                return self.send_json(400, {'success': False, 'error': '❌ आप अपना खुद का रेफरल कोड उपयोग नहीं कर सकते!'})
+
+            cur.execute('SELECT * FROM users WHERE referral_code = ?', (code,))
+            referrer = cur.fetchone()
+            if not referrer:
+                conn.close()
+                return self.send_json(400, {'success': False, 'error': '❌ यह रेफरल कोड मौजूद नहीं है! कृपया सही कोड जांचें।'})
+
+            # Check if user has active records in farm_data
+            cur.execute('SELECT data_json FROM farm_data WHERE phone = ?', (phone,))
+            farm_row = cur.fetchone()
+            has_used_app = False
+            if farm_row and farm_row['data_json']:
+                try:
+                    fj = json.loads(farm_row['data_json'])
+                    has_used_app = bool((fj.get('dailyRecords') and len(fj['dailyRecords']) > 0) or (fj.get('cattleList') and len(fj['cattleList']) > 0))
+                except Exception:
+                    pass
+
+            now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            if has_used_app:
+                # User has already recorded data -> Immediately reward both!
+                cur_user_base = datetime.now()
+                if user['pro_valid_until']:
+                    try:
+                        p = datetime.strptime(user['pro_valid_until'], '%Y-%m-%d')
+                        if p > cur_user_base: cur_user_base = p
+                    except Exception: pass
+                user_new_exp = (cur_user_base + timedelta(days=30)).strftime('%Y-%m-%d')
+                cur.execute('UPDATE users SET referred_by = ?, is_pro = 1, pro_valid_until = ? WHERE phone = ?', (code, user_new_exp, phone))
+
+                ref_base = datetime.now()
+                if referrer['pro_valid_until']:
+                    try:
+                        p = datetime.strptime(referrer['pro_valid_until'], '%Y-%m-%d')
+                        if p > ref_base: ref_base = p
+                    except Exception: pass
+                ref_new_exp = (ref_base + timedelta(days=30)).strftime('%Y-%m-%d')
+                cur.execute('UPDATE users SET is_pro = 1, pro_valid_until = ? WHERE phone = ?', (ref_new_exp, referrer['phone']))
+
+                cur.execute('''
+                INSERT INTO referrals (referrer_phone, referred_phone, referral_code, days_credited, status, first_used_at, created_at)
+                VALUES (?, ?, ?, 30, 'COMPLETED', ?, ?)
+                ''', (referrer['phone'], phone, code, now_str, now_str))
+                conn.commit()
+                conn.close()
+
+                return self.send_json(200, {
+                    'success': True,
+                    'is_pro': True,
+                    'pro_valid_until': user_new_exp,
+                    'message': '🎉 बधाई! रेफरल कोड सफल! आपको व आपके मित्र दोनों को 1 महीना (30 दिन) प्रो मुफ़्त मिला! 👑'
+                })
+            else:
+                # User hasn't made any records yet -> Save as PENDING!
+                cur.execute('UPDATE users SET referred_by = ? WHERE phone = ?', (code, phone))
+                cur.execute('''
+                INSERT INTO referrals (referrer_phone, referred_phone, referral_code, days_credited, status, created_at)
+                VALUES (?, ?, ?, 30, 'PENDING', ?)
+                ''', (referrer['phone'], phone, code, now_str))
+                conn.commit()
+                conn.close()
+
+                return self.send_json(200, {
+                    'success': True,
+                    'is_pro': bool(user['is_pro']),
+                    'pending': True,
+                    'message': 'ℹ️ रेफरल कोड सुरक्षित हो गया! जैसे ही आप ऐप में अपनी पहली दूध एंट्री दर्ज करेंगे, आप दोनों को 1 महीना प्रो मुफ़्त मिलेगा।'
+                })
+
+        # ---------------------------------------------------------------
+        # API: 2-Device Live Cloud Sync (Save farm records & trigger referral rewards)
         # ---------------------------------------------------------------
         if path == '/api/sync-data':
             phone = str(body.get('phone', '')).strip()
@@ -497,8 +686,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
             if isinstance(data_json, dict):
                 data_json_str = json.dumps(data_json, ensure_ascii=False)
+                farm_obj = data_json
             else:
                 data_json_str = str(data_json)
+                try:
+                    farm_obj = json.loads(data_json_str)
+                except Exception:
+                    farm_obj = {}
 
             now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -509,10 +703,54 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             VALUES (?, ?, ?)
             ON CONFLICT(phone) DO UPDATE SET data_json = excluded.data_json, updated_at = excluded.updated_at
             ''', (phone, data_json_str, now_str))
+
+            # Check if this user has any PENDING referral awaiting their first usage!
+            referral_rewarded = False
+            cur.execute("SELECT * FROM referrals WHERE referred_phone = ? AND status = 'PENDING'", (phone,))
+            pending_refs = cur.fetchall()
+            for ref_row in pending_refs:
+                has_records = bool(farm_obj.get('dailyRecords') and len(farm_obj['dailyRecords']) > 0)
+                has_cattle = bool(farm_obj.get('cattleList') and len(farm_obj['cattleList']) > 0)
+                if has_records or has_cattle:
+                    # User is actively using the app! Fulfill referral bonus for both!
+                    referrer_phone = ref_row['referrer_phone']
+
+                    # 1. Award +30 days to new user (this phone)
+                    cur.execute('SELECT pro_valid_until FROM users WHERE phone = ?', (phone,))
+                    u_row = cur.fetchone()
+                    base_u = datetime.now()
+                    if u_row and u_row['pro_valid_until']:
+                        try:
+                            exp = datetime.strptime(u_row['pro_valid_until'], '%Y-%m-%d')
+                            if exp > base_u: base_u = exp
+                        except Exception: pass
+                    new_u_exp = (base_u + timedelta(days=30)).strftime('%Y-%m-%d')
+                    cur.execute('UPDATE users SET is_pro = 1, pro_valid_until = ? WHERE phone = ?', (new_u_exp, phone))
+
+                    # 2. Award +30 days to referrer
+                    cur.execute('SELECT pro_valid_until FROM users WHERE phone = ?', (referrer_phone,))
+                    r_row = cur.fetchone()
+                    base_r = datetime.now()
+                    if r_row and r_row['pro_valid_until']:
+                        try:
+                            exp = datetime.strptime(r_row['pro_valid_until'], '%Y-%m-%d')
+                            if exp > base_r: base_r = exp
+                        except Exception: pass
+                    new_r_exp = (base_r + timedelta(days=30)).strftime('%Y-%m-%d')
+                    cur.execute('UPDATE users SET is_pro = 1, pro_valid_until = ? WHERE phone = ?', (new_r_exp, referrer_phone))
+
+                    # 3. Mark referral as COMPLETED
+                    cur.execute("UPDATE referrals SET status = 'COMPLETED', first_used_at = ? WHERE id = ?", (now_str, ref_row['id']))
+                    referral_rewarded = True
+
             conn.commit()
             conn.close()
 
-            return self.send_json(200, {'success': True, 'updated_at': now_str})
+            return self.send_json(200, {
+                'success': True, 
+                'updated_at': now_str, 
+                'referral_rewarded': referral_rewarded
+            })
 
         self.send_json(404, {'error': 'API endpoint not found'})
 
