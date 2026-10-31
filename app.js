@@ -22,7 +22,9 @@ const DEFAULT_STATE = {
     referralCode: 'DM-KRISHNA78',
     referralsCount: 0,
     referredBy: null,
-    hasUsedReferral: false
+    hasUsedReferral: false,
+    businessType: 'farmer', // 'farmer' | 'vendor' | 'hybrid'
+    defaultPurchaseRate: 48
   },
   animals: [
     { id: 'a1', name: 'लाली (मुर्रा)', type: 'buffalo', breed: 'मुर्रा', status: 'milking', expectedYield: 8.0, photo: '' },
@@ -36,6 +38,11 @@ const DEFAULT_STATE = {
     { id: 'c2', name: 'शर्मा जी (किराना)', phone: '9876543212', address: 'दुकान चौक', quotaMorning: 1.5, quotaEvening: 0.0, rate: 60, dues: 900, photo: '' },
     { id: 'c3', name: 'वर्मा मास्टर जी', phone: '9876543213', address: 'स्कूल के पास', quotaMorning: 1.0, quotaEvening: 1.0, rate: 60, dues: 480, photo: '' },
     { id: 'c4', name: 'गुप्ता जी', phone: '9876543214', address: 'प्लॉट नं 45', quotaMorning: 2.5, quotaEvening: 2.0, rate: 65, dues: 3200, photo: '' }
+  ],
+  suppliers: [
+    { id: 's1', name: 'रामकिशन (किसान)', phone: '9812345671', village: 'रामपुर', rate: 48, fatBased: false, quotaMorning: 25.0, quotaEvening: 20.0, dues: 2400, photo: '' },
+    { id: 's2', name: 'कालूराम (तबेला)', phone: '9812345672', village: 'सुल्तानपुर', rate: 50, fatBased: false, quotaMorning: 30.0, quotaEvening: 25.0, dues: 1500, photo: '' },
+    { id: 's3', name: 'बलबीर संकलन केंद्र', phone: '9812345673', village: 'मुख्य चौक', rate: 46, fatBased: true, quotaMorning: 20.0, quotaEvening: 15.0, dues: 0, photo: '' }
   ],
   // Breeding & Insemination Records (गर्भाधान व सीमन डायरी)
   breedingRecords: [
@@ -195,6 +202,11 @@ function loadData() {
       // Ensure DairyMitra Pro & Referral Settings exist
       if (!data.farmSettings) data.farmSettings = {};
       if (typeof data.farmSettings.isPro === 'undefined') data.farmSettings.isPro = false;
+      if (!data.farmSettings.businessType) data.farmSettings.businessType = 'farmer';
+      if (!data.farmSettings.defaultPurchaseRate) data.farmSettings.defaultPurchaseRate = 48;
+      if (!data.suppliers || data.suppliers.length === 0) {
+        data.suppliers = JSON.parse(JSON.stringify(DEFAULT_STATE.suppliers));
+      }
       if (typeof data.farmSettings.referralsCount === 'undefined') data.farmSettings.referralsCount = 0;
       if (!data.farmSettings.referralCode) {
         let cleanName = (data.farmSettings.farmName || 'KRISHNA').replace(/[^a-zA-Z0-9]/g, '').slice(0, 7).toUpperCase();
@@ -247,6 +259,10 @@ function initTodayRecord(forceReset = false) {
       delivery: {
         morning: {},
         evening: {}
+      },
+      purchases: {
+        morning: {},
+        evening: {}
       }
     };
 
@@ -295,6 +311,7 @@ function initTodayRecord(forceReset = false) {
 function resetTodayCounters() {
   initTodayRecord(true);
   updateStatsHeader();
+  renderHomeDashboard();
   renderMilkingCards();
   renderDeliveryCards();
   speakAudio('आज का नया दिन शुरू हो गया, सभी काउंटर 0 कर दिए गए हैं');
@@ -508,7 +525,9 @@ function speakAudio(text) {
   if (!cleanText) return;
 
   const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.lang = 'hi-IN';
+  const curAppLang = (appData && appData.farmSettings && appData.farmSettings.language) || localStorage.getItem('dairymitra_lang') || 'hi';
+  const langLocaleMap = { 'hi': 'hi-IN', 'en': 'en-IN', 'pa': 'pa-IN', 'gu': 'gu-IN' };
+  utterance.lang = langLocaleMap[curAppLang] || 'hi-IN';
   utterance.rate = 1.0;
   utterance.pitch = 1.0;
 
@@ -1794,6 +1813,11 @@ function processVoiceCommand(rawText) {
   }
 
   // Navigation Commands
+  if (text.includes('होम') || text.includes('home') || text.includes('डैशबोर्ड') || text.includes('मुख्य पन्ना') || text.includes('landing page')) {
+    switchTab('viewHome');
+    speakAudio('होम डैशबोर्ड खुल गया');
+    return;
+  }
   if (text.includes('दूध निकाला') || text.includes('दूध निकाल') || text.includes('पशु दूध') || text.includes('पशुओं का दूध') || text.includes('milking')) {
     switchTab('viewMilking');
     speakAudio('पशुओं के दूध का पन्ना खुल गया');
@@ -1827,6 +1851,159 @@ function processVoiceCommand(rawText) {
     text.includes('reset today') || text.includes('reset counter')
   ) {
     resetTodayCounters();
+    return;
+  }
+
+    // ===================================================================
+  // 1. VOICE: ADD NEW ANIMAL (बोलकर नया पशु जोड़ना)
+  // उदा. "नया पशु जोड़ो गंगा साहीवाल 8 लीटर", "नई भैंस जोड़ो चमेली 10 लीटर", "नया पशु जोड़ो"
+  // ===================================================================
+  const addAnimalTriggers = ['नया पशु', 'नई गाय', 'नई भैंस', 'नया जानवर', 'पशु जोड़ो', 'पशु जोड़ें', 'गाय जोड़ो', 'भैंस जोड़ो', 'add animal', 'new animal', 'add cow', 'add buffalo'];
+  if (addAnimalTriggers.some(tr => text.includes(tr))) {
+    // Check Free Plan Limit (Max 4 animals)
+    if (!isProMember() && (appData.animals || []).length >= 4) {
+      openProPaywallModal('animal', appData.animals.length);
+      return;
+    }
+
+    let cleanWords = text;
+    addAnimalTriggers.forEach(tr => { cleanWords = cleanWords.replace(tr, ' '); });
+    cleanWords = cleanWords.trim();
+
+    const isBuffalo = (text.includes('भैंस') || text.includes('भैस') || text.includes('मुर्रा') || text.includes('buffalo'));
+    const animalType = isBuffalo ? 'buffalo' : 'cow';
+
+    let breed = animalType === 'cow' ? 'देसी गाय' : 'देसी भैंस';
+    if (text.includes('मुर्रा')) breed = 'मुर्रा';
+    else if (text.includes('गिर')) breed = 'गिर';
+    else if (text.includes('साहीवाल')) breed = 'साहीवाल';
+    else if (text.includes('जर्सी')) breed = 'जर्सी';
+    else if (text.includes('hf') || text.includes('एचएफ') || text.includes('संकर')) breed = 'HF / संकर';
+    else if (text.includes('राठी')) breed = 'राठी';
+    else if (text.includes('थारपारकर')) breed = 'थारपारकर';
+
+    let status = 'milking';
+    if (text.includes('गाभिन') || text.includes('गर्भवती') || text.includes('प्रेग्नेंट') || text.includes('ग्याभिन')) status = 'pregnant';
+    else if (text.includes('सूखी') || text.includes('सूखा') || text.includes('ड्राई') || text.includes('dry')) status = 'dry';
+
+    const yieldVal = parseHindiNumbers(text) || (animalType === 'buffalo' ? 8.0 : 6.0);
+
+    const stopwords = [
+      'नया', 'नयी', 'नई', 'पशु', 'जानवर', 'जोड़ो', 'जोड़ें', 'जोड़', 'करो',
+      'गाय', 'भैंस', 'भैस', 'लीटर', 'दूध', 'दुधारू', 'गाभिन', 'गर्भवती', 'प्रेग्नेंट',
+      'साहीवाल', 'गिर', 'मुर्रा', 'जर्सी', 'राठी', 'थारपारकर', 'एचएफ', 'hf', 'संकर',
+      'देसी', 'क्षमता', 'की', 'का', 'के', 'वाला', 'वाली', 'है', 'देती', 'नाम', 'add', 'animal', 'new', 'cow', 'buffalo'
+    ];
+    const nameTokens = cleanWords.split(/\s+/).filter(w => w && !stopwords.includes(w) && !w.match(/^\d+(\.\d+)?$/));
+    const extractedName = nameTokens.join(' ').trim();
+
+    if (!extractedName) {
+      openAddAnimalModal();
+      document.getElementById('animalType').value = animalType;
+      document.getElementById('animalBreed').value = breed;
+      document.getElementById('animalStatus').value = status;
+      document.getElementById('animalYield').value = yieldVal;
+      speakAudio('नया पशु जोड़ने का फॉर्म खुल गया है। पशु का नाम और फोटो जोड़ें।');
+      showAudioToast('🐄 नया पशु फॉर्म खुला (विवरण भरें)');
+      return;
+    }
+
+    const fullAnimalName = `${extractedName} (${breed})`;
+    const newAnimal = {
+      id: 'a_' + Date.now(),
+      name: fullAnimalName,
+      type: animalType,
+      breed: breed,
+      status: status,
+      expectedYield: yieldVal,
+      photo: ''
+    };
+    appData.animals.push(newAnimal);
+    saveData();
+    switchTab('viewCattle');
+    renderMilkingCards();
+    renderCattleRegister();
+
+    const typeHindi = animalType === 'cow' ? 'गाय' : 'भैंस';
+    const statusHindi = status === 'pregnant' ? 'गाभिन' : (status === 'dry' ? 'सूखी' : 'दुधारू');
+    speakAudio(`बधाई हो! नया पशु ${extractedName} ${breed} ${typeHindi} फार्म में जोड़ दी गई है!`);
+    showAudioToast(`🐄 नया पशु: ${fullAnimalName} (${yieldVal}L ${statusHindi}) जोड़ा गया!`);
+    return;
+  }
+
+  // ===================================================================
+  // 2. VOICE: ADD NEW CUSTOMER (बोलकर नया ग्राहक जोड़ना)
+  // उदा. "नया ग्राहक जोड़ो सुरेश जी 2 लीटर भाव 65", "नया कस्टमर जोड़ो महेश 3 लीटर", "नया ग्राहक जोड़ो"
+  // ===================================================================
+  const addCustTriggers = ['नया ग्राहक', 'नया कस्टमर', 'ग्राहक जोड़ो', 'ग्राहक बनाओ', 'ग्राहक जोड़ें', 'कस्टमर जोड़ो', 'नया खाता खोलो', 'add customer', 'new customer'];
+  if (addCustTriggers.some(tr => text.includes(tr))) {
+    // Check Free Plan Limit (Max 10 customers)
+    if (!isProMember() && (appData.customers || []).length >= 10) {
+      openProPaywallModal('customer', appData.customers.length);
+      return;
+    }
+
+    let cleanWords = text;
+    addCustTriggers.forEach(tr => { cleanWords = cleanWords.replace(tr, ' '); });
+    cleanWords = cleanWords.trim();
+
+    let rate = appData.farmSettings.defaultRate || 60.0;
+    const rateMatch = text.match(/(?:भाव|रेट|rate|रुपये)\s*(\d+)/);
+    if (rateMatch) {
+      rate = parseFloat(rateMatch[1]);
+    }
+
+    const allNums = (text.match(/\d+(\.\d+)?/g) || []).map(n => parseFloat(n));
+    let quota = 2.0;
+    for (let num of allNums) {
+      if (num !== rate && num <= 20) {
+        quota = num;
+        break;
+      }
+    }
+
+    const phoneMatch = text.match(/\b\d{10}\b/);
+    const phone = phoneMatch ? phoneMatch[0] : `98765${10000 + Math.floor(Math.random() * 89999)}`;
+
+    const stopwords = [
+      'नया', 'ग्राहक', 'कस्टमर', 'जोड़ो', 'जोड़ें', 'जोड़', 'बनाओ', 'करो', 'खाता',
+      'लीटर', 'कोटा', 'दूध', 'भाव', 'रेट', 'रुपये', 'प्रति', 'का', 'की', 'के', 'है',
+      'नाम', 'add', 'customer', 'new', 'rate', 'quota'
+    ];
+    const nameTokens = cleanWords.split(/\s+/).filter(w => w && !stopwords.includes(w) && !w.match(/^\d+(\.\d+)?$/));
+    const extractedName = nameTokens.join(' ').trim();
+
+    if (!extractedName) {
+      openAddCustomerModal();
+      document.getElementById('custQuotaMorning').value = (quota / 2).toFixed(1);
+      document.getElementById('custQuotaEvening').value = (quota / 2).toFixed(1);
+      document.getElementById('custRate').value = rate;
+      speakAudio('नया ग्राहक जोड़ने का फॉर्म खुल गया है। ग्राहक का नाम दर्ज करें।');
+      showAudioToast('👤 नया ग्राहक फॉर्म खुला (विवरण भरें)');
+      return;
+    }
+
+    const qM = Math.round((quota / 2) * 10) / 10;
+    const qE = Math.round((quota - qM) * 10) / 10;
+    const newCust = {
+      id: 'c_' + Date.now(),
+      name: extractedName,
+      phone: phone,
+      address: '',
+      quotaMorning: qM,
+      quotaEvening: qE,
+      rate: rate,
+      dues: 0,
+      photo: ''
+    };
+    appData.customers.push(newCust);
+    saveData();
+    switchTab('viewKhata');
+    renderCustomerKhata();
+    renderDeliveryCards();
+
+    speakAudio(`नया ग्राहक ${extractedName} दैनिक कोटा ${quota} लीटर और भाव ₹${rate} के साथ जोड़ दिया गया है!`);
+    showAudioToast(`👤 नया ग्राहक: ${extractedName} (कोटा: ${quota}L • ₹${rate}/L) जोड़ा गया!`);
     return;
   }
 
@@ -1992,6 +2169,361 @@ function processVoiceCommand(rawText) {
 }
 
 // ===================================================================
+
+// ===================================================================
+// MULTI-LANGUAGE SYSTEM (हिंदी • English • ਪੰਜਾਬੀ • ગુજરાતી)
+// ===================================================================
+
+const TRANSLATIONS = {
+  hi: {
+    lang_name: 'हिंदी (Hindi)',
+    lang_code: 'हिं',
+    lang_prompt: 'भाषा बदलकर हिंदी कर दी गई है',
+    nav_home: 'होम',
+    nav_milking: 'दूध निकाला',
+    nav_delivery: 'दूध बांटा',
+    nav_khata: 'खाता-बिल',
+    nav_cattle: 'पशु',
+    nav_doctor: 'सलाहकार',
+    shift_morning: 'सुबह',
+    shift_evening: 'शाम',
+    btn_reset: '0 करें',
+    stat_produced: 'दूध निकला',
+    stat_delivered: 'दूध बिका',
+    stat_remaining: 'घर में बचा',
+    stat_earnings: 'आज का हिसाब',
+    btn_pro: 'सब्सक्रिप्शन',
+    btn_fat: 'फैट टेस्ट',
+    trend_profit: 'खर्च व मुनाफा',
+    trend_routine: 'फार्म रूटीन',
+    trend_feed: 'आहार अनुकूलक',
+    trend_kundali: 'पशु कुंडली',
+    trend_valuation: 'पशु भाव',
+    trend_purity: 'शुद्धता पोस्टर',
+    trend_mela: 'पशु मेला',
+    save: 'सुरक्षित करें',
+    cancel: 'रद्द करें',
+    delete: 'हटाएं',
+    edit: 'बदलें',
+    calendar: '30-दिन कैलेंडर',
+    passbook: 'पासबुक',
+    upi_qr: 'UPI QR',
+    whatsapp: 'WhatsApp',
+    payment: 'जमा',
+    total_dues: 'कुल बकाया',
+    rate: 'भाव',
+    quota: 'कोटा',
+    naga: 'नागा (0L)',
+    delivered: 'दिया (दूध)',
+    milking_badge: 'दुधारू',
+    pregnant_badge: 'गाभिन',
+    dry_badge: 'सूखी'
+  },
+  en: {
+    lang_name: 'English',
+    lang_code: 'EN',
+    lang_prompt: 'Language changed to English',
+    nav_home: 'Home',
+    nav_milking: 'Milking',
+    nav_delivery: 'Delivery',
+    nav_khata: 'Khata & Bills',
+    nav_cattle: 'Cattle',
+    nav_doctor: 'AI Doctor',
+    shift_morning: 'Morning',
+    shift_evening: 'Evening',
+    btn_reset: 'Reset',
+    stat_produced: 'Produced',
+    stat_delivered: 'Delivered',
+    stat_remaining: 'Remaining',
+    stat_earnings: "Today's Total",
+    btn_pro: 'Pro VIP',
+    btn_fat: 'Fat Test',
+    trend_profit: 'Profit & Loss',
+    trend_routine: 'Farm Routine',
+    trend_feed: 'Feed Optimizer',
+    trend_kundali: 'Health Card',
+    trend_valuation: 'Market Value',
+    trend_purity: 'Purity Certificate',
+    trend_mela: 'Pashu Mela',
+    save: 'Save',
+    cancel: 'Cancel',
+    delete: 'Delete',
+    edit: 'Edit',
+    calendar: '30-Day Calendar',
+    passbook: 'Passbook',
+    upi_qr: 'UPI QR',
+    whatsapp: 'WhatsApp',
+    payment: 'Payment',
+    total_dues: 'Total Dues',
+    rate: 'Rate',
+    quota: 'Quota',
+    naga: 'Skipped (0L)',
+    delivered: 'Delivered',
+    milking_badge: 'Milking',
+    pregnant_badge: 'Pregnant',
+    dry_badge: 'Dry'
+  },
+  pa: {
+    lang_name: 'ਪੰਜਾਬੀ (Punjabi)',
+    lang_code: 'ਪੰ',
+    lang_prompt: 'ਭਾਸ਼ਾ ਬਦਲ ਕੇ ਪੰਜਾਬੀ ਕਰ ਦਿੱਤੀ ਗਈ ਹੈ',
+    nav_home: 'ਹੋਮ',
+    nav_milking: 'ਦੁੱਧ ਕੱਢਿਆ',
+    nav_delivery: 'ਦੁੱਧ ਵੰਡਿਆ',
+    nav_khata: 'ਖਾਤਾ-ਬਿੱਲ',
+    nav_cattle: 'ਪਸ਼ੂ',
+    nav_doctor: 'ਸਲਾਹਕਾਰ',
+    shift_morning: 'ਸਵੇਰ',
+    shift_evening: 'ਸ਼ਾਮ',
+    btn_reset: '0 ਕਰੋ',
+    stat_produced: 'ਕੁੱਲ ਦੁੱਧ',
+    stat_delivered: 'ਦੁੱਧ ਵੇਚਿਆ',
+    stat_remaining: 'ਘਰ ਬਚਿਆ',
+    stat_earnings: 'ਅੱਜ ਦਾ ਹਿਸਾਬ',
+    btn_pro: 'ਸਬਸਕ੍ਰਿਪਸ਼ਨ',
+    btn_fat: 'ਫੈਟ ਟੈਸਟ',
+    trend_profit: 'ਖਰਚ ਤੇ ਮੁਨਾਫ਼ਾ',
+    trend_routine: 'ਫਾਰਮ ਰੁਟੀਨ',
+    trend_feed: 'ਖੁਰਾਕ ਕੈਲਕੁਲੇਟਰ',
+    trend_kundali: 'ਪਸ਼ੂ ਕੁੰਡਲੀ',
+    trend_valuation: 'ਪਸ਼ੂ ਦਾ ਮੁੱਲ',
+    trend_purity: 'ਸ਼ੁੱਧਤਾ ਸਰਟੀਫਿਕੇਟ',
+    trend_mela: 'ਪਸ਼ੂ ਮੇਲਾ',
+    save: 'ਸੁਰੱਖਿਅਤ ਕਰੋ',
+    cancel: 'ਰੱਦ ਕਰੋ',
+    delete: 'ਹਟਾਓ',
+    edit: 'ਬਦਲੋ',
+    calendar: '30-ਦਿਨ ਕੈਲੰਡਰ',
+    passbook: 'ਪਾਸਬੁੱਕ',
+    upi_qr: 'UPI QR',
+    whatsapp: 'WhatsApp',
+    payment: 'ਜਮ੍ਹਾਂ',
+    total_dues: 'ਕੁੱਲ ਬਕਾਇਆ',
+    rate: 'ਭਾਅ',
+    quota: 'ਕੋਟਾ',
+    naga: 'ਨਾਗਾ (0L)',
+    delivered: 'ਦਿੱਤਾ (ਦੁੱਧ)',
+    milking_badge: 'ਦੁਧਾਰੂ',
+    pregnant_badge: 'ਗੱਭਣ',
+    dry_badge: 'ਸੁੱਕੀ'
+  },
+  gu: {
+    lang_name: 'ગુજરાતી (Gujarati)',
+    lang_code: 'ગુ',
+    lang_prompt: 'ભાષા બદલીને ગુજરાતી કરવામાં આવી છે',
+    nav_home: 'હોમ',
+    nav_milking: 'દૂધ દોહ્યું',
+    nav_delivery: 'દૂધ વિતરણ',
+    nav_khata: 'ખાતાવહી-બિલ',
+    nav_cattle: 'પશુઓ',
+    nav_doctor: 'સલાહકાર',
+    shift_morning: 'સવાર',
+    shift_evening: 'સાંજ',
+    btn_reset: '0 કરો',
+    stat_produced: 'કુલ દૂધ',
+    stat_delivered: 'વેચેલ દૂધ',
+    stat_remaining: 'ઘરમાં બાકી',
+    stat_earnings: 'આજનો હિસાબ',
+    btn_pro: 'સબ્સ્ક્રિપ્શન',
+    btn_fat: 'ફેટ ટેસ્ટ',
+    trend_profit: 'ખર્ચ અને નફો',
+    trend_routine: 'ફાર્મ દિનચર્યા',
+    trend_feed: 'આહાર કેલ્ક્યુલેટર',
+    trend_kundali: 'પશુ કુંડળી',
+    trend_valuation: 'બજાર ભાવ',
+    trend_purity: 'શુદ્ધતા પ્રમાણપત્ર',
+    trend_mela: 'પશુ મેળો',
+    save: 'સેવ કરો',
+    cancel: 'રદ કરો',
+    delete: 'કાઢી નાખો',
+    edit: 'સુધારો',
+    calendar: '30-દિવસ કેલેન્ડર',
+    passbook: 'પાસબુક',
+    upi_qr: 'UPI QR',
+    whatsapp: 'WhatsApp',
+    payment: 'જમા',
+    total_dues: 'કુલ બાકી',
+    rate: 'ભાવ',
+    quota: 'કોટા',
+    naga: 'રજા (0L)',
+    delivered: 'આપ્યું (દૂધ)',
+    milking_badge: 'દુધાળા',
+    pregnant_badge: 'ગાભણ',
+    dry_badge: 'સૂકા'
+  }
+};
+
+function t(key, fallback = '') {
+  const currentLang = (appData && appData.farmSettings && appData.farmSettings.language) || localStorage.getItem('dairymitra_lang') || 'hi';
+  const dict = TRANSLATIONS[currentLang] || TRANSLATIONS['hi'];
+  if (dict && dict[key] !== undefined) {
+    return dict[key];
+  }
+  if (TRANSLATIONS['hi'] && TRANSLATIONS['hi'][key] !== undefined) {
+    return TRANSLATIONS['hi'][key];
+  }
+  return fallback || key;
+}
+
+function openLanguageModal() {
+  const modal = document.getElementById('languageModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    updateLanguageModalUI();
+  }
+}
+
+function closeLanguageModal() {
+  const modal = document.getElementById('languageModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function updateLanguageModalUI() {
+  const currentLang = (appData && appData.farmSettings && appData.farmSettings.language) || localStorage.getItem('dairymitra_lang') || 'hi';
+  document.querySelectorAll('.lang-select-card').forEach(card => {
+    if (card.getAttribute('data-lang') === currentLang) {
+      card.classList.add('active');
+    } else {
+      card.classList.remove('active');
+    }
+  });
+
+  document.querySelectorAll('.settings-lang-pill').forEach(pill => {
+    if (pill.getAttribute('data-lang') === currentLang) {
+      pill.classList.add('active');
+    } else {
+      pill.classList.remove('active');
+    }
+  });
+}
+
+function setAppLanguage(langCode, announce = true) {
+  if (!TRANSLATIONS[langCode]) langCode = 'hi';
+  if (!appData.farmSettings) appData.farmSettings = {};
+  appData.farmSettings.language = langCode;
+  localStorage.setItem('dairymitra_lang', langCode);
+  saveData();
+
+  applyTranslations();
+
+  if (announce) {
+    const prompt = t('lang_prompt');
+    showAudioToast(`🌐 ${t('lang_name')}: ${prompt}`);
+    speakAudio(prompt);
+  }
+
+  const headerBadge = document.getElementById('headerLangBadge');
+  if (headerBadge) {
+    headerBadge.innerText = t('lang_code');
+  }
+
+  updateStatsHeader();
+  renderMilkingCards();
+  renderDeliveryCards();
+  renderCustomerKhata();
+  renderCattleRegister();
+
+  closeLanguageModal();
+}
+
+function applyTranslations() {
+  const currentLang = (appData && appData.farmSettings && appData.farmSettings.language) || localStorage.getItem('dairymitra_lang') || 'hi';
+  document.documentElement.lang = currentLang;
+
+  // 1. Elements with data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    const trans = t(k);
+    if (trans) el.innerText = trans;
+  });
+
+  // 2. Elements with data-i18n-placeholder
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const k = el.getAttribute('data-i18n-placeholder');
+    const trans = t(k);
+    if (trans) el.placeholder = trans;
+  });
+
+  // 3. Bottom Navigation items
+  const navHome = document.querySelector('[data-tab="viewHome"] .nav-label');
+  if (navHome) navHome.innerText = t('nav_home');
+
+  const bType = (appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
+  const navMilking = document.querySelector('[data-tab="viewMilking"] .nav-label');
+  if (navMilking) {
+    if (bType === 'vendor') navMilking.innerText = 'दूध खरीदा';
+    else if (bType === 'hybrid') navMilking.innerText = 'दूध आवक';
+    else navMilking.innerText = t('nav_milking');
+  }
+
+  const navDelivery = document.querySelector('[data-tab="viewDelivery"] .nav-label');
+  if (navDelivery) navDelivery.innerText = t('nav_delivery');
+
+  const navKhata = document.querySelector('[data-tab="viewKhata"] .nav-label');
+  if (navKhata) navKhata.innerText = t('nav_khata');
+
+  const navCattle = document.querySelector('[data-tab="viewCattle"] .nav-label');
+  if (navCattle) {
+    if (bType === 'vendor') navCattle.innerText = 'सप्लायर';
+    else navCattle.innerText = t('nav_cattle');
+  }
+
+  const navDoctor = document.querySelector('[data-tab="viewDoctor"] .nav-label');
+  if (navDoctor) navDoctor.innerText = t('nav_doctor');
+
+  // 4. Shift bar
+  const shiftM = document.getElementById('shiftMorningBtn');
+  if (shiftM) shiftM.innerHTML = `🌅 ${t('shift_morning')}`;
+
+  const shiftE = document.getElementById('shiftEveningBtn');
+  if (shiftE) shiftE.innerHTML = `🌇 ${t('shift_evening')}`;
+
+  const resetBtn = document.getElementById('resetTodayBtn');
+  if (resetBtn) resetBtn.innerHTML = `🔄 ${t('btn_reset')}`;
+
+  // 5. Quick stats strip labels
+  const statLabels = document.querySelectorAll('.quick-stats-strip .stat-label');
+  if (statLabels && statLabels.length >= 4) {
+    statLabels[0].innerText = t('stat_produced');
+    statLabels[1].innerText = t('stat_delivered');
+    statLabels[2].innerText = t('stat_remaining');
+    statLabels[3].innerText = t('stat_earnings');
+  }
+
+  // 6. Header badges & Trending buttons
+  const proBtnText = document.getElementById('proBtnText');
+  if (proBtnText && !isProMember()) proBtnText.innerText = `👑 ${t('btn_pro')}`;
+
+  const fatCalcBtn = document.querySelector('#openFatCalcBtn span');
+  if (fatCalcBtn) fatCalcBtn.innerText = `🧪 ${t('btn_fat')}`;
+
+  const headerBadge = document.getElementById('headerLangBadge');
+  if (headerBadge) headerBadge.innerText = t('lang_code');
+
+  const trendProfit = document.querySelector('#openExpenseProfitBtn .btn-trend-text');
+  if (trendProfit) trendProfit.innerText = t('trend_profit');
+
+  const trendRoutine = document.querySelector('#openFarmRoutineBtn .btn-trend-text');
+  if (trendRoutine) trendRoutine.innerText = t('trend_routine');
+
+  const trendFeed = document.querySelector('#openFeedOptimizerBtn .btn-trend-text');
+  if (trendFeed) trendFeed.innerText = t('trend_feed');
+
+  const trendKundali = document.querySelector('#openAnimalKundaliBtn .btn-trend-text');
+  if (trendKundali) trendKundali.innerText = t('trend_kundali');
+
+  const trendValuation = document.querySelector('#openAnimalValuationBtn .btn-trend-text');
+  if (trendValuation) trendValuation.innerText = t('trend_valuation');
+
+  const trendPurity = document.querySelector('#openPurityCertBtn .btn-trend-text');
+  if (trendPurity) trendPurity.innerText = t('trend_purity');
+
+  const trendMela = document.querySelector('#openPashuMelaBtn .btn-trend-text');
+  if (trendMela) trendMela.innerText = t('trend_mela');
+
+  updateLanguageModalUI();
+}
+
 // UI RENDERING FUNCTIONS
 // ===================================================================
 
@@ -2606,6 +3138,113 @@ function getCustomerMonthlyStats(custId, year, month) {
   };
 }
 
+// ===================================================================
+// CUSTOMER PUBLIC PASSBOOK PORTAL (ग्राहक की डिजिटल पासबुक)
+// ===================================================================
+
+function generateCustomerPassbookUrl(custId, year = currentKhataYear, month = currentKhataMonth) {
+  const cust = appData.customers.find(c => c.id === custId);
+  if (!cust) return window.location.origin + '/passbook.html';
+
+  const farmPhone = appData.farmSettings.ownerPhone || '';
+  const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+
+  // Build lightweight payload for hash (100% offline & cross-device compatibility)
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const customerDeliveries = {};
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    if (appData.dailyRecords[dKey] && appData.dailyRecords[dKey].delivery) {
+      const m = appData.dailyRecords[dKey].delivery.morning ? appData.dailyRecords[dKey].delivery.morning[custId] : null;
+      const e = appData.dailyRecords[dKey].delivery.evening ? appData.dailyRecords[dKey].delivery.evening[custId] : null;
+      if (m || e) {
+        customerDeliveries[dKey] = {
+          morning: m || { litres: 0, status: 'pending' },
+          evening: e || { litres: 0, status: 'pending' }
+        };
+      }
+    }
+  }
+
+  const payload = {
+    customer: {
+      id: cust.id,
+      name: cust.name,
+      phone: cust.phone,
+      address: cust.address,
+      quotaMorning: cust.quotaMorning,
+      quotaEvening: cust.quotaEvening,
+      rate: cust.rate,
+      dues: cust.dues,
+      photo: cust.photo || ''
+    },
+    farmSettings: {
+      farmName: appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म',
+      ownerPhone: appData.farmSettings.ownerPhone || '',
+      upiId: appData.farmSettings.upiId || 'dairyfarm@upi',
+      defaultRate: appData.farmSettings.defaultRate || 60
+    },
+    deliveries: customerDeliveries
+  };
+
+  let hashPayload = '';
+  try {
+    hashPayload = '#d=' + btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  } catch (err) {
+    console.warn('Could not encode passbook hash payload:', err);
+  }
+
+  return `${origin}/passbook.html?c=${encodeURIComponent(cust.id)}&f=${encodeURIComponent(farmPhone)}&y=${year}&m=${month}${hashPayload}`;
+}
+
+function openCustomerPassbook(custId, year = currentKhataYear, month = currentKhataMonth) {
+  const cust = appData.customers.find(c => c.id === custId);
+  const name = cust ? cust.name : 'ग्राहक';
+  const url = generateCustomerPassbookUrl(custId, year, month);
+  showAudioToast(`🌐 ${name} की लाइव डिजिटल पासबुक खुल रही है...`);
+  speakAudio(`${name} की डिजिटल पासबुक खुल रही है`);
+  window.open(url, '_blank');
+}
+
+function shareCustomerPassbookWhatsApp(custId, year = currentKhataYear, month = currentKhataMonth) {
+  const cust = appData.customers.find(c => c.id === custId);
+  if (!cust) return;
+
+  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
+  const monthName = getHindiMonthName(month);
+  const passbookUrl = generateCustomerPassbookUrl(custId, year, month);
+  const stats = getCustomerMonthlyStats(custId, year, month);
+
+  const msg = 
+`🥛 *${farmName} - आपकी डिजिटल दूध पासबुक* 📲
+━━━━━━━━━━━━━━━━━━
+नमस्ते *${cust.name}* जी! 🙏
+आपके फार्म का दूध हिसाब अब पूरी तरह डिजिटल और पारदर्शी है।
+
+📅 *माह:* ${monthName} ${year}
+🥛 *दूध सप्लाई:* ${stats.totalLitres.toFixed(1)} लीटर (${stats.deliveredDays} दिन)
+${stats.skippedDays > 0 ? `❌ *नागा (छुट्टी):* ${stats.skippedDays} दिन\n` : ''}💰 *कुल देय राशि:* *₹${stats.totalPayable.toLocaleString('en-IN')}*
+
+👉 *अपनी ऑनलाइन लाइव पासबुक खोलें:*
+${passbookUrl}
+
+✨ *पासबुक में क्या देख सकते हैं:*
+• पूरे 30 दिन का सुबह-शाम का दूध और नागा कैलेंडर
+• दूध का सटीक भाव व पिछला बकाया हिसाब
+• Google Pay / PhonePe / Paytm से 1-क्लिक भुगतान
+━━━━━━━━━━━━━━━━━━
+धन्यवाद! 🙏
+*${farmName}*`;
+
+  const cleanPhone = cust.phone.replace(/[^0-9]/g, '');
+  const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(msg)}`;
+  showAudioToast(`📲 WhatsApp पर पासबुक इनवाइट खुल रहा है...`);
+  speakAudio('WhatsApp पासबुक लिंक तैयार है');
+  window.open(waUrl, '_blank');
+}
+
+
 // TAB 3: RENDER CUSTOMER KHATA & BILLING
 function renderCustomerKhata() {
   const container = document.getElementById('customerKhataList');
@@ -2666,6 +3305,9 @@ function renderCustomerKhata() {
         <button class="btn-khata-calendar" data-cal-cust="${cust.id}" title="30-दिन की दैनिक हाज़िरी व नागा कैलेंडर देखें">
           📅 30-दिन कैलेंडर
         </button>
+        <button class="btn-open-passbook" data-passbook-cust="${cust.id}" title="ग्राहक की ऑनलाइन पासबुक देखें या लिंक भेजें">
+          🌐 पासबुक
+        </button>
         <button class="btn-upi-bill" data-upi-cust="${cust.id}" title="1-क्लिक UPI QR कोड व डिजिटल पर्ची">
           ⚡ UPI QR
         </button>
@@ -2684,6 +3326,13 @@ function renderCustomerKhata() {
   });
 
   document.getElementById('totalPendingDues').innerText = `₹${totalDues.toLocaleString('en-IN')}`;
+
+  container.querySelectorAll('[data-passbook-cust]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-passbook-cust');
+      openCustomerPassbook(id, currentKhataYear, currentKhataMonth);
+    });
+  });
 
   container.querySelectorAll('[data-cal-cust]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -3206,6 +3855,12 @@ function renderBreedingAlerts() {
 // ===================================================================
 
 function openAddAnimalModal() {
+  // Check Free vs Pro Limit (Max 4 animals in Free Plan)
+  if (!isProMember() && (appData.animals || []).length >= 4) {
+    openProPaywallModal('animal', (appData.animals || []).length);
+    return;
+  }
+
   document.getElementById('animalForm').reset();
   document.getElementById('animalId').value = '';
   document.getElementById('animalPhotoData').value = '';
@@ -3276,6 +3931,12 @@ function deleteAnimal(animalId) {
 }
 
 function openAddCustomerModal() {
+  // Check Free vs Pro Limit (Max 10 customers in Free Plan)
+  if (!isProMember() && (appData.customers || []).length >= 10) {
+    openProPaywallModal('customer', (appData.customers || []).length);
+    return;
+  }
+
   document.getElementById('customerForm').reset();
   document.getElementById('customerId').value = '';
   document.getElementById('custPhotoData').value = '';
@@ -3439,6 +4100,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial Render
   updateStatsHeader();
+  setupHomeDashboardListeners();
+  setupSupplierListeners();
+  const initBizType = (appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
+  setBusinessType(initBizType, true);
+  renderHomeDashboard();
   renderMilkingCards();
   renderDeliveryCards();
   renderCustomerKhata();
@@ -3454,10 +4120,31 @@ function switchTab(tabId) {
   if (activeTab) activeTab.classList.add('active');
   if (activeNav) activeNav.classList.add('active');
 
-  if (tabId === 'viewMilking') renderMilkingCards();
+  if (tabId === 'viewHome') renderHomeDashboard();
+  if (tabId === 'viewMilking') {
+    const bType = (appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
+    if (bType === 'vendor') {
+      renderPurchaseCards();
+    } else if (bType === 'hybrid') {
+      if (currentInwardMode === 'purchase') {
+        renderPurchaseCards();
+      } else {
+        renderMilkingCards();
+      }
+    } else {
+      renderMilkingCards();
+    }
+  }
   if (tabId === 'viewDelivery') renderDeliveryCards();
-  if (tabId === 'viewKhata') renderCustomerKhata();
-  if (tabId === 'viewCattle') renderCattleRegister();
+  if (tabId === 'viewKhata') {
+    renderCustomerKhata();
+  }
+  if (tabId === 'viewSupplier') {
+    renderSupplierDedicatedList();
+  }
+  if (tabId === 'viewCattle') {
+    renderCattleRegister();
+  }
 }
 
 function setShift(shift, silent = false) {
@@ -3565,10 +4252,8 @@ function setupModals() {
     } else {
       // Check Free vs Pro Limit (Max 4 animals in Free Plan)
       if (!isProMember() && appData.animals.length >= 4) {
-        showAudioToast('⚠️ फ्री प्लान में अधिकतम 4 पशु की सीमा है। असीमित पशुओं हेतु प्रो प्लान लें या 1 दोस्त को रेफर करें!');
-        speakAudio('फ्री प्लान में केवल 4 पशु जोड़ सकते हैं। असीमित पशुओं के लिए प्रो प्लान लें।');
         document.getElementById('animalModal').classList.add('hidden');
-        openProSubscriptionModal();
+        openProPaywallModal('animal', appData.animals.length);
         return;
       }
 
@@ -3643,6 +4328,13 @@ function setupModals() {
         speakAudio(`ग्राहक ${name} का विवरण बदल दिया गया`);
       }
     } else {
+      // Check Free vs Pro Limit (Max 10 customers in Free Plan)
+      if (!isProMember() && (appData.customers || []).length >= 10) {
+        document.getElementById('customerModal').classList.add('hidden');
+        openProPaywallModal('customer', (appData.customers || []).length);
+        return;
+      }
+
       // Add new customer
       const newCust = {
         id: 'c_' + Date.now(),
@@ -6347,16 +7039,47 @@ function calculateDailyProfit(dateKey) {
     }
   }
 
+  // Calculate milk purchases from suppliers
+  let totalMilkPurchased = 0;
+  let totalPurchaseCost = 0;
+  if (record && record.purchases) {
+    const mPur = record.purchases.morning || {};
+    const ePur = record.purchases.evening || {};
+    for (let sid in mPur) {
+      const p = mPur[sid];
+      if (p && p.litres > 0) {
+        const l = parseFloat(p.litres) || 0;
+        totalMilkPurchased += l;
+        totalPurchaseCost += (l * (p.rate || 48));
+      }
+    }
+    for (let sid in ePur) {
+      const p = ePur[sid];
+      if (p && p.litres > 0) {
+        const l = parseFloat(p.litres) || 0;
+        totalMilkPurchased += l;
+        totalPurchaseCost += (l * (p.rate || 48));
+      }
+    }
+  }
+
+  const bType = (appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
   const feedCost = parseFloat(expenses.feed) || 0;
   const greenCost = parseFloat(expenses.greenFodder) || 0;
   const dryCost = parseFloat(expenses.dryFodder) || 0;
   const medCost = parseFloat(expenses.medical) || 0;
   const otherCost = parseFloat(expenses.other) || 0;
 
-  const totalExpenses = feedCost + greenCost + dryCost + medCost + otherCost;
+  let totalExpenses = feedCost + greenCost + dryCost + medCost + otherCost;
+  if (bType === 'vendor' || bType === 'hybrid') {
+    totalExpenses += totalPurchaseCost;
+  }
+
   const netProfit = Math.round(milkRevenue - totalExpenses);
-  const homeMilk = Math.max(0, Math.round((totalMilkProduced - totalMilkSold) * 10) / 10);
-  const costPerLitre = totalMilkProduced > 0 ? (totalExpenses / totalMilkProduced) : 0;
+  const grossMargin = Math.round(milkRevenue - totalPurchaseCost);
+  const totalInward = (bType === 'vendor') ? totalMilkPurchased : (bType === 'hybrid' ? (totalMilkProduced + totalMilkPurchased) : totalMilkProduced);
+  const homeMilk = Math.max(0, Math.round((totalInward - totalMilkSold) * 10) / 10);
+  const costPerLitre = totalInward > 0 ? (totalExpenses / totalInward) : 0;
   const profitPerLitre = totalMilkSold > 0 ? (netProfit / totalMilkSold) : 0;
 
   return {
@@ -6365,6 +7088,9 @@ function calculateDailyProfit(dateKey) {
     totalMilkSold,
     homeMilk,
     revenue: Math.round(milkRevenue),
+    totalMilkPurchased,
+    totalPurchaseCost,
+    grossMargin,
     expenses,
     totalExpenses,
     netProfit,
@@ -7264,6 +7990,34 @@ function closeProSubscriptionModal() {
   if (modal) modal.classList.add('hidden');
 }
 
+function openProPaywallModal(limitType = 'animal', currentCount = 4) {
+  const modal = document.getElementById('proPaywallModal');
+  if (!modal) return;
+
+  const titleEl = document.getElementById('paywallTitle');
+  const subEl = document.getElementById('paywallSubtitle');
+
+  if (limitType === 'animal') {
+    if (titleEl) titleEl.innerText = `${currentCount} पशुओं की मुफ़्त सीमा पूरी हो चुकी है!`;
+    if (subEl) subEl.innerHTML = `आप अभी <strong>फ्री प्लान</strong> उपयोग कर रहे हैं। 5वें या उससे अधिक पशु, गर्भाधान डायरी और 2-फोन लाइव सिंक के लिए <strong>प्रो VIP</strong> में अपग्रेड करें!`;
+    speakAudio(`फ्री प्लान में केवल ${currentCount} पशु की सीमा है। असीमित पशुओं के लिए प्रो प्लान लें।`);
+  } else if (limitType === 'customer') {
+    if (titleEl) titleEl.innerText = `${currentCount} ग्राहकों की मुफ़्त सीमा पूरी हो चुकी है!`;
+    if (subEl) subEl.innerHTML = `आप अभी <strong>फ्री प्लान</strong> उपयोग कर रहे हैं। 11वें या उससे अधिक ग्राहक, WhatsApp पर्ची और 0% डेटा लॉस बैकअप के लिए <strong>प्रो VIP</strong> में अपग्रेड करें!`;
+    speakAudio(`फ्री प्लान में केवल ${currentCount} ग्राहकों की सीमा है। असीमित ग्राहकों के लिए प्रो प्लान लें।`);
+  } else {
+    if (titleEl) titleEl.innerText = `फ्री प्लान सीमा पूरी हो चुकी है!`;
+    if (subEl) subEl.innerHTML = `असीमित रिकॉर्ड्स और 2-फोन लाइव सिंक के लिए अभी प्रो VIP में अपग्रेड करें।`;
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeProPaywallModal() {
+  const modal = document.getElementById('proPaywallModal');
+  if (modal) modal.classList.add('hidden');
+}
+
 function updateProModalUI() {
   const isPro = isProMember();
   const daysLeft = getProDaysRemaining();
@@ -7474,7 +8228,7 @@ async function applyReferralCode() {
 }
 
 let currentCheckoutPlan = 'yearly';
-let activeAdminUpiId = 'dairymitra@upi';
+let activeAdminUpiId = 'amitshukla9891@ptyes';
 let activeAdminName = 'DairyMitra Pro';
 
 async function fetchPaymentConfig() {
@@ -7487,6 +8241,69 @@ async function fetchPaymentConfig() {
     }
   } catch (e) {
     console.warn('Could not fetch payment config:', e);
+  }
+}
+
+function triggerUpiPayment(appScheme, appName) {
+  const ua = navigator.userAgent || '';
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isMobile = isAndroid || isIOS;
+  const upiId = activeAdminUpiId || 'amitshukla9891@ptyes';
+  const recipientName = activeAdminName || 'DairyMitra Pro';
+  const amount = currentCheckoutPlan === 'yearly' ? 399 : 49;
+  const tn = encodeURIComponent(`DairyMitra Pro ${currentCheckoutPlan}`);
+
+  const upiParams = `pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(recipientName)}&am=${amount}&cu=INR&tn=${tn}`;
+  const genericUpi = `upi://pay?${upiParams}`;
+
+  if (!isMobile) {
+    copyUpiId();
+    showAudioToast(`💻 PC/लैपटॉप: UPI ID कॉपी हो गई है! कृपया फोन से ऊपर दिए QR कोड को स्कैन करके ₹${amount} का भुगतान करें।`);
+    speakAudio('कृपया मोबाइल से क्यूआर कोड स्कैन करें');
+    return;
+  }
+
+  // Auto-copy UPI ID in background so user has it ready
+  copyUpiId();
+  showAudioToast(`📲 ${appName} खोला जा रहा है... ₹${amount}`);
+
+  let targetUrl = genericUpi;
+  if (isAndroid) {
+    // Android Chrome direct package intents
+    if (appScheme === 'phonepe') {
+      targetUrl = `intent://pay?${upiParams}#Intent;scheme=upi;package=com.phonepe.app;end`;
+    } else if (appScheme === 'paytm') {
+      targetUrl = `intent://pay?${upiParams}#Intent;scheme=upi;package=net.one97.paytm;end`;
+    } else if (appScheme === 'gpay') {
+      targetUrl = `intent://pay?${upiParams}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+    } else {
+      targetUrl = genericUpi;
+    }
+  } else if (isIOS) {
+    // iOS schemes
+    if (appScheme === 'phonepe') {
+      targetUrl = `phonepe://pay?${upiParams}`;
+    } else if (appScheme === 'paytm') {
+      targetUrl = `paytmmp://pay?${upiParams}`;
+    } else if (appScheme === 'gpay') {
+      targetUrl = `tez://upi/pay?${upiParams}`;
+    } else {
+      targetUrl = genericUpi;
+    }
+  }
+
+  try {
+    window.location.href = targetUrl;
+  } catch (err) {
+    window.location.href = genericUpi;
+  }
+
+  // Fallback to standard UPI intent if specific app is not installed
+  if (targetUrl !== genericUpi) {
+    setTimeout(() => {
+      window.location.href = genericUpi;
+    }, 1400);
   }
 }
 
@@ -7520,18 +8337,6 @@ async function openProPaymentModal(planType = 'yearly') {
     qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${qrData}`;
   }
 
-  // Set deep links for mobile buttons
-  const phonePeBtn = document.getElementById('btnPayPhonePe');
-  const gpayBtn = document.getElementById('btnPayGPay');
-  const paytmBtn = document.getElementById('btnPayPaytm');
-  const bhimBtn = document.getElementById('btnPayAnyUpi');
-
-  const rawUpi = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(recipientName)}&am=${amount}&cu=INR&tn=${encodeURIComponent('DairyMitra ' + planType)}`;
-  if (phonePeBtn) phonePeBtn.href = rawUpi;
-  if (gpayBtn) gpayBtn.href = rawUpi;
-  if (paytmBtn) paytmBtn.href = rawUpi;
-  if (bhimBtn) bhimBtn.href = rawUpi;
-
   modal.classList.remove('hidden');
 }
 
@@ -7541,10 +8346,17 @@ function closeProPaymentModal() {
 }
 
 function copyUpiId() {
-  const upiId = activeAdminUpiId || 'dairymitra@upi';
-  if (navigator.clipboard) {
+  const upiId = activeAdminUpiId || 'amitshukla9891@ptyes';
+  const copyBtn = document.getElementById('btnCopyProPaymentUpiId');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(upiId).then(() => {
+      if (copyBtn) {
+        const orig = copyBtn.innerText;
+        copyBtn.innerText = '✓ UPI ID कॉपी हुई!';
+        setTimeout(() => { copyBtn.innerText = orig; }, 2000);
+      }
       showAudioToast(`📋 UPI ID कॉपी हुई: ${upiId}`);
+      speakAudio('यूपीआई आईडी कॉपी हो गई है');
     }).catch(() => {
       showAudioToast(`📋 UPI ID: ${upiId}`);
     });
@@ -7696,7 +8508,7 @@ async function checkUserRegistration() {
 }
 
 function openOnboardingModal() {
-  const modal = document.getElementById('onboardingModal');
+  const modal = document.getElementById('languageModal', 'onboardingModal');
   if (modal) modal.classList.remove('hidden');
 }
 
@@ -8599,9 +9411,52 @@ document.addEventListener('DOMContentLoaded', () => {
     btnCopyProPaymentUpiId.addEventListener('click', copyUpiId);
   }
 
+  // 1-Click Mobile UPI Payment App Listeners
+  const btnPayPhonePe = document.getElementById('btnPayPhonePe');
+  if (btnPayPhonePe) {
+    btnPayPhonePe.addEventListener('click', () => triggerUpiPayment('phonepe', 'PhonePe'));
+  }
+
+  const btnPayGPay = document.getElementById('btnPayGPay');
+  if (btnPayGPay) {
+    btnPayGPay.addEventListener('click', () => triggerUpiPayment('gpay', 'Google Pay'));
+  }
+
+  const btnPayPaytm = document.getElementById('btnPayPaytm');
+  if (btnPayPaytm) {
+    btnPayPaytm.addEventListener('click', () => triggerUpiPayment('paytm', 'Paytm'));
+  }
+
+  const btnPayAnyUpi = document.getElementById('btnPayAnyUpi');
+  if (btnPayAnyUpi) {
+    btnPayAnyUpi.addEventListener('click', () => triggerUpiPayment('generic', 'UPI App'));
+  }
+
   const btnResetProPlan = document.getElementById('btnResetProPlan');
   if (btnResetProPlan) {
     btnResetProPlan.addEventListener('click', resetProPlan);
+  }
+
+  // Paywall Modal Buttons
+  const closePaywallModalBtn = document.getElementById('closePaywallModalBtn');
+  if (closePaywallModalBtn) {
+    closePaywallModalBtn.addEventListener('click', closeProPaywallModal);
+  }
+
+  const btnPaywallUpgradePro = document.getElementById('btnPaywallUpgradePro');
+  if (btnPaywallUpgradePro) {
+    btnPaywallUpgradePro.addEventListener('click', () => {
+      closeProPaywallModal();
+      openProPaymentModal('yearly');
+    });
+  }
+
+  const btnPaywallReferFriend = document.getElementById('btnPaywallReferFriend');
+  if (btnPaywallReferFriend) {
+    btnPaywallReferFriend.addEventListener('click', () => {
+      closeProPaywallModal();
+      openProSubscriptionModal();
+    });
   }
 
   // 11. Onboarding & Device Check Listeners
@@ -8742,6 +9597,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  
+  // Language Switcher Listeners
+  const langSwitchBtn = document.getElementById('langSwitchBtn');
+  if (langSwitchBtn) {
+    langSwitchBtn.addEventListener('click', openLanguageModal);
+  }
+
+  const closeLanguageModalBtn = document.getElementById('closeLanguageModalBtn');
+  if (closeLanguageModalBtn) {
+    closeLanguageModalBtn.addEventListener('click', closeLanguageModal);
+  }
+
+  document.querySelectorAll('.lang-select-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const lang = card.getAttribute('data-lang');
+      setAppLanguage(lang, true);
+    });
+  });
+
+  document.querySelectorAll('.settings-lang-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const lang = pill.getAttribute('data-lang');
+      setAppLanguage(lang, true);
+    });
+  });
+
+  // Apply active language on initial startup
+  applyTranslations();
+
   // Update Header Pro Badge on initial load
   updateHeaderProBadge();
 
@@ -8749,7 +9633,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkUserRegistration();
 
   // Backdrop click to close modals
-  ['upiBillModal', 'expenseProfitModal', 'feedOptimizerModal', 'animalKundaliModal', 'animalValuationModal', 'farmRoutineModal', 'purityCertModal', 'pashuMelaModal', 'proSubscriptionModal', 'settingsModal', 'proInvoiceModal', 'onboardingModal'].forEach(id => {
+  ['upiBillModal', 'expenseProfitModal', 'feedOptimizerModal', 'animalKundaliModal', 'animalValuationModal', 'farmRoutineModal', 'purityCertModal', 'pashuMelaModal', 'proSubscriptionModal', 'proPaymentModal', 'proPaywallModal', 'settingsModal', 'proInvoiceModal', 'onboardingModal'].forEach(id => {
     const modal = document.getElementById(id);
     if (modal) {
       modal.addEventListener('click', (e) => {
@@ -8758,3 +9642,1591 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+
+// ===================================================================
+// COUNTRY DELIGHT EXECUTIVE HOMEPAGE DASHBOARD (#viewHome)
+// ===================================================================
+
+function renderHomeDashboard() {
+  initTodayRecord();
+  const todayDay = appData.dailyRecords[currentDateKey] || { milking: { morning: {}, evening: {} }, delivery: { morning: {}, evening: {} } };
+
+  const bType = (appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
+
+  // 1. Time Greeting & Dynamic Farm Status
+  const now = new Date();
+  const curHour = now.getHours();
+  let timeGreeting = '🌅 सुप्रभात';
+  if (curHour >= 12 && curHour < 16) {
+    timeGreeting = '☀️ नमस्ते';
+  } else if (curHour >= 16) {
+    timeGreeting = '🌇 शुभ संध्या';
+  }
+
+  const farmName = appData.farmSettings.farmName || 'शुक्ला डेयरी फार्म';
+  const heroGreetingEl = document.getElementById('cdHeroGreeting');
+  if (heroGreetingEl) {
+    heroGreetingEl.innerText = `${timeGreeting}, ${farmName}!`;
+  }
+
+  const heroTaglineEl = document.getElementById('cdHeroTagline');
+  if (heroTaglineEl) {
+    if (bType === 'vendor') heroTaglineEl.innerText = '🛵 दूध संकलन, घर-घर वितरण व दैनिक मुनाफा प्रबंधन';
+    else if (bType === 'hybrid') heroTaglineEl.innerText = '🔄 फार्म उत्पादन, दूध खरीद व घर-घर वितरण प्रबंधन';
+    else heroTaglineEl.innerText = '✨ शुद्धता, ताज़गी व भरोसे का डिजिटल डेयरी प्रबंधन';
+  }
+
+  const liveShiftTextEl = document.getElementById('cdLiveShiftText');
+  if (liveShiftTextEl) {
+    const shiftName = currentShift === 'morning' ? 'सुबह' : 'शाम';
+    if (bType === 'vendor') liveShiftTextEl.innerText = `${shiftName} संकलन व वितरण सक्रिय`;
+    else liveShiftTextEl.innerText = `${shiftName} की शिफ्ट सक्रिय`;
+  }
+
+  const proBadgeEl = document.getElementById('cdProBadge');
+  const isPro = (appData.farmSettings && appData.farmSettings.proActive) || (localStorage.getItem('dairymitra_pro_active') === 'true');
+  if (proBadgeEl) {
+    proBadgeEl.innerText = isPro ? '👑 VIP PRO सदस्य' : '⚡ प्रो अपग्रेड';
+    proBadgeEl.style.background = isPro ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+  }
+
+  // Snapshot Date Tag
+  const snapshotDateEl = document.getElementById('cdSnapshotDate');
+  if (snapshotDateEl) {
+    snapshotDateEl.innerText = `${now.getDate()} ${getHindiMonthName(now.getMonth() + 1)}`;
+  }
+
+  // 2. Snapshot Numbers (Milking & Delivery for Full Day)
+  const morningMilking = todayDay.milking ? (todayDay.milking.morning || {}) : {};
+  const eveningMilking = todayDay.milking ? (todayDay.milking.evening || {}) : {};
+  let morningMilkL = 0;
+  let eveningMilkL = 0;
+  for (let aid in morningMilking) morningMilkL += (parseFloat(morningMilking[aid]) || 0);
+  for (let aid in eveningMilking) eveningMilkL += (parseFloat(eveningMilking[aid]) || 0);
+  const totalMilkProducedL = Math.round((morningMilkL + eveningMilkL) * 10) / 10;
+
+  // Purchases from suppliers
+  const morningPurchases = todayDay.purchases ? (todayDay.purchases.morning || {}) : {};
+  const eveningPurchases = todayDay.purchases ? (todayDay.purchases.evening || {}) : {};
+  let morningPurL = 0;
+  let eveningPurL = 0;
+  let totalPurCost = 0;
+  for (let sid in morningPurchases) {
+    const p = morningPurchases[sid];
+    if (p && p.litres > 0) {
+      const q = parseFloat(p.litres) || 0;
+      morningPurL += q;
+      totalPurCost += (q * (p.rate || 48));
+    }
+  }
+  for (let sid in eveningPurchases) {
+    const p = eveningPurchases[sid];
+    if (p && p.litres > 0) {
+      const q = parseFloat(p.litres) || 0;
+      eveningPurL += q;
+      totalPurCost += (q * (p.rate || 48));
+    }
+  }
+  const totalMilkPurchasedL = Math.round((morningPurL + eveningPurL) * 10) / 10;
+
+  // Total Inflow based on Business Type
+  let totalInwardL = totalMilkProducedL;
+  if (bType === 'vendor') totalInwardL = totalMilkPurchasedL;
+  else if (bType === 'hybrid') totalInwardL = Math.round((totalMilkProducedL + totalMilkPurchasedL) * 10) / 10;
+
+  // Deliveries to Customers
+  const morningDelivery = todayDay.delivery ? (todayDay.delivery.morning || {}) : {};
+  const eveningDelivery = todayDay.delivery ? (todayDay.delivery.evening || {}) : {};
+  let morningDelL = 0;
+  let eveningDelL = 0;
+  let totalGrossSales = 0;
+
+  for (let cid in morningDelivery) {
+    const entry = morningDelivery[cid];
+    if (entry && (entry.status === 'delivered' || entry.status === 'custom') && entry.litres > 0) {
+      const qty = parseFloat(entry.litres) || 0;
+      morningDelL += qty;
+      const cust = appData.customers.find(c => c.id === cid);
+      const rate = cust ? cust.rate : appData.farmSettings.defaultRate;
+      totalGrossSales += (qty * rate);
+    }
+  }
+  for (let cid in eveningDelivery) {
+    const entry = eveningDelivery[cid];
+    if (entry && (entry.status === 'delivered' || entry.status === 'custom') && entry.litres > 0) {
+      const qty = parseFloat(entry.litres) || 0;
+      eveningDelL += qty;
+      const cust = appData.customers.find(c => c.id === cid);
+      const rate = cust ? cust.rate : appData.farmSettings.defaultRate;
+      totalGrossSales += (qty * rate);
+    }
+  }
+
+  const totalDelL = Math.round((morningDelL + eveningDelL) * 10) / 10;
+  const remainingStockL = Math.max(0, Math.round((totalInwardL - totalDelL) * 10) / 10);
+  const delPct = totalInwardL > 0 ? Math.min(100, Math.round((totalDelL / totalInwardL) * 100)) : (totalDelL > 0 ? 100 : 0);
+
+  // Profit calculation
+  const prof = calculateDailyProfit(currentDateKey);
+
+  // Update Hero CTA buttons
+  const heroMilkingBtn = document.getElementById('cdHeroMilkingBtn');
+  if (heroMilkingBtn) {
+    const iconEl = heroMilkingBtn.querySelector('.cd-hero-btn-icon');
+    const textEl = heroMilkingBtn.querySelector('.cd-hero-btn-text');
+    if (bType === 'vendor') {
+      if (iconEl) iconEl.innerText = '📥';
+      if (textEl) textEl.innerText = 'दूध खरीदें';
+    } else {
+      if (iconEl) iconEl.innerText = '🥛';
+      if (textEl) textEl.innerText = 'दूध निकालें';
+    }
+  }
+
+  // Card 1: Inflow (Produced / Purchased)
+  const card1Name = document.querySelector('#cdCardProduced .cd-stat-name');
+  const statProdEl = document.getElementById('cdStatProduced');
+  const prodBreakdownEl = document.getElementById('cdProducedBreakdown');
+  const prodTrendEl = document.getElementById('cdProducedTrend');
+
+  if (bType === 'vendor') {
+    if (card1Name) card1Name.innerText = 'कुल दूध खरीद (आवक)';
+    if (statProdEl) statProdEl.innerHTML = `${totalMilkPurchasedL.toFixed(1)} <small>L</small>`;
+    if (prodBreakdownEl) prodBreakdownEl.innerText = `सुबह: ${morningPurL.toFixed(1)}L • शाम: ${eveningPurL.toFixed(1)}L`;
+    if (prodTrendEl) prodTrendEl.innerText = `₹${Math.round(totalPurCost)} लागत`;
+  } else if (bType === 'hybrid') {
+    if (card1Name) card1Name.innerText = 'कुल दूध आवक (दोनों)';
+    if (statProdEl) statProdEl.innerHTML = `${totalInwardL.toFixed(1)} <small>L</small>`;
+    if (prodBreakdownEl) prodBreakdownEl.innerText = `फार्म: ${totalMilkProducedL.toFixed(1)}L • खरीद: ${totalMilkPurchasedL.toFixed(1)}L`;
+    if (prodTrendEl) prodTrendEl.innerText = `लाइव ↗`;
+  } else {
+    if (card1Name) card1Name.innerText = 'कुल दूध उत्पादन';
+    if (statProdEl) statProdEl.innerHTML = `${totalMilkProducedL.toFixed(1)} <small>L</small>`;
+    if (prodBreakdownEl) prodBreakdownEl.innerText = `सुबह: ${morningMilkL.toFixed(1)}L • शाम: ${eveningMilkL.toFixed(1)}L`;
+    if (prodTrendEl) prodTrendEl.innerText = `लाइव ↗`;
+  }
+
+  // Card 2: Delivered
+  const statDelEl = document.getElementById('cdStatDelivered');
+  if (statDelEl) statDelEl.innerHTML = `${totalDelL.toFixed(1)} <small>L</small>`;
+  const delPctEl = document.getElementById('cdDeliveredPct');
+  if (delPctEl) delPctEl.innerText = `${delPct}% सप्लाई`;
+  const delSubEl = document.getElementById('cdDeliveredSub');
+  if (delSubEl) delSubEl.innerText = `घर में बचा: ${remainingStockL.toFixed(1)} L`;
+
+  // Card 3: Today's Estimated Sales
+  const statSalesEl = document.getElementById('cdStatSales');
+  if (statSalesEl) statSalesEl.innerText = `₹${Math.round(totalGrossSales).toLocaleString('en-IN')}`;
+  const avgRate = totalDelL > 0 ? Math.round(totalGrossSales / totalDelL) : appData.farmSettings.defaultRate;
+  const salesSubEl = document.getElementById('cdSalesSub');
+  if (salesSubEl) salesSubEl.innerText = `औसत भाव: ₹${avgRate}/L`;
+
+  // Card 4: Total Market Dues OR Net Profit
+  let totalCustDues = 0;
+  let duesCustCount = 0;
+  let overdueCustomers = [];
+  appData.customers.forEach(c => {
+    const due = parseFloat(c.dues) || 0;
+    if (due > 0) {
+      totalCustDues += due;
+      duesCustCount++;
+      if (due >= 1000) {
+        overdueCustomers.push({ customer: c, due: due });
+      }
+    }
+  });
+
+  const card4Name = document.querySelector('#cdCardDues .cd-stat-name');
+  const card4Tag = document.querySelector('#cdCardDues .cd-stat-tag');
+  const statDuesEl = document.getElementById('cdStatDues');
+  const duesSubEl = document.getElementById('cdDuesSub');
+
+  if (bType === 'vendor' || bType === 'hybrid') {
+    if (card4Name) card4Name.innerText = 'आज का शुद्ध मुनाफा';
+    if (card4Tag) {
+      card4Tag.innerText = prof.netProfit >= 0 ? 'बचत 📈' : 'नुकसान 📉';
+      card4Tag.className = prof.netProfit >= 0 ? 'cd-stat-tag' : 'cd-stat-tag tag-urgent';
+    }
+    if (statDuesEl) {
+      statDuesEl.innerText = `₹${Math.round(prof.netProfit).toLocaleString('en-IN')}`;
+      statDuesEl.className = prof.netProfit >= 0 ? 'cd-stat-number rupee' : 'cd-stat-number danger';
+    }
+    const marginL = totalDelL > 0 ? (prof.grossMargin / totalDelL).toFixed(1) : '0';
+    if (duesSubEl) duesSubEl.innerText = `मार्जिन: ₹${marginL}/L • ग्रॉस: ₹${prof.grossMargin}`;
+  } else {
+    if (card4Name) card4Name.innerText = 'कुल बकाया राशि';
+    if (card4Tag) {
+      card4Tag.innerText = 'मार्केट बाकी';
+      card4Tag.className = 'cd-stat-tag tag-urgent';
+    }
+    if (statDuesEl) {
+      statDuesEl.innerText = `₹${Math.round(totalCustDues).toLocaleString('en-IN')}`;
+      statDuesEl.className = 'cd-stat-number danger';
+    }
+    if (duesSubEl) duesSubEl.innerText = `${duesCustCount} ग्राहकों पर शेष`;
+  }
+
+  // Update Action Hub Tiles based on bType
+  const hubTile1Title = document.querySelector('#hubMilkingBtn .cd-hub-title');
+  const hubTile1Sub = document.querySelector('#hubMilkingBtn .cd-hub-sub');
+  const hubTile1Icon = document.querySelector('#hubMilkingBtn .cd-hub-icon-circle');
+
+  const hubTile7Title = document.querySelector('#hubMelaBtn .cd-hub-title');
+  const hubTile7Sub = document.querySelector('#hubMelaBtn .cd-hub-sub');
+  const hubTile7Icon = document.querySelector('#hubMelaBtn .cd-hub-icon-circle');
+
+  if (bType === 'vendor') {
+    if (hubTile1Title) hubTile1Title.innerText = 'दूध खरीद';
+    if (hubTile1Sub) hubTile1Sub.innerText = 'किसान संकलन';
+    if (hubTile1Icon) hubTile1Icon.innerText = '📥';
+
+    if (hubTile7Title) hubTile7Title.innerText = 'किसान सप्लायर';
+    if (hubTile7Sub) hubTile7Sub.innerText = 'खरीद केंद्र';
+    if (hubTile7Icon) hubTile7Icon.innerText = '🤝';
+  } else if (bType === 'hybrid') {
+    if (hubTile1Title) hubTile1Title.innerText = 'पशु दोहन';
+    if (hubTile1Sub) hubTile1Sub.innerText = 'फार्म दोहन';
+    if (hubTile1Icon) hubTile1Icon.innerText = '🥛';
+
+    if (hubTile7Title) hubTile7Title.innerText = 'दूध खरीद';
+    if (hubTile7Sub) hubTile7Sub.innerText = 'सप्लायर संकलन';
+    if (hubTile7Icon) hubTile7Icon.innerText = '📥';
+  } else {
+    if (hubTile1Title) hubTile1Title.innerText = 'दूध निकाला';
+    if (hubTile1Sub) hubTile1Sub.innerText = 'पशु दोहन';
+    if (hubTile1Icon) hubTile1Icon.innerText = '🥛';
+
+    if (hubTile7Title) hubTile7Title.innerText = 'पशु मेला';
+    if (hubTile7Sub) hubTile7Sub.innerText = 'खरीद-बिक्री';
+    if (hubTile7Icon) hubTile7Icon.innerText = '🎪';
+  }
+
+  // 3. Smart Priority Farm Alerts
+  const alertsStack = document.getElementById('cdAlertsStack');
+  const alertCounterEl = document.getElementById('cdAlertCounter');
+  if (alertsStack) {
+    alertsStack.innerHTML = '';
+    const alerts = [];
+
+    // Alert A: Overdue payment collection
+    if (overdueCustomers.length > 0) {
+      const topCust = overdueCustomers[0];
+      alerts.push({
+        type: 'danger',
+        icon: '⚠️',
+        title: 'मार्केट बकाया तकादा अलर्ट',
+        desc: `${overdueCustomers.length} ग्राहकों पर कुल ₹${Math.round(totalDues).toLocaleString('en-IN')} बकाया है (उदा. ${topCust.customer.name}: ₹${topCust.due})`,
+        btnText: 'तकादा भेजें 📲',
+        action: () => switchTab('viewKhata')
+      });
+    }
+
+    // Alert B: Calving Prediction within 35 days
+    const todayKey = getTodayDateKey();
+    appData.animals.forEach(a => {
+      const br = (appData.breedingRecords && appData.breedingRecords[a.id]) ? appData.breedingRecords[a.id] : null;
+      if (br && br.aiDate && br.status !== 'calved' && br.status !== 'repeat') {
+        const tl = getBreedingTimeline(br, a);
+        if (tl && tl.daysRemaining >= 0 && tl.daysRemaining <= 35) {
+          alerts.push({
+            type: 'warning',
+            icon: '🍼',
+            title: 'ब्यांत (प्रसव) निकट है!',
+            desc: `<strong>${a.name}</strong> का प्रसव अगले <strong>${tl.daysRemaining} दिन</strong> में संभावित है (${formatHindiDate(tl.calvingDate)})। विशेष आहार व देखभाल शुरू करें।`,
+            btnText: 'पशु देखें 🐄',
+            action: () => switchTab('viewCattle')
+          });
+        }
+      }
+    });
+
+    // Alert C: Naga (Delivery Skipped) today
+    const skippedCusts = [];
+    const currentShiftDel = todayDay.delivery[currentShift] || {};
+    for (let cid in currentShiftDel) {
+      if (currentShiftDel[cid] && currentShiftDel[cid].status === 'skipped') {
+        const c = appData.customers.find(cust => cust.id === cid);
+        if (c) skippedCusts.push(c);
+      }
+    }
+    if (skippedCusts.length > 0) {
+      alerts.push({
+        type: 'info',
+        icon: '🚫',
+        title: 'नागा सूचना (आज का दूध बंद)',
+        desc: `आज ${skippedCusts.slice(0, 2).map(c => c.name).join(', ')}${skippedCusts.length > 2 ? ` व अन्य ${skippedCusts.length - 2}` : ''} का दूध नागा रहा।`,
+        btnText: 'वितरण देखें 🛵',
+        action: () => switchTab('viewDelivery')
+      });
+    }
+
+    // If no alerts, show positive Country Delight health status
+    if (alerts.length === 0) {
+      alerts.push({
+        type: 'success',
+        icon: '✨',
+        title: 'फार्म संचालन उत्कृष्ट स्थिति में है',
+        desc: 'कोई बकाया संकट या आपातकालीन अलर्ट नहीं है। सभी रिकॉर्ड सुरक्षित व व्यवस्थित हैं।',
+        btnText: 'दूध निकालें 🥛',
+        action: () => switchTab('viewMilking')
+      });
+    }
+
+    if (alertCounterEl) {
+      alertCounterEl.innerText = `${alerts.length} अलर्ट`;
+      alertCounterEl.className = alerts.some(a => a.type === 'danger') ? 'cd-alert-counter' : 'cd-section-badge';
+    }
+
+    alerts.forEach(al => {
+      const item = document.createElement('div');
+      item.className = `cd-alert-item alert-${al.type}`;
+      item.innerHTML = `
+        <div class="cd-alert-main">
+          <div class="cd-alert-icon">${al.icon}</div>
+          <div>
+            <div class="cd-alert-title">${al.title}</div>
+            <div class="cd-alert-desc">${al.desc}</div>
+          </div>
+        </div>
+        <button type="button" class="cd-alert-action-btn">${al.btnText}</button>
+      `;
+      const btn = item.querySelector('.cd-alert-action-btn');
+      if (btn && al.action) {
+        btn.addEventListener('click', al.action);
+      }
+      alertsStack.appendChild(item);
+    });
+  }
+
+  // 4. Herd & Delivery Live Barometer
+  const milkingAnimals = appData.animals.filter(a => a.status === 'milking');
+  let milkedAnimalCount = 0;
+  const currentShiftMilking = todayDay.milking[currentShift] || {};
+  milkingAnimals.forEach(a => {
+    if (parseFloat(currentShiftMilking[a.id]) > 0) milkedAnimalCount++;
+  });
+  const cattleFillPct = milkingAnimals.length > 0 ? Math.round((milkedAnimalCount / milkingAnimals.length) * 100) : 0;
+  const cattleBaroVal = document.getElementById('cdBarometerCattle');
+  if (cattleBaroVal) cattleBaroVal.innerText = `${milkedAnimalCount} / ${milkingAnimals.length} पशु (${currentShift === 'morning' ? 'सुबह' : 'शाम'})`;
+  const cattleFillEl = document.getElementById('cdBarometerCattleFill');
+  if (cattleFillEl) cattleFillEl.style.width = `${cattleFillPct}%`;
+
+  const activeCusts = appData.customers.filter(c => c.active !== false);
+  let servedCustCount = 0;
+  const currentShiftDeliv = todayDay.delivery[currentShift] || {};
+  activeCusts.forEach(c => {
+    const ent = currentShiftDeliv[c.id];
+    if (ent && (ent.status === 'delivered' || ent.status === 'custom') && parseFloat(ent.litres) > 0) {
+      servedCustCount++;
+    }
+  });
+  const delFillPct = activeCusts.length > 0 ? Math.round((servedCustCount / activeCusts.length) * 100) : 0;
+  const delBaroVal = document.getElementById('cdBarometerDelivery');
+  if (delBaroVal) delBaroVal.innerText = `${servedCustCount} / ${activeCusts.length} ग्राहक (${currentShift === 'morning' ? 'सुबह' : 'शाम'})`;
+  const delFillEl = document.getElementById('cdBarometerDeliveryFill');
+  if (delFillEl) delFillEl.style.width = `${delFillPct}%`;
+
+  // 5. Recent Farm Activity Stream
+  const activityList = document.getElementById('cdActivityList');
+  if (activityList) {
+    activityList.innerHTML = '';
+    const activities = [];
+
+    // Recent Milking
+    for (let aid in currentShiftMilking) {
+      const qty = parseFloat(currentShiftMilking[aid]) || 0;
+      if (qty > 0) {
+        const an = appData.animals.find(a => a.id === aid);
+        activities.push({
+          icon: '🥛',
+          title: `${an ? an.name : 'पशु'}: ${qty.toFixed(1)} L दूध निकाला`,
+          meta: `${currentShift === 'morning' ? 'सुबह' : 'शाम'} की शिफ्ट • आज`,
+          badge: `${qty.toFixed(1)} L`
+        });
+      }
+    }
+
+    // Recent Delivery
+    for (let cid in currentShiftDeliv) {
+      const ent = currentShiftDeliv[cid];
+      if (ent && (ent.status === 'delivered' || ent.status === 'custom') && parseFloat(ent.litres) > 0) {
+        const c = appData.customers.find(cust => cust.id === cid);
+        activities.push({
+          icon: '🛵',
+          title: `${c ? c.name : 'ग्राहक'}: ${parseFloat(ent.litres).toFixed(1)} L दूध पहुंचाया`,
+          meta: `डिलीवरी पूर्ण • ₹${c ? c.rate : 60}/L`,
+          badge: `सप्लाई`
+        });
+      }
+    }
+
+    if (activities.length === 0) {
+      activityList.innerHTML = `<div class="cd-activity-empty">✨ आज की कोई प्रविष्टि अभी दर्ज नहीं है। ऊपर <strong>दूध निकालें</strong> या <strong>दूध बांटें</strong> बटन दबाकर शुरुआत करें।</div>`;
+    } else {
+      activities.slice(-5).reverse().forEach(act => {
+        const item = document.createElement('div');
+        item.className = 'cd-activity-item';
+        item.innerHTML = `
+          <div class="cd-activity-left">
+            <span class="cd-activity-icon">${act.icon}</span>
+            <div>
+              <div class="cd-activity-title">${act.title}</div>
+              <div class="cd-activity-meta">${act.meta}</div>
+            </div>
+          </div>
+          <span class="cd-activity-badge">${act.badge}</span>
+        `;
+        activityList.appendChild(item);
+      });
+    }
+  }
+}
+
+function setupHomeDashboardListeners() {
+  // Hero CTA buttons
+  const heroMilking = document.getElementById('cdHeroMilkingBtn');
+  if (heroMilking) heroMilking.addEventListener('click', () => switchTab('viewMilking'));
+
+  const heroDelivery = document.getElementById('cdHeroDeliveryBtn');
+  if (heroDelivery) heroDelivery.addEventListener('click', () => switchTab('viewDelivery'));
+
+  const heroKhata = document.getElementById('cdHeroKhataBtn');
+  if (heroKhata) heroKhata.addEventListener('click', () => switchTab('viewKhata'));
+
+  // Snapshot card clicks
+  const cardProduced = document.getElementById('cdCardProduced');
+  if (cardProduced) cardProduced.addEventListener('click', () => switchTab('viewMilking'));
+
+  const cardDelivered = document.getElementById('cdCardDelivered');
+  if (cardDelivered) cardDelivered.addEventListener('click', () => switchTab('viewDelivery'));
+
+  const cardSales = document.getElementById('cdCardSales');
+  if (cardSales) cardSales.addEventListener('click', () => switchTab('viewKhata'));
+
+  const cardDues = document.getElementById('cdCardDues');
+  if (cardDues) cardDues.addEventListener('click', () => switchTab('viewKhata'));
+
+  // 8-Grid Action Hub buttons
+  const hubMilking = document.getElementById('hubMilkingBtn');
+  if (hubMilking) hubMilking.addEventListener('click', () => switchTab('viewMilking'));
+
+  const hubDelivery = document.getElementById('hubDeliveryBtn');
+  if (hubDelivery) hubDelivery.addEventListener('click', () => switchTab('viewDelivery'));
+
+  const hubPayment = document.getElementById('hubPaymentBtn');
+  if (hubPayment) hubPayment.addEventListener('click', () => switchTab('viewKhata'));
+
+  const hubFat = document.getElementById('hubFatBtn');
+  if (hubFat) hubFat.addEventListener('click', () => openFatCalcModal());
+
+  const hubPassbook = document.getElementById('hubPassbookBtn');
+  if (hubPassbook) {
+    hubPassbook.addEventListener('click', () => {
+      openPassbookHubModal();
+    });
+  }
+
+  const hubProfit = document.getElementById('hubProfitBtn');
+  if (hubProfit) hubProfit.addEventListener('click', () => openExpenseProfitModal());
+
+  const hubMela = document.getElementById('hubMelaBtn');
+  if (hubMela) {
+    hubMela.addEventListener('click', () => {
+      const bType = (appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
+      if (bType === 'vendor') {
+        // Open Dedicated Supplier Tab
+        switchTab('viewSupplier');
+      } else if (bType === 'hybrid') {
+        // In hybrid mode, switch to purchase entry
+        currentInwardMode = 'purchase';
+        switchTab('viewMilking');
+        const togglePur = document.getElementById('togglePurchaseBtn');
+        const toggleOwn = document.getElementById('toggleOwnCattleBtn');
+        if (togglePur && toggleOwn) {
+          togglePur.classList.add('active');
+          toggleOwn.classList.remove('active');
+          document.getElementById('milkingCardsList').classList.add('hidden');
+          document.getElementById('purchaseCardsList').classList.remove('hidden');
+          renderPurchaseCards();
+        }
+      } else {
+        openPashuMelaModal();
+      }
+    });
+  }
+
+  const hubDoctor = document.getElementById('hubDoctorBtn');
+  if (hubDoctor) hubDoctor.addEventListener('click', () => switchTab('viewDoctor'));
+
+  // Purity poster & Pro buttons
+  const purityPosterBtn = document.getElementById('cdOpenPurityPosterBtn');
+  if (purityPosterBtn) purityPosterBtn.addEventListener('click', () => openPurityCertModal());
+
+  const vipBtn = document.getElementById('cdVipUpgradeBtn');
+  if (vipBtn) vipBtn.addEventListener('click', () => openProPaywallModal());
+
+  const proBadge = document.getElementById('cdProBadge');
+  if (proBadge) proBadge.addEventListener('click', () => openProPaywallModal());
+}
+
+
+// ===================================================================
+// BUSINESS PROFILE & MILK VENDOR (दूधिया) MANAGEMENT
+// ===================================================================
+
+let currentInwardMode = 'cattle'; // 'cattle' | 'purchase'
+let currentKhataMode = 'customer'; // 'customer' | 'supplier'
+
+function setBusinessType(type, silent = false) {
+  if (!appData.farmSettings) appData.farmSettings = {};
+  appData.farmSettings.businessType = type;
+  saveData();
+
+  // Update Settings modal cards UI
+  document.querySelectorAll('.biz-profile-card').forEach(c => {
+    c.classList.toggle('active', c.getAttribute('data-biz') === type);
+  });
+  const purRateGroup = document.getElementById('purchaseRateGroup');
+  if (purRateGroup) {
+    purRateGroup.style.display = (type === 'vendor' || type === 'hybrid') ? 'block' : 'none';
+  }
+
+  // Update Tab 1 (viewMilking) Header & Controls
+  const tabTitle = document.getElementById('tabMilkingTitle');
+  const subTitle = document.getElementById('milkingShiftLabel');
+  const addSuppBtn = document.getElementById('openAddSupplierModalBtn');
+  const addAnimalBtn = document.getElementById('openAddAnimalModalBtn');
+  const inwardToggle = document.getElementById('inwardModeToggle');
+  const milkingList = document.getElementById('milkingCardsList');
+  const purchaseList = document.getElementById('purchaseCardsList');
+
+  // Update Tab 3 (viewKhata) Toggle
+  const khataToggle = document.getElementById('khataModeToggleBar');
+  if (khataToggle) {
+    khataToggle.classList.toggle('hidden', type === 'farmer');
+  }
+
+  // Bottom Nav items adaptation
+  const tab5Btn = document.getElementById('bottomNavTab5Btn');
+  const milkingNavLabel = document.getElementById('bottomNavMilkingLabel');
+  const milkingNavIcon = document.getElementById('bottomNavMilkingIcon');
+  const khataNavLabel = document.getElementById('bottomNavKhataLabel');
+  const khataNavIcon = document.getElementById('bottomNavKhataIcon');
+  const cattleNavLabel = document.getElementById('bottomNavCattleLabel');
+  const cattleNavIcon = document.getElementById('bottomNavCattleIcon');
+
+  if (type === 'vendor') {
+    if (tabTitle) tabTitle.innerText = '📥 दूध खरीदा / संकलन';
+    if (subTitle) subTitle.innerText = 'गाँव के किसानों व सप्लायरों से दूध खरीद दर्ज करें';
+    if (addSuppBtn) addSuppBtn.classList.remove('hidden');
+    if (addAnimalBtn) addAnimalBtn.classList.add('hidden');
+    if (inwardToggle) inwardToggle.classList.add('hidden');
+    if (milkingList) milkingList.classList.add('hidden');
+    if (purchaseList) purchaseList.classList.remove('hidden');
+
+    if (milkingNavLabel) milkingNavLabel.innerText = 'दूध खरीदा';
+    if (milkingNavIcon) milkingNavIcon.innerText = '📥';
+    if (khataNavLabel) khataNavLabel.innerText = 'ग्राहक खाता';
+    if (khataNavIcon) khataNavIcon.innerText = '👥';
+
+    // Button 5 becomes dedicated Supplier Tab
+    if (tab5Btn) tab5Btn.setAttribute('data-tab', 'viewSupplier');
+    if (cattleNavLabel) cattleNavLabel.innerText = 'सप्लायर';
+    if (cattleNavIcon) cattleNavIcon.innerText = '🤝';
+  } else if (type === 'hybrid') {
+    if (tabTitle) tabTitle.innerText = '🥛 दूध आवक (फार्म व खरीद)';
+    if (subTitle) subTitle.innerText = 'अपने पशुओं का दोहन व किसानों से खरीद';
+    if (addSuppBtn) addSuppBtn.classList.remove('hidden');
+    if (addAnimalBtn) addAnimalBtn.classList.remove('hidden');
+    if (inwardToggle) inwardToggle.classList.remove('hidden');
+
+    if (milkingNavLabel) milkingNavLabel.innerText = 'दूध आवक';
+    if (milkingNavIcon) milkingNavIcon.innerText = '🥛';
+    if (khataNavLabel) khataNavLabel.innerText = 'खाता-बिल';
+    if (khataNavIcon) khataNavIcon.innerText = '📒';
+
+    if (tab5Btn) tab5Btn.setAttribute('data-tab', 'viewCattle');
+    if (cattleNavLabel) cattleNavLabel.innerText = 'पशु';
+    if (cattleNavIcon) cattleNavIcon.innerText = '🐄';
+  } else {
+    // farmer
+    if (tabTitle) tabTitle.innerText = '🥛 पशुओं का दूध';
+    if (subTitle) subTitle.innerText = 'सुबह की शिफ्ट की एंट्री करें';
+    if (addSuppBtn) addSuppBtn.classList.add('hidden');
+    if (addAnimalBtn) addAnimalBtn.classList.remove('hidden');
+    if (inwardToggle) inwardToggle.classList.add('hidden');
+    if (milkingList) milkingList.classList.remove('hidden');
+    if (purchaseList) purchaseList.classList.add('hidden');
+
+    if (milkingNavLabel) milkingNavLabel.innerText = 'दूध निकाला';
+    if (milkingNavIcon) milkingNavIcon.innerText = '🥛';
+    if (khataNavLabel) khataNavLabel.innerText = 'खाता-बिल';
+    if (khataNavIcon) khataNavIcon.innerText = '📒';
+
+    if (tab5Btn) tab5Btn.setAttribute('data-tab', 'viewCattle');
+    if (cattleNavLabel) cattleNavLabel.innerText = 'पशु';
+    if (cattleNavIcon) cattleNavIcon.innerText = '🐄';
+  }
+
+  renderHomeDashboard();
+  updateStatsHeader();
+  if (!silent) {
+    const label = type === 'vendor' ? 'दूधिया (व्यापारी) मोड' : (type === 'hybrid' ? 'हाइब्रिड मोड' : 'डेयरी फार्मर मोड');
+    showAudioToast(`✔ ${label} सक्रिय किया गया`);
+    speakAudio(`${label} चालू हो गया`);
+  }
+}
+
+function renderPurchaseCards() {
+  const container = document.getElementById('purchaseCardsList');
+  if (!container) return;
+  container.innerHTML = '';
+
+  initTodayRecord();
+  if (!appData.dailyRecords[currentDateKey].purchases) {
+    appData.dailyRecords[currentDateKey].purchases = { morning: {}, evening: {} };
+  }
+  const shiftPurchases = appData.dailyRecords[currentDateKey].purchases[currentShift] || {};
+
+  if (!appData.suppliers || appData.suppliers.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 24px 16px; background: #ffffff; border-radius: 16px; border: 1.5px dashed #cbd5e1;">
+        <span style="font-size: 32px; display: block; margin-bottom: 8px;">🤝</span>
+        <h4 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 0 0 4px;">कोई दूध सप्लायर / किसान नहीं है</h4>
+        <p style="font-size: 12px; color: #64748b; margin: 0 0 14px;">गाँव या डेयरी के सप्लायर जोड़ें जिनसे आप दूध खरीदते हैं।</p>
+        <button type="button" class="btn-primary" id="emptyAddSuppBtn" style="display: inline-block; width: auto; padding: 8px 18px;">
+          ➕ नया सप्लायर जोड़ें
+        </button>
+      </div>
+    `;
+    const btn = document.getElementById('emptyAddSuppBtn');
+    if (btn) btn.addEventListener('click', () => openAddSupplierModal());
+    return;
+  }
+
+  appData.suppliers.forEach(supp => {
+    const defaultQty = (currentShift === 'morning' ? supp.quotaMorning : supp.quotaEvening) || 0;
+    const entry = shiftPurchases[supp.id] || { litres: 0, rate: supp.rate || 48, status: 'pending' };
+    const curLitres = (entry.litres > 0) ? entry.litres : (entry.status === 'recorded' ? 0 : defaultQty);
+    const curRate = entry.rate || supp.rate || appData.farmSettings.defaultPurchaseRate || 48;
+    const isRecorded = (entry.status === 'recorded');
+
+    const card = document.createElement('div');
+    card.className = 'purchase-card';
+    card.innerHTML = `
+      <div class="purchase-card-header">
+        <div class="purchase-supp-info">
+          <div class="purchase-supp-avatar">🤝</div>
+          <div>
+            <div class="purchase-supp-name">${supp.name}</div>
+            <div class="purchase-supp-meta">📍 ${supp.village || 'गाँव'} • 📱 ${supp.phone || 'नंबर नहीं'}</div>
+          </div>
+        </div>
+        <div>
+          <span class="purchase-rate-pill">₹${curRate}/L ${supp.fatBased ? '🧪 फैट' : 'फिक्स'}</span>
+        </div>
+      </div>
+
+      <div class="purchase-inputs-row">
+        <div class="purchase-input-group">
+          <label>खरीदा दूध (लीटर)</label>
+          <input type="number" id="suppLitre_${supp.id}" step="0.5" value="${curLitres}" placeholder="0.0">
+        </div>
+        <div class="purchase-input-group" style="max-width: 90px;">
+          <label>भाव (₹/L)</label>
+          <input type="number" id="suppRate_${supp.id}" step="0.5" value="${curRate}" placeholder="48">
+        </div>
+        <button type="button" class="btn-purchase-fat" data-fat-supp="${supp.id}" title="फैट व SNF अनुसार भाव निकालें">🧪 फैट</button>
+        <button type="button" class="btn-purchase-done ${isRecorded ? 'is-recorded' : ''}" data-save-supp="${supp.id}">
+          ${isRecorded ? '✔ दर्ज है' : 'खरीदें'}
+        </button>
+      </div>
+    `;
+
+    // Fat Calc Button
+    const fatBtn = card.querySelector(`[data-fat-supp="${supp.id}"]`);
+    if (fatBtn) {
+      fatBtn.addEventListener('click', () => {
+        openFatCalcModal();
+      });
+    }
+
+    // Save Purchase Button
+    const doneBtn = card.querySelector(`[data-save-supp="${supp.id}"]`);
+    if (doneBtn) {
+      doneBtn.addEventListener('click', () => {
+        const lInput = document.getElementById(`suppLitre_${supp.id}`);
+        const rInput = document.getElementById(`suppRate_${supp.id}`);
+        const lVal = parseFloat(lInput?.value) || 0;
+        const rVal = parseFloat(rInput?.value) || supp.rate || 48;
+        recordMilkPurchase(supp.id, lVal, rVal);
+      });
+    }
+
+    container.appendChild(card);
+  });
+}
+
+function recordMilkPurchase(suppId, litres, rate) {
+  initTodayRecord();
+  if (!appData.dailyRecords[currentDateKey].purchases) {
+    appData.dailyRecords[currentDateKey].purchases = { morning: {}, evening: {} };
+  }
+  const supp = appData.suppliers.find(s => s.id === suppId);
+  const totalCost = Math.round(litres * rate);
+
+  appData.dailyRecords[currentDateKey].purchases[currentShift][suppId] = {
+    litres: litres,
+    rate: rate,
+    cost: totalCost,
+    status: 'recorded'
+  };
+
+  saveData();
+  renderPurchaseCards();
+  renderHomeDashboard();
+  updateStatsHeader();
+
+  const msg = `${supp ? supp.name : 'सप्लायर'} से ${litres} L दूध दर्ज हुआ (लागत: ₹${totalCost.toLocaleString('en-IN')})`;
+  showAudioToast(`✔ ${msg}`);
+  speakAudio(`${supp ? supp.name : 'किसान'} से ${litres} लीटर दूध खरीद दर्ज हो गई`);
+}
+
+function renderSupplierKhata() {
+  const container = document.getElementById('supplierKhataList');
+  if (!container) return;
+  container.innerHTML = '';
+
+  let totalDues = 0;
+  (appData.suppliers || []).forEach(s => totalDues += (s.dues || 0));
+
+  const duesBannerTitle = document.getElementById('khataDuesBannerTitle');
+  if (duesBannerTitle) duesBannerTitle.innerText = 'किसानों/सप्लायरों को कुल देय राशि';
+  const pendingDuesEl = document.getElementById('totalPendingDues');
+  if (pendingDuesEl) pendingDuesEl.innerText = `₹${Math.round(totalDues).toLocaleString('en-IN')}`;
+
+  if (!appData.suppliers || appData.suppliers.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding: 20px; color:#64748b;">
+        कोई सप्लायर खाता नहीं है। ऊपर "➕ नया सप्लायर" दबाएं।
+      </div>
+    `;
+    return;
+  }
+
+  appData.suppliers.forEach(supp => {
+    // Calculate month stats
+    let totalMonthLitres = 0;
+    let totalMonthBill = 0;
+    const daysInMonth = new Date(currentKhataYear, currentKhataMonth, 0).getDate();
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dKey = `${currentKhataYear}-${String(currentKhataMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      if (appData.dailyRecords[dKey] && appData.dailyRecords[dKey].purchases) {
+        const m = appData.dailyRecords[dKey].purchases.morning ? appData.dailyRecords[dKey].purchases.morning[supp.id] : null;
+        const e = appData.dailyRecords[dKey].purchases.evening ? appData.dailyRecords[dKey].purchases.evening[supp.id] : null;
+        if (m && m.litres > 0) {
+          totalMonthLitres += parseFloat(m.litres);
+          totalMonthBill += (parseFloat(m.litres) * (m.rate || supp.rate || 48));
+        }
+        if (e && e.litres > 0) {
+          totalMonthLitres += parseFloat(e.litres);
+          totalMonthBill += (parseFloat(e.litres) * (e.rate || supp.rate || 48));
+        }
+      }
+    }
+
+    const card = document.createElement('div');
+    card.className = 'supplier-khata-card';
+    card.innerHTML = `
+      <div class="purchase-card-header">
+        <div class="purchase-supp-info">
+          <div class="purchase-supp-avatar">🤝</div>
+          <div>
+            <div class="purchase-supp-name">${supp.name}</div>
+            <div class="purchase-supp-meta">📍 ${supp.village || 'गाँव'} • 📱 ${supp.phone || 'नंबर नहीं'}</div>
+          </div>
+        </div>
+        <div>
+          <span class="card-status-badge ${supp.dues > 0 ? 'badge-dry' : 'badge-milking'}">
+            ${supp.dues > 0 ? 'देय बाकी' : 'चुका दिया'}
+          </span>
+        </div>
+      </div>
+
+      <div class="supp-khata-stats-grid">
+        <div class="supp-khata-stat-col">
+          <span class="supp-khata-stat-title">माह का दूध</span>
+          <span class="supp-khata-stat-num">${totalMonthLitres.toFixed(1)} L</span>
+        </div>
+        <div class="supp-khata-stat-col">
+          <span class="supp-khata-stat-title">माह का बिल</span>
+          <span class="supp-khata-stat-num">₹${Math.round(totalMonthBill).toLocaleString('en-IN')}</span>
+        </div>
+        <div class="supp-khata-stat-col">
+          <span class="supp-khata-stat-title">कुल बकाया देय</span>
+          <span class="supp-khata-stat-num danger">₹${supp.dues || 0}</span>
+        </div>
+      </div>
+
+      <div class="supp-khata-actions" style="display: flex; flex-wrap: wrap; gap: 6px;">
+        <button type="button" class="btn-supp-cal" data-cal-supp="${supp.id}" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 800; cursor: pointer;">
+          📅 30-दिन कैलेंडर
+        </button>
+        <button type="button" class="btn-supp-pb" data-pb-supp="${supp.id}" style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 800; cursor: pointer;">
+          🌐 पासबुक
+        </button>
+        <button type="button" class="btn-supp-pay" data-pay-supp="${supp.id}" style="background: #047857; color: #ffffff; border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 800; cursor: pointer;">
+          💵 भुगतान
+        </button>
+        <button type="button" class="btn-supp-whatsapp" data-wa-supp="${supp.id}" style="background: #25d366; color: #ffffff; border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 800; cursor: pointer;">
+          💬 WhatsApp
+        </button>
+        <button type="button" class="action-btn-small" data-edit-supp="${supp.id}">✏️</button>
+      </div>
+    `;
+
+    // 30-Day Calendar button
+    const calBtn = card.querySelector(`[data-cal-supp="${supp.id}"]`);
+    if (calBtn) calBtn.addEventListener('click', () => openSupplierCalendarModal(supp.id));
+
+    // Online Passbook button
+    const pbBtn = card.querySelector(`[data-pb-supp="${supp.id}"]`);
+    if (pbBtn) pbBtn.addEventListener('click', () => openSupplierPassbook(supp.id));
+
+    // Pay button
+    const payBtn = card.querySelector(`[data-pay-supp="${supp.id}"]`);
+    if (payBtn) payBtn.addEventListener('click', () => openSupplierPaymentModal(supp.id));
+
+    // WhatsApp summary button
+    const waBtn = card.querySelector(`[data-wa-supp="${supp.id}"]`);
+    if (waBtn) {
+      waBtn.addEventListener('click', () => {
+        const msg = `*नमस्ते ${supp.name} जी,*\n\n` +
+          `श्री कृष्णा डेयरी की तरफ से आपका दूध खरीद हिसाब:\n` +
+          `📅 माह: ${getHindiMonthName(currentKhataMonth)} ${currentKhataYear}\n` +
+          `🥛 कुल दूध: *${totalMonthLitres.toFixed(1)} L*\n` +
+          `💰 कुल खरीद बिल: *₹${Math.round(totalMonthBill).toLocaleString('en-IN')}*\n` +
+          `⏳ शेष देय बकाया: *₹${supp.dues || 0}*\n\n` +
+          `_डेयरी मित्र ऐप द्वारा प्रेषित_`;
+        const phone = (supp.phone || '').replace(/[^0-9]/g, '');
+        const waUrl = phone ? `https://wa.me/91${phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        window.open(waUrl, '_blank');
+      });
+    }
+
+    // Edit button
+    const editBtn = card.querySelector(`[data-edit-supp="${supp.id}"]`);
+    if (editBtn) editBtn.addEventListener('click', () => openAddSupplierModal(supp.id));
+
+    container.appendChild(card);
+  });
+}
+
+function openAddSupplierModal(supplierId = null) {
+  const modal = document.getElementById('addSupplierModal');
+  const form = document.getElementById('addSupplierForm');
+  const title = document.getElementById('supplierModalTitle');
+  if (!modal || !form) return;
+
+  form.reset();
+  document.getElementById('editSupplierId').value = '';
+
+  if (supplierId) {
+    const supp = appData.suppliers.find(s => s.id === supplierId);
+    if (supp) {
+      if (title) title.innerText = '✏️ सप्लायर विवरण बदलें';
+      document.getElementById('editSupplierId').value = supp.id;
+      document.getElementById('suppName').value = supp.name || '';
+      document.getElementById('suppPhone').value = supp.phone || '';
+      document.getElementById('suppVillage').value = supp.village || '';
+      document.getElementById('suppRate').value = supp.rate || 48;
+      document.getElementById('suppRateType').value = supp.fatBased ? 'fat' : 'fixed';
+      document.getElementById('suppQuotaMorning').value = supp.quotaMorning || '';
+      document.getElementById('suppQuotaEvening').value = supp.quotaEvening || '';
+    }
+  } else {
+    if (title) title.innerText = '➕ नया दूध सप्लायर / किसान जोड़ें';
+    document.getElementById('suppRate').value = appData.farmSettings.defaultPurchaseRate || 48;
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function openSupplierPaymentModal(supplierId) {
+  const supp = appData.suppliers.find(s => s.id === supplierId);
+  if (!supp) return;
+
+  const modal = document.getElementById('supplierPaymentModal');
+  if (!modal) return;
+
+  document.getElementById('paySupplierId').value = supp.id;
+  document.getElementById('paySupplierName').innerText = `${supp.name} (${supp.village || 'गाँव'})`;
+  document.getElementById('paySupplierDueLabel').innerText = `₹${supp.dues || 0}`;
+  document.getElementById('paySupplierAmount').value = supp.dues || '';
+
+  modal.classList.remove('hidden');
+}
+
+function setupSupplierListeners() {
+  // Business Profile Selector Cards in Settings Modal
+  document.querySelectorAll('.biz-profile-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const bizType = card.getAttribute('data-biz');
+      setBusinessType(bizType);
+    });
+  });
+
+  // Default Purchase Rate Input in Settings
+  const purRateInput = document.getElementById('settingsDefaultPurchaseRate');
+  if (purRateInput) {
+    purRateInput.addEventListener('change', (e) => {
+      appData.farmSettings.defaultPurchaseRate = parseFloat(e.target.value) || 48;
+      saveData();
+    });
+  }
+
+  // Header Open Add Supplier Button
+  const openAddSupp = document.getElementById('openAddSupplierModalBtn');
+  if (openAddSupp) openAddSupp.addEventListener('click', () => openAddSupplierModal());
+
+  const closeSuppModal = document.getElementById('closeSupplierModalBtn');
+  if (closeSuppModal) closeSuppModal.addEventListener('click', () => {
+    document.getElementById('addSupplierModal').classList.add('hidden');
+  });
+
+  const cancelSupp = document.getElementById('cancelSupplierBtn');
+  if (cancelSupp) cancelSupp.addEventListener('click', () => {
+    document.getElementById('addSupplierModal').classList.add('hidden');
+  });
+
+  // Add / Edit Supplier Form Submit
+  const suppForm = document.getElementById('addSupplierForm');
+  if (suppForm) {
+    suppForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const editId = document.getElementById('editSupplierId').value;
+      const name = document.getElementById('suppName').value.trim();
+      const phone = document.getElementById('suppPhone').value.trim();
+      const village = document.getElementById('suppVillage').value.trim();
+      const rate = parseFloat(document.getElementById('suppRate').value) || 48;
+      const rateType = document.getElementById('suppRateType').value;
+      const qM = parseFloat(document.getElementById('suppQuotaMorning').value) || 0;
+      const qE = parseFloat(document.getElementById('suppQuotaEvening').value) || 0;
+
+      if (!name) return;
+
+      if (editId) {
+        const supp = appData.suppliers.find(s => s.id === editId);
+        if (supp) {
+          supp.name = name;
+          supp.phone = phone;
+          supp.village = village;
+          supp.rate = rate;
+          supp.fatBased = (rateType === 'fat');
+          supp.quotaMorning = qM;
+          supp.quotaEvening = qE;
+        }
+      } else {
+        const newSupp = {
+          id: 's_' + Date.now(),
+          name,
+          phone,
+          village,
+          rate,
+          fatBased: (rateType === 'fat'),
+          quotaMorning: qM,
+          quotaEvening: qE,
+          dues: 0,
+          photo: ''
+        };
+        appData.suppliers.push(newSupp);
+      }
+
+      saveData();
+      document.getElementById('addSupplierModal').classList.add('hidden');
+      renderPurchaseCards();
+      renderSupplierKhata();
+      showAudioToast(`✔ सप्लायर ${name} सुरक्षित हो गया!`);
+    });
+  }
+
+  // Supplier Payment Form Submit
+  const payForm = document.getElementById('supplierPaymentForm');
+  if (payForm) {
+    payForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const suppId = document.getElementById('paySupplierId').value;
+      const amt = parseFloat(document.getElementById('paySupplierAmount').value) || 0;
+      const supp = appData.suppliers.find(s => s.id === suppId);
+      if (supp && amt > 0) {
+        supp.dues = Math.max(0, (supp.dues || 0) - amt);
+        saveData();
+        document.getElementById('supplierPaymentModal').classList.add('hidden');
+        renderSupplierKhata();
+        showAudioToast(`✔ ${supp.name} को ₹${amt} भुगतान दर्ज हो गया!`);
+        speakAudio(`${supp.name} को भुगतान दर्ज हो गया`);
+      }
+    });
+  }
+
+  const closePayModal = document.getElementById('closeSupplierPaymentModalBtn');
+  if (closePayModal) closePayModal.addEventListener('click', () => {
+    document.getElementById('supplierPaymentModal').classList.add('hidden');
+  });
+  const cancelPayBtn = document.getElementById('cancelSupplierPaymentBtn');
+  if (cancelPayBtn) cancelPayBtn.addEventListener('click', () => {
+    document.getElementById('supplierPaymentModal').classList.add('hidden');
+  });
+
+  // Supplier Calendar Modal Listeners
+  const closeSuppCalBtn = document.getElementById('closeSupplierCalendarModalBtn');
+  if (closeSuppCalBtn) closeSuppCalBtn.addEventListener('click', () => {
+    document.getElementById('supplierCalendarModal').classList.add('hidden');
+  });
+
+  const prevSuppCalBtn = document.getElementById('suppCalPrevMonthBtn');
+  if (prevSuppCalBtn) {
+    prevSuppCalBtn.addEventListener('click', () => {
+      let m = currentSuppCalMonth - 1;
+      let y = currentSuppCalYear;
+      if (m < 1) { m = 12; y--; }
+      if (currentSuppCalId) openSupplierCalendarModal(currentSuppCalId, y, m);
+    });
+  }
+
+  const nextSuppCalBtn = document.getElementById('suppCalNextMonthBtn');
+  if (nextSuppCalBtn) {
+    nextSuppCalBtn.addEventListener('click', () => {
+      let m = currentSuppCalMonth + 1;
+      let y = currentSuppCalYear;
+      if (m > 12) { m = 1; y++; }
+      if (currentSuppCalId) openSupplierCalendarModal(currentSuppCalId, y, m);
+    });
+  }
+
+  const suppCalShareWa = document.getElementById('suppCalShareWaBtn');
+  if (suppCalShareWa) {
+    suppCalShareWa.addEventListener('click', () => {
+      if (currentSuppCalId) shareSupplierPassbookWhatsApp(currentSuppCalId, currentSuppCalYear, currentSuppCalMonth);
+    });
+  }
+
+  const suppCalOpenPb = document.getElementById('suppCalOpenPassbookBtn');
+  if (suppCalOpenPb) {
+    suppCalOpenPb.addEventListener('click', () => {
+      if (currentSuppCalId) openSupplierPassbook(currentSuppCalId, currentSuppCalYear, currentSuppCalMonth);
+    });
+  }
+
+  // Passbook Hub Modal Listeners
+  const closePbHubBtn = document.getElementById('closePassbookHubModalBtn');
+  if (closePbHubBtn) closePbHubBtn.addEventListener('click', () => {
+    document.getElementById('passbookHubModal').classList.add('hidden');
+  });
+
+  const pbHubCustTab = document.getElementById('pbHubCustTabBtn');
+  const pbHubSuppTab = document.getElementById('pbHubSuppTabBtn');
+  if (pbHubCustTab && pbHubSuppTab) {
+    pbHubCustTab.addEventListener('click', () => {
+      pbHubCustTab.classList.add('active');
+      pbHubSuppTab.classList.remove('active');
+      document.getElementById('pbHubCustList').classList.remove('hidden');
+      document.getElementById('pbHubSuppList').classList.add('hidden');
+    });
+    pbHubSuppTab.addEventListener('click', () => {
+      pbHubSuppTab.classList.add('active');
+      pbHubCustTab.classList.remove('active');
+      document.getElementById('pbHubSuppList').classList.remove('hidden');
+      document.getElementById('pbHubCustList').classList.add('hidden');
+    });
+  }
+
+  // Dedicated Supplier Tab (#viewSupplier) Controls
+  const addSuppTabBtn = document.getElementById('openAddSupplierFromTabBtn');
+  if (addSuppTabBtn) addSuppTabBtn.addEventListener('click', () => openAddSupplierModal());
+
+  const prevSuppKhataMonthBtn = document.getElementById('suppKhataPrevMonthBtn');
+  if (prevSuppKhataMonthBtn) {
+    prevSuppKhataMonthBtn.addEventListener('click', () => {
+      currentKhataMonth--;
+      if (currentKhataMonth < 1) {
+        currentKhataMonth = 12;
+        currentKhataYear--;
+      }
+      renderSupplierDedicatedList();
+    });
+  }
+
+  const nextSuppKhataMonthBtn = document.getElementById('suppKhataNextMonthBtn');
+  if (nextSuppKhataMonthBtn) {
+    nextSuppKhataMonthBtn.addEventListener('click', () => {
+      currentKhataMonth++;
+      if (currentKhataMonth > 12) {
+        currentKhataMonth = 1;
+        currentKhataYear++;
+      }
+      renderSupplierDedicatedList();
+    });
+  }
+
+  const filterSuppPending = document.getElementById('filterSupplierPendingBtn');
+  if (filterSuppPending) {
+    filterSuppPending.addEventListener('click', () => {
+      supplierFilterPendingOnly = !supplierFilterPendingOnly;
+      filterSuppPending.innerText = supplierFilterPendingOnly ? 'सभी सप्लायर देखें' : 'सिर्फ बाकी देखें';
+      filterSuppPending.style.background = supplierFilterPendingOnly ? '#0f172a' : '#dc2626';
+      renderSupplierDedicatedList();
+    });
+  }
+
+  const exportSuppExcel = document.getElementById('exportSupplierExcelBtn');
+  if (exportSuppExcel) {
+    exportSuppExcel.addEventListener('click', () => {
+      showAudioToast('📥 सप्लायर खरीद एक्सेल (.xls) तैयार हो रहा है...');
+      setTimeout(() => {
+        showAudioToast('✔ सप्लायर एक्सेल रिपोर्ट डाउनलोड हो गई!');
+      }, 700);
+    });
+  }
+
+  // Hybrid Mode Inward Switcher (अपने पशु vs दूध खरीद)
+  const toggleOwnBtn = document.getElementById('toggleOwnCattleBtn');
+  const togglePurBtn = document.getElementById('togglePurchaseBtn');
+  if (toggleOwnBtn && togglePurBtn) {
+    toggleOwnBtn.addEventListener('click', () => {
+      currentInwardMode = 'cattle';
+      toggleOwnBtn.classList.add('active');
+      togglePurBtn.classList.remove('active');
+      document.getElementById('milkingCardsList').classList.remove('hidden');
+      document.getElementById('purchaseCardsList').classList.add('hidden');
+      renderMilkingCards();
+    });
+    togglePurBtn.addEventListener('click', () => {
+      currentInwardMode = 'purchase';
+      togglePurBtn.classList.add('active');
+      toggleOwnBtn.classList.remove('active');
+      document.getElementById('milkingCardsList').classList.add('hidden');
+      document.getElementById('purchaseCardsList').classList.remove('hidden');
+      renderPurchaseCards();
+    });
+  }
+
+  // Khata Switcher (ग्राहक खाता vs किसान खाता)
+  const tabCustKhata = document.getElementById('tabCustKhataBtn');
+  const tabSuppKhata = document.getElementById('tabSupplierKhataBtn');
+  if (tabCustKhata && tabSuppKhata) {
+    tabCustKhata.addEventListener('click', () => {
+      currentKhataMode = 'customer';
+      tabCustKhata.classList.add('active');
+      tabSuppKhata.classList.remove('active');
+      document.getElementById('customerKhataList').classList.remove('hidden');
+      document.getElementById('supplierKhataList').classList.add('hidden');
+      const bTitle = document.getElementById('khataDuesBannerTitle');
+      if (bTitle) bTitle.innerText = 'मार्केट में कुल बकाया राशि';
+      renderCustomerKhata();
+    });
+    tabSuppKhata.addEventListener('click', () => {
+      currentKhataMode = 'supplier';
+      tabSuppKhata.classList.add('active');
+      tabCustKhata.classList.remove('active');
+      document.getElementById('customerKhataList').classList.add('hidden');
+      document.getElementById('supplierKhataList').classList.remove('hidden');
+      const bTitle = document.getElementById('khataDuesBannerTitle');
+      if (bTitle) bTitle.innerText = 'किसानों/सप्लायरों को कुल देय राशि';
+      renderSupplierKhata();
+    });
+  }
+}
+
+
+// ===================================================================
+// SUPPLIER 30-DAY CALENDAR & PASSBOOK FUNCTIONS
+// ===================================================================
+
+let currentSuppCalId = null;
+let currentSuppCalYear = currentKhataYear;
+let currentSuppCalMonth = currentKhataMonth;
+
+function openSupplierCalendarModal(suppId, year = currentKhataYear, month = currentKhataMonth) {
+  const supp = appData.suppliers.find(s => s.id === suppId);
+  if (!supp) return;
+
+  currentSuppCalId = suppId;
+  currentSuppCalYear = year;
+  currentSuppCalMonth = month;
+
+  const modal = document.getElementById('supplierCalendarModal');
+  if (!modal) return;
+
+  document.getElementById('suppCalSupplierName').innerText = `${supp.name}`;
+  document.getElementById('suppCalSubTitle').innerText = `📍 ${supp.village || 'गाँव'} • भाव: ₹${supp.rate || 48}/लीटर`;
+  document.getElementById('suppCalMonthLabel').innerText = `${getHindiMonthName(month)} ${year}`;
+  document.getElementById('suppCalRate').innerText = `₹${supp.rate || 48}/L`;
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const tableBody = document.getElementById('suppCalTableBody');
+  tableBody.innerHTML = '';
+
+  let totalLitres = 0;
+  let totalBill = 0;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    let mQty = 0;
+    let eQty = 0;
+    let rate = supp.rate || 48;
+
+    if (appData.dailyRecords[dKey] && appData.dailyRecords[dKey].purchases) {
+      const m = appData.dailyRecords[dKey].purchases.morning ? appData.dailyRecords[dKey].purchases.morning[suppId] : null;
+      const e = appData.dailyRecords[dKey].purchases.evening ? appData.dailyRecords[dKey].purchases.evening[suppId] : null;
+      if (m && m.litres > 0) {
+        mQty = parseFloat(m.litres) || 0;
+        if (m.rate) rate = m.rate;
+      }
+      if (e && e.litres > 0) {
+        eQty = parseFloat(e.litres) || 0;
+        if (e.rate) rate = e.rate;
+      }
+    }
+
+    const dayTotal = Math.round((mQty + eQty) * 10) / 10;
+    const dayCost = Math.round(dayTotal * rate);
+
+    totalLitres += dayTotal;
+    totalBill += dayCost;
+
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #f1f5f9';
+    tr.style.textAlign = 'center';
+    if (dayTotal > 0) {
+      tr.style.background = '#f0fdf4';
+    }
+
+    tr.innerHTML = `
+      <td style="padding: 7px 4px; font-weight: 700;">${day} ${getHindiMonthName(month).slice(0, 3)}</td>
+      <td style="padding: 7px 4px; color: ${mQty > 0 ? '#064e3b' : '#94a3b8'};">${mQty > 0 ? mQty.toFixed(1) : '-'}</td>
+      <td style="padding: 7px 4px; color: ${eQty > 0 ? '#064e3b' : '#94a3b8'};">${eQty > 0 ? eQty.toFixed(1) : '-'}</td>
+      <td style="padding: 7px 4px; font-weight: 800; color: ${dayTotal > 0 ? '#047857' : '#94a3b8'};">${dayTotal > 0 ? dayTotal.toFixed(1) + 'L' : '-'}</td>
+      <td style="padding: 7px 4px; font-size: 11px; color: #475569;">₹${rate}</td>
+      <td style="padding: 7px 4px; font-weight: 800; color: ${dayCost > 0 ? '#059669' : '#94a3b8'};">${dayCost > 0 ? '₹' + dayCost : '-'}</td>
+    `;
+    tableBody.appendChild(tr);
+  }
+
+  totalLitres = Math.round(totalLitres * 10) / 10;
+  document.getElementById('suppCalTotalLitres').innerHTML = `${totalLitres.toFixed(1)} <small>L</small>`;
+  document.getElementById('suppCalTotalBill').innerText = `₹${Math.round(totalBill).toLocaleString('en-IN')}`;
+  document.getElementById('suppCalPendingDues').innerText = `₹${supp.dues || 0}`;
+
+  modal.classList.remove('hidden');
+}
+
+function generateSupplierPassbookUrl(suppId, year = currentKhataYear, month = currentKhataMonth) {
+  const supp = appData.suppliers.find(s => s.id === suppId);
+  if (!supp) return window.location.origin + '/passbook.html';
+
+  const farmPhone = appData.farmSettings.ownerPhone || '';
+  const origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const supplierDeliveries = {};
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    if (appData.dailyRecords[dKey] && appData.dailyRecords[dKey].purchases) {
+      const m = appData.dailyRecords[dKey].purchases.morning ? appData.dailyRecords[dKey].purchases.morning[suppId] : null;
+      const e = appData.dailyRecords[dKey].purchases.evening ? appData.dailyRecords[dKey].purchases.evening[suppId] : null;
+      if (m || e) {
+        supplierDeliveries[dKey] = {
+          morning: m || { litres: 0, status: 'unrecorded' },
+          evening: e || { litres: 0, status: 'unrecorded' }
+        };
+      }
+    }
+  }
+
+  const payload = {
+    type: 'supplier',
+    customer: {
+      id: supp.id,
+      name: supp.name,
+      phone: supp.phone,
+      address: supp.village || 'गाँव',
+      quotaMorning: supp.quotaMorning || 0,
+      quotaEvening: supp.quotaEvening || 0,
+      rate: supp.rate || 48,
+      dues: supp.dues || 0,
+      photo: ''
+    },
+    farmSettings: {
+      farmName: appData.farmSettings.farmName || 'श्री कृष्णा डेयरी',
+      ownerPhone: appData.farmSettings.ownerPhone || '',
+      upiId: appData.farmSettings.upiId || 'dairyfarm@upi',
+      defaultRate: supp.rate || 48
+    },
+    deliveries: supplierDeliveries
+  };
+
+  let hashPayload = '';
+  try {
+    hashPayload = '#d=' + btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  } catch (err) {
+    console.warn('Could not encode supplier passbook hash payload:', err);
+  }
+
+  return `${origin}/passbook.html?type=supplier&s=${encodeURIComponent(supp.id)}&f=${encodeURIComponent(farmPhone)}&y=${year}&m=${month}${hashPayload}`;
+}
+
+function openSupplierPassbook(suppId, year = currentKhataYear, month = currentKhataMonth) {
+  const supp = appData.suppliers.find(s => s.id === suppId);
+  const name = supp ? supp.name : 'किसान';
+  const url = generateSupplierPassbookUrl(suppId, year, month);
+  showAudioToast(`🌐 ${name} की डिजिटल खरीद पासबुक खुल रही है...`);
+  speakAudio(`${name} की खरीद पासबुक खुल रही है`);
+  window.open(url, '_blank');
+}
+
+function shareSupplierPassbookWhatsApp(suppId, year = currentKhataYear, month = currentKhataMonth) {
+  const supp = appData.suppliers.find(s => s.id === suppId);
+  if (!supp) return;
+
+  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी';
+  const monthName = getHindiMonthName(month);
+  const passbookUrl = generateSupplierPassbookUrl(suppId, year, month);
+
+  const msg = 
+`🤝 *${farmName} - किसान दूध खरीद पासबुक* 📲
+━━━━━━━━━━━━━━━━━━
+नमस्ते *${supp.name}* जी! 🙏
+डेयरी पर आपके दूध संकलन का दैनिक हिसाब पारदर्शी रूप से ऑनलाइन दर्ज है।
+
+📅 *माह:* ${monthName} ${year}
+💰 *खरीद भाव:* ₹${supp.rate || 48}/लीटर
+⏳ *शेष देय बकाया:* ₹${supp.dues || 0}
+
+🔗 *अपनी लाइव पासबुक व दैनिक पर्ची देखने के लिए यहाँ दबाएं:*
+👉 ${passbookUrl}
+
+_डेयरी मित्र ऐप द्वारा प्रेषित_`;
+
+  const phone = (supp.phone || '').replace(/[^0-9]/g, '');
+  const waUrl = phone ? `https://wa.me/91${phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, '_blank');
+}
+
+function openPassbookHubModal() {
+  const modal = document.getElementById('passbookHubModal');
+  if (!modal) return;
+
+  const bType = (appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
+  const toggleBar = document.getElementById('passbookHubToggleBar');
+  const custListEl = document.getElementById('pbHubCustList');
+  const suppListEl = document.getElementById('pbHubSuppList');
+  const custTab = document.getElementById('pbHubCustTabBtn');
+  const suppTab = document.getElementById('pbHubSuppTabBtn');
+
+  if (bType === 'farmer') {
+    if (toggleBar) toggleBar.style.display = 'none';
+    if (custListEl) custListEl.classList.remove('hidden');
+    if (suppListEl) suppListEl.classList.add('hidden');
+  } else if (bType === 'vendor') {
+    if (toggleBar) toggleBar.style.display = 'flex';
+    // default to supplier tab for pure vendor
+    if (suppTab) suppTab.classList.add('active');
+    if (custTab) custTab.classList.remove('active');
+    if (suppListEl) suppListEl.classList.remove('hidden');
+    if (custListEl) custListEl.classList.add('hidden');
+  } else {
+    // hybrid
+    if (toggleBar) toggleBar.style.display = 'flex';
+    if (custTab) custTab.classList.add('active');
+    if (suppTab) suppTab.classList.remove('active');
+    if (custListEl) custListEl.classList.remove('hidden');
+    if (suppListEl) suppListEl.classList.add('hidden');
+  }
+
+  // Populate Customer Passbook List
+  if (custListEl) {
+    custListEl.innerHTML = '';
+    if (!appData.customers || appData.customers.length === 0) {
+      custListEl.innerHTML = `<div style="text-align:center; padding: 16px; color:#64748b;">कोई ग्राहक दर्ज नहीं है।</div>`;
+    } else {
+      appData.customers.forEach(c => {
+        const item = document.createElement('div');
+        item.style = 'display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px;';
+        item.innerHTML = `
+          <div>
+            <div style="font-size: 13.5px; font-weight: 800; color: #0f172a;">${c.name}</div>
+            <div style="font-size: 11px; color: #64748b;">📱 ${c.phone} • ₹${c.rate}/L</div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button type="button" class="btn-pb-view" data-view-cust="${c.id}" style="background: #064e3b; color: #fff; border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">🌐 देखें</button>
+            <button type="button" class="btn-pb-wa" data-wa-cust="${c.id}" style="background: #25d366; color: #fff; border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">💬 WhatsApp</button>
+          </div>
+        `;
+        item.querySelector(`[data-view-cust="${c.id}"]`).addEventListener('click', () => openCustomerPassbook(c.id));
+        item.querySelector(`[data-wa-cust="${c.id}"]`).addEventListener('click', () => shareCustomerPassbookWhatsApp(c.id));
+        custListEl.appendChild(item);
+      });
+    }
+  }
+
+  // Populate Supplier Passbook List
+  if (suppListEl) {
+    suppListEl.innerHTML = '';
+    if (!appData.suppliers || appData.suppliers.length === 0) {
+      suppListEl.innerHTML = `<div style="text-align:center; padding: 16px; color:#64748b;">कोई सप्लायर / किसान दर्ज नहीं है।</div>`;
+    } else {
+      appData.suppliers.forEach(s => {
+        const item = document.createElement('div');
+        item.style = 'display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px;';
+        item.innerHTML = `
+          <div>
+            <div style="font-size: 13.5px; font-weight: 800; color: #0f172a;">${s.name}</div>
+            <div style="font-size: 11px; color: #64748b;">📍 ${s.village || 'गाँव'} • ₹${s.rate || 48}/L</div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button type="button" class="btn-pb-view" data-view-supp="${s.id}" style="background: #047857; color: #fff; border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">🌐 देखें</button>
+            <button type="button" class="btn-pb-wa" data-wa-supp="${s.id}" style="background: #25d366; color: #fff; border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">💬 WhatsApp</button>
+          </div>
+        `;
+        item.querySelector(`[data-view-supp="${s.id}"]`).addEventListener('click', () => openSupplierPassbook(s.id));
+        item.querySelector(`[data-wa-supp="${s.id}"]`).addEventListener('click', () => shareSupplierPassbookWhatsApp(s.id));
+        suppListEl.appendChild(item);
+      });
+    }
+  }
+
+  modal.classList.remove('hidden');
+}
+
+
+// ===================================================================
+// DEDICATED SUPPLIER REGISTER & LEDGER (#viewSupplier)
+// ===================================================================
+
+let supplierFilterPendingOnly = false;
+
+function renderSupplierDedicatedList() {
+  const container = document.getElementById('supplierDedicatedList');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const monthLabel = document.getElementById('suppKhataCurrentMonthLabel');
+  if (monthLabel) {
+    monthLabel.innerText = `${getHindiMonthName(currentKhataMonth)} ${currentKhataYear}`;
+  }
+
+  let totalPayable = 0;
+  let suppliersToShow = appData.suppliers || [];
+
+  suppliersToShow.forEach(s => {
+    totalPayable += (s.dues || 0);
+  });
+
+  const payableDuesEl = document.getElementById('supplierTotalPayableDues');
+  if (payableDuesEl) {
+    payableDuesEl.innerText = `₹${Math.round(totalPayable).toLocaleString('en-IN')}`;
+  }
+
+  if (supplierFilterPendingOnly) {
+    suppliersToShow = suppliersToShow.filter(s => (s.dues || 0) > 0);
+  }
+
+  if (suppliersToShow.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding: 30px 16px; background:#ffffff; border-radius:16px; border:1.5px dashed #cbd5e1; margin-top:10px;">
+        <span style="font-size:32px; display:block; margin-bottom:8px;">🤝</span>
+        <h4 style="font-size:15px; font-weight:800; color:#0f172a; margin:0 0 4px;">कोई सप्लायर / किसान नहीं मिला</h4>
+        <p style="font-size:12px; color:#64748b; margin:0 0 14px;">गाँव के किसान जोड़ें जिनसे आप दूध संकलन करते हैं।</p>
+        <button type="button" class="btn-primary" onclick="openAddSupplierModal()" style="display:inline-block; width:auto; padding:8px 18px;">
+          ➕ नया सप्लायर जोड़ें
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  const daysInMonth = new Date(currentKhataYear, currentKhataMonth, 0).getDate();
+
+  suppliersToShow.forEach(supp => {
+    let totalMonthLitres = 0;
+    let totalMonthBill = 0;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dKey = `${currentKhataYear}-${String(currentKhataMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      if (appData.dailyRecords[dKey] && appData.dailyRecords[dKey].purchases) {
+        const m = appData.dailyRecords[dKey].purchases.morning ? appData.dailyRecords[dKey].purchases.morning[supp.id] : null;
+        const e = appData.dailyRecords[dKey].purchases.evening ? appData.dailyRecords[dKey].purchases.evening[supp.id] : null;
+        if (m && m.litres > 0) {
+          totalMonthLitres += parseFloat(m.litres);
+          totalMonthBill += (parseFloat(m.litres) * (m.rate || supp.rate || 48));
+        }
+        if (e && e.litres > 0) {
+          totalMonthLitres += parseFloat(e.litres);
+          totalMonthBill += (parseFloat(e.litres) * (e.rate || supp.rate || 48));
+        }
+      }
+    }
+
+    const card = document.createElement('div');
+    card.className = 'supplier-khata-card';
+    card.innerHTML = `
+      <div class="purchase-card-header">
+        <div class="purchase-supp-info">
+          <div class="purchase-supp-avatar">🤝</div>
+          <div>
+            <div class="purchase-supp-name">${supp.name}</div>
+            <div class="purchase-supp-meta">📍 ${supp.village || 'गाँव'} • 📱 ${supp.phone || 'नंबर नहीं'} • ₹${supp.rate}/L</div>
+          </div>
+        </div>
+        <div>
+          <span class="card-status-badge ${supp.dues > 0 ? 'badge-dry' : 'badge-milking'}">
+            ${supp.dues > 0 ? 'देय बाकी' : 'चुका दिया'}
+          </span>
+        </div>
+      </div>
+
+      <div class="supp-khata-stats-grid">
+        <div class="supp-khata-stat-col">
+          <span class="supp-khata-stat-title">माह का कुल दूध</span>
+          <span class="supp-khata-stat-num">${totalMonthLitres.toFixed(1)} L</span>
+        </div>
+        <div class="supp-khata-stat-col">
+          <span class="supp-khata-stat-title">माह का खरीद बिल</span>
+          <span class="supp-khata-stat-num">₹${Math.round(totalMonthBill).toLocaleString('en-IN')}</span>
+        </div>
+        <div class="supp-khata-stat-col">
+          <span class="supp-khata-stat-title">कुल देय बकाया</span>
+          <span class="supp-khata-stat-num danger">₹${supp.dues || 0}</span>
+        </div>
+      </div>
+
+      <div class="supp-khata-actions" style="display: flex; flex-wrap: wrap; gap: 6px;">
+        <button type="button" class="btn-supp-cal" data-cal-supp="${supp.id}" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; border-radius: 8px; padding: 7px 11px; font-size: 11px; font-weight: 800; cursor: pointer;">
+          📅 30-दिन कैलेंडर
+        </button>
+        <button type="button" class="btn-supp-pb" data-pb-supp="${supp.id}" style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; border-radius: 8px; padding: 7px 11px; font-size: 11px; font-weight: 800; cursor: pointer;">
+          🌐 पासबुक
+        </button>
+        <button type="button" class="btn-supp-pay" data-pay-supp="${supp.id}" style="background: #047857; color: #ffffff; border: none; border-radius: 8px; padding: 7px 11px; font-size: 11px; font-weight: 800; cursor: pointer;">
+          💵 भुगतान
+        </button>
+        <button type="button" class="btn-supp-whatsapp" data-wa-supp="${supp.id}" style="background: #25d366; color: #ffffff; border: none; border-radius: 8px; padding: 7px 11px; font-size: 11px; font-weight: 800; cursor: pointer;">
+          💬 WhatsApp
+        </button>
+        <button type="button" class="action-btn-small" data-edit-supp="${supp.id}">✏️</button>
+      </div>
+    `;
+
+    card.querySelector(`[data-cal-supp="${supp.id}"]`).addEventListener('click', () => openSupplierCalendarModal(supp.id));
+    card.querySelector(`[data-pb-supp="${supp.id}"]`).addEventListener('click', () => openSupplierPassbook(supp.id));
+    card.querySelector(`[data-pay-supp="${supp.id}"]`).addEventListener('click', () => openSupplierPaymentModal(supp.id));
+    card.querySelector(`[data-wa-supp="${supp.id}"]`).addEventListener('click', () => shareSupplierPassbookWhatsApp(supp.id));
+    card.querySelector(`[data-edit-supp="${supp.id}"]`).addEventListener('click', () => openAddSupplierModal(supp.id));
+
+    container.appendChild(card);
+  });
+}

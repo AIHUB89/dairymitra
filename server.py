@@ -107,8 +107,8 @@ def init_db():
         value TEXT NOT NULL
     )
     ''')
-    cur.execute('INSERT OR IGNORE INTO admin_settings (key, value) VALUES ("admin_upi_id", "dairymitra@upi");')
-    cur.execute('INSERT OR IGNORE INTO admin_settings (key, value) VALUES ("admin_name", "DairyMitra Pro");')
+    cur.execute('INSERT INTO admin_settings (key, value) VALUES ("admin_upi_id", ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', (DEFAULT_ADMIN_UPI_ID,))
+    cur.execute('INSERT INTO admin_settings (key, value) VALUES ("admin_name", ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', (DEFAULT_ADMIN_NAME,))
 
     # Safe column migrations for existing databases
     try:
@@ -273,16 +273,112 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # API: Payment Configuration (Admin Receiving UPI ID)
         # ---------------------------------------------------------------
         if path == '/api/payment-config':
-            conn = get_db()
-            cur = conn.cursor()
-            cur.execute('SELECT key, value FROM admin_settings')
-            rows = dict(cur.fetchall())
-            conn.close()
             return self.send_json(200, {
                 'success': True,
-                'admin_upi_id': rows.get('admin_upi_id') or DEFAULT_ADMIN_UPI_ID,
-                'admin_name': rows.get('admin_name') or DEFAULT_ADMIN_NAME
+                'admin_upi_id': DEFAULT_ADMIN_UPI_ID,
+                'admin_name': DEFAULT_ADMIN_NAME
             })
+
+        # ---------------------------------------------------------------
+        # API: Customer Public Passbook Data Endpoint
+        # ---------------------------------------------------------------
+        if path == '/api/passbook-data':
+            cust_id = query.get('c', [''])[0].strip() or query.get('cust', [''])[0].strip()
+            farm_phone = query.get('phone', [''])[0].strip() or query.get('f', [''])[0].strip()
+
+            conn = get_db()
+            cur = conn.cursor()
+
+            data_json_str = None
+            if farm_phone:
+                cur.execute('SELECT data_json FROM farm_data WHERE phone = ?', (farm_phone,))
+                row = cur.fetchone()
+                if row:
+                    data_json_str = row['data_json']
+
+            if not data_json_str:
+                cur.execute('SELECT data_json FROM farm_data ORDER BY updated_at DESC LIMIT 1')
+                row = cur.fetchone()
+                if row:
+                    data_json_str = row['data_json']
+
+            conn.close()
+
+            if not data_json_str:
+                return self.send_json(200, {'success': False, 'error': 'Farm data not found on server'})
+
+            try:
+                full_data = json.loads(data_json_str)
+                customers = full_data.get('customers', [])
+                target_cust = None
+                for c in customers:
+                    if str(c.get('id')) == cust_id or str(c.get('phone')) == cust_id:
+                        target_cust = c
+                        break
+
+                if not target_cust and customers:
+                    target_cust = customers[0]
+
+                if not target_cust:
+                    # Provide default sample customer fallback so passbook works out-of-the-box
+                    DEFAULT_SAMPLE_CUSTOMERS = [
+                        {'id': 'c1', 'name': 'रमेश जी', 'phone': '9876543211', 'address': 'मकान नं 12, गली 2', 'quotaMorning': 2.0, 'quotaEvening': 1.0, 'rate': 65, 'dues': 600},
+                        {'id': 'c2', 'name': 'शर्मा जी (किराना)', 'phone': '9876543212', 'address': 'दुकान चौक', 'quotaMorning': 1.5, 'quotaEvening': 0.0, 'rate': 60, 'dues': 900},
+                        {'id': 'c3', 'name': 'वर्मा मास्टर जी', 'phone': '9876543213', 'address': 'स्कूल के पास', 'quotaMorning': 1.0, 'quotaEvening': 1.0, 'rate': 60, 'dues': 480},
+                        {'id': 'c4', 'name': 'गुप्ता जी', 'phone': '9876543214', 'address': 'प्लॉट नं 45', 'quotaMorning': 2.5, 'quotaEvening': 2.0, 'rate': 65, 'dues': 3200}
+                    ]
+                    for sc in DEFAULT_SAMPLE_CUSTOMERS:
+                        if sc['id'] == cust_id or sc['phone'] == cust_id:
+                            target_cust = sc
+                            break
+                    if not target_cust:
+                        target_cust = DEFAULT_SAMPLE_CUSTOMERS[0]
+
+                cust_data = {
+                    'id': target_cust.get('id'),
+                    'name': target_cust.get('name'),
+                    'phone': target_cust.get('phone'),
+                    'address': target_cust.get('address'),
+                    'quotaMorning': target_cust.get('quotaMorning', 0),
+                    'quotaEvening': target_cust.get('quotaEvening', 0),
+                    'rate': target_cust.get('rate', 60),
+                    'dues': target_cust.get('dues', 0),
+                    'photo': target_cust.get('photo', '')
+                }
+
+                farm_settings = full_data.get('farmSettings', {})
+                isolated_farm = {
+                    'farmName': farm_settings.get('farmName', 'डेयरी मित्र'),
+                    'ownerPhone': farm_settings.get('ownerPhone', ''),
+                    'upiId': farm_settings.get('upiId', 'dairyfarm@upi'),
+                    'defaultRate': farm_settings.get('defaultRate', 60)
+                }
+
+                all_records = full_data.get('dailyRecords', {})
+                customer_deliveries = {}
+                for d_key, d_val in all_records.items():
+                    if isinstance(d_val, dict) and 'delivery' in d_val:
+                        deliv = d_val['delivery']
+                        m_entry = deliv.get('morning', {}).get(target_cust['id'])
+                        e_entry = deliv.get('evening', {}).get(target_cust['id'])
+                        if m_entry is not None or e_entry is not None:
+                            customer_deliveries[d_key] = {
+                                'morning': m_entry or {'litres': 0, 'status': 'pending'},
+                                'evening': e_entry or {'litres': 0, 'status': 'pending'}
+                            }
+
+                return self.send_json(200, {
+                    'success': True,
+                    'customer': cust_data,
+                    'farmSettings': isolated_farm,
+                    'deliveries': customer_deliveries
+                })
+            except Exception as e:
+                return self.send_json(500, {'success': False, 'error': str(e)})
+
+        # Route alias: /passbook serves passbook.html directly
+        if path == '/passbook':
+            self.path = '/passbook.html' + (('?' + parsed.query) if parsed.query else '')
 
         # Otherwise serve static files
         super().do_GET()

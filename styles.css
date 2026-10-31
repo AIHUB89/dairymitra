@@ -6288,7 +6288,9 @@ html, body {
   font-size: 12px;
   font-weight: 800;
   color: #ffffff;
-  text-decoration: none;
+  border: none;
+  outline: none;
+  font-family: inherit;
   cursor: pointer;
   transition: transform 0.15s ease, opacity 0.15s ease;
 }
@@ -6410,3 +6412,1755 @@ html, body {
   transform: scale(0.98);
 }
 
+/* ------------------------------------------------------------------- */
+/* VERIFIED MERCHANT BAR (Professional UPI Gateway Styling) */
+/* ------------------------------------------------------------------- */
+.upi-verified-merchant-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.merchant-seal-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.merchant-seal-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.merchant-meta-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.merchant-name-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #14532d;
+}
+
+.merchant-sub-trust {
+  font-size: 10px;
+  color: #16a34a;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.btn-copy-clean-upi {
+  background: #ffffff;
+  color: #15803d;
+  border: 1px solid #86efac;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-copy-clean-upi:hover {
+  background: #dcfce7;
+  border-color: #4ade80;
+}
+
+/* ------------------------------------------------------------------- */
+/* PRO PAYWALL MODAL (Free Limit Paywall) */
+/* ------------------------------------------------------------------- */
+.modal-paywall-card {
+  max-width: 480px;
+  width: 95%;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  animation: paywallPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: #ffffff;
+}
+
+@keyframes paywallPop {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.paywall-header {
+  position: relative;
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 60%, #047857 100%);
+  padding: 24px 20px 20px;
+  text-align: center;
+  color: #ffffff;
+}
+
+.paywall-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.paywall-crown-glow {
+  font-size: 44px;
+  line-height: 1;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 10px rgba(234, 179, 8, 0.6));
+  animation: floatCrown 3s ease-in-out infinite;
+}
+
+@keyframes floatCrown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.paywall-tag {
+  display: inline-block;
+  background: rgba(234, 179, 8, 0.25);
+  border: 1px solid rgba(234, 179, 8, 0.5);
+  color: #fef08a;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.paywall-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.paywall-subtitle {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #a7f3d0;
+  line-height: 1.4;
+}
+
+.paywall-body {
+  padding: 18px 20px 22px;
+}
+
+.paywall-perks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.paywall-perk-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.paywall-perk-item .perk-icon {
+  font-size: 22px;
+  line-height: 1;
+  padding: 6px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.paywall-perk-item strong {
+  display: block;
+  font-size: 13px;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.paywall-perk-item small {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.paywall-offer-card {
+  position: relative;
+  background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+  border: 2px solid #facc15;
+  border-radius: 14px;
+  padding: 12px 16px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.offer-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ca8a04;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.offer-price {
+  font-size: 24px;
+  font-weight: 900;
+  color: #78350f;
+}
+
+.offer-price small {
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.offer-savings {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #15803d;
+  margin-top: 2px;
+}
+
+.paywall-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn-paywall-upgrade {
+  width: 100%;
+  min-height: 48px;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+}
+
+.btn-paywall-upgrade:hover {
+  background: linear-gradient(135deg, #047857 0%, #059669 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.5);
+}
+
+.btn-paywall-refer {
+  width: 100%;
+  min-height: 40px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-paywall-refer:hover {
+  background: #e2e8f0;
+}
+
+.paywall-footer-note {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* ------------------------------------------------------------------- */
+/* CUSTOMER DIGITAL PASSBOOK ACTION BUTTONS */
+/* ------------------------------------------------------------------- */
+.btn-open-passbook {
+  flex: 1.2;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border: 1.5px solid #bfdbfe !important;
+  font-weight: 800 !important;
+  border-radius: var(--radius-md);
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-open-passbook:hover {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+}
+
+.btn-open-passbook:active {
+  transform: scale(0.97);
+}
+
+.btn-passbook-banner {
+  width: 100%;
+  min-height: 44px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  margin-top: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-passbook-banner:hover {
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+}
+
+/* ------------------------------------------------------------------- */
+/* MULTI-LANGUAGE SWITCHER (भाषा चयनकर्ता) */
+/* ------------------------------------------------------------------- */
+.lang-toggle-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  padding: 0 8px !important;
+  height: 34px !important;
+  min-width: 48px;
+  border-radius: 18px !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.lang-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+.lang-globe-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+#headerLangBadge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.modal-language-card {
+  max-width: 440px;
+  width: 95%;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+  background: #ffffff;
+}
+
+.language-header-bg {
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 60%, #047857 100%);
+  color: #ffffff;
+  padding: 18px 20px;
+}
+
+.language-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.language-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.language-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.language-sub {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #a7f3d0;
+}
+
+.language-body {
+  padding: 18px 20px;
+}
+
+.language-options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.lang-select-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.lang-select-card:hover {
+  background: #f0fdf4;
+  border-color: #86efac;
+  transform: translateY(-1px);
+}
+
+.lang-select-card.active {
+  background: #ecfdf5;
+  border-color: #059669;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
+}
+
+.lang-flag-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.lang-text-box {
+  flex: 1;
+  min-width: 0;
+}
+
+.lang-main-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.lang-sub-name {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.lang-check-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #059669;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: all 0.2s ease;
+}
+
+.lang-select-card.active .lang-check-badge {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.language-note-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* Settings Modal Language Pills */
+.settings-lang-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.settings-lang-pill {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-lang-pill:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.settings-lang-pill.active {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+  box-shadow: 0 3px 8px rgba(5, 150, 105, 0.3);
+}
+
+
+/* ===================================================================
+   COUNTRY DELIGHT EXECUTIVE HOMEPAGE STYLING (#viewHome)
+   Inspired by Country Delight's clean, premium, high-trust dairy UX
+   =================================================================== */
+
+#viewHome {
+  padding-bottom: 24px;
+}
+
+/* 1. Country Delight Hero Greeting & Executive Farm Status Card */
+.cd-hero-card {
+  position: relative;
+  background: linear-gradient(135deg, #064e3b 0%, #047857 55%, #059669 100%);
+  color: #ffffff;
+  border-radius: 22px;
+  padding: 18px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 25px -5px rgba(6, 78, 59, 0.35), 0 8px 10px -6px rgba(6, 78, 59, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+
+.cd-hero-card::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cd-hero-card::after {
+  content: '';
+  position: absolute;
+  bottom: -30px;
+  left: 30%;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cd-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+.cd-hero-greeting-box {
+  flex: 1;
+}
+
+.cd-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #a7f3d0;
+  margin-bottom: 4px;
+}
+
+.cd-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px #34d399;
+  animation: cdPulseDot 2s infinite ease-in-out;
+}
+
+@keyframes cdPulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.cd-hero-greeting {
+  font-size: 19px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 4px 0 2px;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.cd-hero-tagline {
+  font-size: 12px;
+  color: #d1fae5;
+  font-weight: 500;
+  margin: 0;
+}
+
+.cd-hero-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.cd-pro-badge {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 20px;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.4);
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.cd-pro-badge:hover {
+  transform: scale(1.05);
+}
+
+.cd-hero-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  position: relative;
+  z-index: 2;
+}
+
+.cd-hero-btn {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 14px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  color: #064e3b;
+  font-weight: 800;
+  font-size: 11.5px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cd-hero-btn:active {
+  transform: scale(0.96);
+  background: #ffffff;
+}
+
+.cd-hero-btn-icon {
+  font-size: 18px;
+}
+
+/* Section Header Bar */
+.cd-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 18px 4px 8px;
+}
+
+.cd-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cd-section-icon {
+  font-size: 16px;
+}
+
+.cd-section-title {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.cd-section-badge {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.cd-section-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.cd-alert-counter {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecdd3;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+/* 2. Country Delight 4-Metric Business Snapshot Grid */
+.cd-snapshot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.cd-stat-card {
+  border-radius: 18px;
+  padding: 13px 12px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.cd-stat-card:active {
+  transform: scale(0.98);
+}
+
+.cd-stat-card.card-emerald {
+  background: linear-gradient(150deg, #ffffff 0%, #f0fdf4 100%);
+  border: 1.5px solid #bbf7d0;
+}
+
+.cd-stat-card.card-blue {
+  background: linear-gradient(150deg, #ffffff 0%, #eff6ff 100%);
+  border: 1.5px solid #bfdbfe;
+}
+
+.cd-stat-card.card-amber {
+  background: linear-gradient(150deg, #ffffff 0%, #fffbeb 100%);
+  border: 1.5px solid #fde68a;
+}
+
+.cd-stat-card.card-rose {
+  background: linear-gradient(150deg, #ffffff 0%, #fff1f2 100%);
+  border: 1.5px solid #fecdd3;
+}
+
+.cd-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.cd-stat-icon-wrap {
+  font-size: 18px;
+}
+
+.cd-stat-trend,
+.cd-stat-progress-pill,
+.cd-stat-tag {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.cd-stat-trend {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.cd-stat-progress-pill {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.cd-stat-tag {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.cd-stat-tag.tag-urgent {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.cd-stat-number {
+  font-size: 21px;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.1;
+  margin: 3px 0 1px;
+  letter-spacing: -0.5px;
+}
+
+.cd-stat-number small {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.cd-stat-number.rupee {
+  color: #047857;
+}
+
+.cd-stat-number.danger {
+  color: #dc2626;
+}
+
+.cd-stat-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.cd-stat-sub {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* 3. Country Delight 8-Grid Quick Action Hub */
+.cd-actions-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+  margin-bottom: 6px;
+}
+
+.cd-hub-tile {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 10px 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+}
+
+.cd-hub-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.cd-hub-tile:active {
+  transform: scale(0.95);
+}
+
+.cd-hub-icon-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s ease;
+}
+
+.cd-hub-tile:hover .cd-hub-icon-circle {
+  transform: scale(1.08);
+}
+
+.bg-circle-green {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  border: 1.5px solid #86efac;
+}
+
+.bg-circle-blue {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  border: 1.5px solid #93c5fd;
+}
+
+.bg-circle-emerald {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border: 1.5px solid #6ee7b7;
+}
+
+.bg-circle-indigo {
+  background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+  border: 1.5px solid #a5b4fc;
+}
+
+.bg-circle-purple {
+  background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
+  border: 1.5px solid #d8b4fe;
+}
+
+.bg-circle-amber {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1.5px solid #fcd34d;
+}
+
+.bg-circle-teal {
+  background: linear-gradient(135deg, #ccfbf1, #99f6e4);
+  border: 1.5px solid #5eead4;
+}
+
+.bg-circle-rose {
+  background: linear-gradient(135deg, #ffe4e6, #fecdd3);
+  border: 1.5px solid #fda4af;
+}
+
+.cd-hub-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #1e293b;
+  margin-top: 6px;
+  text-align: center;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cd-hub-sub {
+  font-size: 9px;
+  font-weight: 600;
+  color: #64748b;
+  text-align: center;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* 4. Smart Priority Farm Alerts */
+.cd-alerts-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.cd-alert-item {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  border-left: 4px solid #10b981;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cd-alert-item.alert-danger {
+  border-left-color: #ef4444;
+  background: #fffafa;
+}
+
+.cd-alert-item.alert-warning {
+  border-left-color: #f59e0b;
+  background: #fffdf5;
+}
+
+.cd-alert-item.alert-info {
+  border-left-color: #3b82f6;
+  background: #f8fbff;
+}
+
+.cd-alert-item.alert-success {
+  border-left-color: #10b981;
+  background: #f6fef9;
+}
+
+.cd-alert-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.cd-alert-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.cd-alert-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.cd-alert-desc {
+  font-size: 11px;
+  color: #475569;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.cd-alert-action-btn {
+  background: #0f172a;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.cd-alert-action-btn:active {
+  transform: scale(0.95);
+}
+
+.cd-alert-item.alert-danger .cd-alert-action-btn {
+  background: #dc2626;
+}
+
+.cd-alert-item.alert-warning .cd-alert-action-btn {
+  background: #d97706;
+}
+
+.cd-alert-item.alert-info .cd-alert-action-btn {
+  background: #2563eb;
+}
+
+.cd-alert-item.alert-success .cd-alert-action-btn {
+  background: #059669;
+}
+
+/* 5. Live Farm Barometer */
+.cd-barometer-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 14px;
+  margin-bottom: 6px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.03);
+}
+
+.cd-barometer-item {
+  margin-bottom: 12px;
+}
+
+.cd-barometer-item:last-child {
+  margin-bottom: 0;
+}
+
+.cd-barometer-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.cd-barometer-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.cd-barometer-value {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.cd-progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cd-progress-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cd-progress-bar-fill.fill-emerald {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.cd-progress-bar-fill.fill-blue {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+}
+
+.cd-purity-hallmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+  border: 1.5px dashed #a7f3d0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+
+.cd-hallmark-seal {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.cd-hallmark-text {
+  flex: 1;
+}
+
+.cd-hallmark-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: #064e3b;
+}
+
+.cd-hallmark-text p {
+  font-size: 10.5px;
+  color: #047857;
+  margin: 1px 0 0;
+}
+
+.btn-hallmark-cert {
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.btn-hallmark-cert:active {
+  transform: scale(0.95);
+}
+
+/* 6. Recent Live Farm Activity Stream */
+.cd-activity-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.03);
+}
+
+.cd-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cd-activity-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.cd-activity-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cd-activity-icon {
+  font-size: 18px;
+}
+
+.cd-activity-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cd-activity-meta {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.cd-activity-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.cd-activity-empty {
+  text-align: center;
+  padding: 16px 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 7. Country Delight VIP Club Card */
+.cd-vip-club-card {
+  position: relative;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  border-radius: 20px;
+  padding: 16px;
+  margin-top: 10px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.3);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  overflow: hidden;
+}
+
+.cd-vip-glow {
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cd-vip-content {
+  position: relative;
+  z-index: 2;
+}
+
+.cd-vip-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.cd-vip-crown {
+  font-size: 26px;
+  filter: drop-shadow(0 2px 6px rgba(245, 158, 11, 0.5));
+}
+
+.cd-vip-badge {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 900;
+  color: #fbbf24;
+  letter-spacing: 0.8px;
+}
+
+.cd-vip-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 1px 0 0;
+}
+
+.cd-vip-desc {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin: 0 0 12px;
+  line-height: 1.35;
+}
+
+.cd-vip-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.cd-vip-price {
+  font-size: 16px;
+  font-weight: 900;
+  color: #fbbf24;
+}
+
+.cd-vip-price span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.cd-vip-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(217, 119, 6, 0.4);
+  transition: all 0.15s ease;
+}
+
+.cd-vip-btn:active {
+  transform: scale(0.96);
+}
+
+
+/* ===================================================================
+   BUSINESS PROFILE & MILK VENDOR (दूधिया) STYLING
+   Farmer vs Milk Vendor vs Hybrid Mode
+   =================================================================== */
+
+/* 1. Business Profile Selector Grid in Settings */
+.biz-profile-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.biz-profile-card {
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.biz-profile-card:hover {
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+}
+
+.biz-profile-card.active {
+  border-color: #059669;
+  background: #f0fdf4;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
+}
+
+.biz-card-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.biz-card-name {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.biz-card-desc {
+  font-size: 9px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 3px;
+  line-height: 1.2;
+}
+
+.biz-profile-card.active .biz-card-name {
+  color: #064e3b;
+}
+
+.biz-profile-card.active .biz-card-desc {
+  color: #047857;
+}
+
+/* 2. Inward Mode Toggle Bar (For Hybrid Mode: अपने पशु vs दूध खरीद) */
+.inward-mode-toggle {
+  display: flex;
+  background: #e2e8f0;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.inward-toggle-pill {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.inward-toggle-pill.active {
+  background: #ffffff;
+  color: #064e3b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* 3. Khata Mode Switcher (ग्राहक खाता vs किसान/सप्लायर खाता) */
+.khata-mode-toggle-bar {
+  display: flex;
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.khata-toggle-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.khata-toggle-tab.active {
+  background: #064e3b;
+  color: #ffffff;
+  box-shadow: 0 3px 8px rgba(6, 78, 59, 0.25);
+}
+
+/* 4. Supplier Purchase Cards */
+.purchase-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.purchase-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.purchase-supp-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.purchase-supp-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.purchase-supp-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.purchase-supp-meta {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.purchase-rate-pill {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.purchase-inputs-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.purchase-input-group {
+  flex: 1;
+  position: relative;
+}
+
+.purchase-input-group label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.purchase-input-group input {
+  width: 100%;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  background: #f8fafc;
+  box-sizing: border-box;
+}
+
+.purchase-input-group input:focus {
+  border-color: #059669;
+  background: #ffffff;
+  outline: none;
+}
+
+.btn-purchase-fat {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  align-self: flex-end;
+  height: 38px;
+  white-space: nowrap;
+}
+
+.btn-purchase-done {
+  background: #059669;
+  border: none;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  align-self: flex-end;
+  height: 38px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);
+  transition: all 0.15s ease;
+}
+
+.btn-purchase-done:active {
+  transform: scale(0.96);
+}
+
+.btn-purchase-done.is-recorded {
+  background: #10b981;
+}
+
+/* 5. Supplier Khata Card (Payable) */
+.supplier-khata-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.supp-khata-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 10px;
+  margin: 10px 0;
+  text-align: center;
+}
+
+.supp-khata-stat-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.supp-khata-stat-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.supp-khata-stat-num {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.supp-khata-stat-num.danger {
+  color: #dc2626;
+}
+
+.supp-khata-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-supp-pay {
+  flex: 1;
+  background: #047857;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.btn-supp-whatsapp {
+  background: #25d366;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+
+/* Supplier Khata Dues Banner & High-Contrast Payable Amount */
+.dues-amount.danger {
+  color: #991b1b !important;
+}
+
+.dues-banner.supplier-dues-banner {
+  background: linear-gradient(135deg, #fff5f5 0%, #fee2e2 100%) !important;
+  border: 1.5px solid #fecaca !important;
+  border-left: 5px solid #dc2626 !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.08) !important;
+  color: #7f1d1d !important;
+}
+
+.dues-banner.supplier-dues-banner .dues-title {
+  color: #7f1d1d !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+.dues-banner.supplier-dues-banner .dues-amount,
+#supplierTotalPayableDues {
+  color: #991b1b !important;
+  font-size: 26px !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.5px !important;
+  text-shadow: none !important;
+}
+
+.dues-banner.supplier-dues-banner .dues-btn {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 800 !important;
+  padding: 8px 14px !important;
+  border-radius: var(--radius-full) !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25) !important;
+}
