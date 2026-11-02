@@ -9476,6 +9476,11 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsBtn.addEventListener('click', openSettingsModal);
   }
 
+  const cdHeroSettings = document.getElementById('cdHeroSettingsBtn');
+  if (cdHeroSettings) {
+    cdHeroSettings.addEventListener('click', openSettingsModal);
+  }
+
   const closeSettingsModalBtn = document.getElementById('closeSettingsModalBtn');
   if (closeSettingsModalBtn) {
     closeSettingsModalBtn.addEventListener('click', closeSettingsModal);
