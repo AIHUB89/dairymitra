@@ -3055,7 +3055,7 @@
     </div>
   </div>
 
-  <!-- Modal: Hotstar-like 2-Device Limit Alert (डिवाइस सीमा पार) -->
+  <!-- Modal: 2-डिवाइस सीमा पार अलर्ट (डिवाइस सीमा पार) -->
   <div class="modal-backdrop hidden" id="deviceLimitModal" style="z-index: 160;">
     <div class="modal-card modal-device-limit-card">
       <div class="modal-header device-limit-header">
@@ -3084,6 +3084,79 @@
   </div>
 
   <!-- Modal: Settings & Multi-Device Manager (सेटिंग्स व 2-फोन डिवाइस प्रबंधन) -->
+  <!-- Modal: First-Time / Welcome Business Profile Mode Chooser (डेयरी व्यवसाय प्रकार चुनें) -->
+  <div class="modal-backdrop hidden" id="profileModeModal" style="z-index: 170;">
+    <div class="modal-card modal-profile-mode-card">
+      <div class="modal-header profile-mode-header-bg">
+        <div class="profile-mode-header-title">
+          <span class="profile-mode-icon">✨</span>
+          <div>
+            <h3 class="profile-mode-title">व्यवसाय प्रकार चुनें (Select Business Mode)</h3>
+            <p class="profile-mode-sub">अपनी डेयरी के अनुसार सही मोड चुनें (बाद में कभी भी बदल सकते हैं)</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="closeProfileModeModalBtn">✕</button>
+      </div>
+
+      <div class="modal-body profile-mode-body">
+        <div class="profile-mode-cards-grid">
+          
+          <!-- Mode 1: Farmer -->
+          <div class="welcome-biz-card active" data-biz="farmer" id="welcomeBizFarmer">
+            <div class="welcome-biz-icon-box">🐄</div>
+            <div class="welcome-biz-info">
+              <strong class="welcome-biz-name">1. डेयरी फार्मर (Dairy Farmer)</strong>
+              <p class="welcome-biz-desc">मेरे अपने दुधारू पशु हैं — पशु दोहन (सुबह/शाम), गर्भाधान व डिलीवरी डायरी, 30-दिन पशु कैलेंडर व दूध वितरण।</p>
+              <div class="welcome-biz-tags">
+                <span class="biz-tag">🐄 गाय व भैंस</span>
+                <span class="biz-tag">🥛 पशु दोहन</span>
+                <span class="biz-tag">🧬 AI गर्भाधान</span>
+              </div>
+            </div>
+            <span class="welcome-biz-check">✓</span>
+          </div>
+
+          <!-- Mode 2: Vendor (दूधिया) -->
+          <div class="welcome-biz-card" data-biz="vendor" id="welcomeBizVendor">
+            <div class="welcome-biz-icon-box">🛵</div>
+            <div class="welcome-biz-info">
+              <strong class="welcome-biz-name">2. दूधिया / व्यापारी (Pure Milk Vendor)</strong>
+              <p class="welcome-biz-desc">गाँव व किसानों से दूध खरीदकर घर-घर सप्लाई करता हूँ (पशु नहीं हैं) — खरीद संकलन, दैनिक मुनाफा व सप्लायर पासबुक।</p>
+              <div class="welcome-biz-tags">
+                <span class="biz-tag">📥 दूध खरीद संकलन</span>
+                <span class="biz-tag">💰 खरीद-बिक्री मुनाफा</span>
+                <span class="biz-tag">🤝 किसान पासबुक</span>
+              </div>
+            </div>
+            <span class="welcome-biz-check">✓</span>
+          </div>
+
+          <!-- Mode 3: Hybrid (दोनों) -->
+          <div class="welcome-biz-card" data-biz="hybrid" id="welcomeBizHybrid">
+            <div class="welcome-biz-icon-box">🔄</div>
+            <div class="welcome-biz-info">
+              <strong class="welcome-biz-name">3. हाइब्रिड मोड (Farm + Vendor)</strong>
+              <p class="welcome-biz-desc">फार्म के अपने पशु भी हैं + बाहर किसानों से भी दूध खरीदते हैं — दोनों व्यवस्थाएं एक साथ (दोहन, संकलन व घर सप्लाई)।</p>
+              <div class="welcome-biz-tags">
+                <span class="biz-tag">🐄 अपने पशु दोहन</span>
+                <span class="biz-tag">📥 बाहर से खरीद</span>
+                <span class="biz-tag">🛵 सम्पूर्ण सप्लाई</span>
+              </div>
+            </div>
+            <span class="welcome-biz-check">✓</span>
+          </div>
+
+        </div>
+
+        <div class="profile-mode-footer" style="margin-top: 16px;">
+          <button type="button" class="btn-primary" id="btnConfirmProfileMode" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 800; border-radius: 12px;">
+            चुनें और आगे बढ़ें ➔
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Language Switcher (भाषा चुनें) -->
   <div class="modal-backdrop hidden" id="languageModal" style="z-index: 160;">
     <div class="modal-card modal-language-card">
@@ -3178,7 +3251,12 @@
 
         <!-- Section 0.5: Business Profile Mode (व्यवसाय प्रकार) -->
         <div class="settings-section" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; margin-bottom: 16px;">
-          <h4 class="settings-sec-title" style="margin-bottom: 4px;">🛵 व्यवसाय प्रकार (Business Profile Mode)</h4>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <h4 class="settings-sec-title" style="margin: 0;">🛵 व्यवसाय प्रकार (Business Profile Mode)</h4>
+            <button type="button" class="btn-secondary btn-small" id="btnOpenFullProfileModal" style="padding: 4px 10px; font-size: 11px;">
+              ✨ बदलें
+            </button>
+          </div>
           <p class="settings-sec-desc" style="margin-bottom: 10px;">अपनी डेयरी संचालन के अनुसार मोड चुनें:</p>
           <div class="biz-profile-selector-grid">
             <div class="biz-profile-card active" data-biz="farmer" id="bizCardFarmer">
@@ -3242,10 +3320,10 @@
           </div>
         </div>
 
-        <!-- Section 2: Active Devices (Hotstar 2-Device Limit) -->
+        <!-- Section 2: Active Devices (2-Device Multi-Sync Limit) -->
         <div class="settings-section">
           <div class="sec-header-with-badge">
-            <h4 class="settings-sec-title">📱 जुड़े हुए डिवाइस (Hotstar-Style Limit)</h4>
+            <h4 class="settings-sec-title">📱 जुड़े हुए मोबाइल डिवाइस (2-डिवाइस सिंक)</h4>
             <span class="device-pill-count" id="settingsDeviceCount">2 / 2 डिवाइस</span>
           </div>
           <p class="settings-sec-desc">
@@ -3299,7 +3377,7 @@
           <h4 class="settings-sec-title">☁️ डेटा सिंक व बैकअप</h4>
           <div class="settings-sync-status-box" id="settingsSyncStatus">
             <span class="sync-dot sync-dot-online"></span>
-            <span id="settingsSyncStatusText">🟢 2-डिवाइस लाइव क्लाउड सिंक सक्रिय (SQLite DB)</span>
+            <span id="settingsSyncStatusText">🟢 2-डिवाइस लाइव क्लाउड सिंक सक्रिय (सुरक्षित बैकअप)</span>
           </div>
 
           <div class="settings-backup-grid">

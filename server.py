@@ -1,6 +1,6 @@
 """
-डेयरी मित्र (DairyMitra) - Local Server with Built-in SQLite Database
-Supports User Onboarding, 2-Device Hotstar-like Limit, Auto Pro Subscriptions, and 2-Device Real-time Sync.
+डेयरी मित्र (DairyMitra) - Local Server with Built-in Cloud Database
+Supports User Onboarding, 2-Device 2-Device Sync Limit, Auto Pro Subscriptions, and 2-Device Real-time Sync.
 """
 import http.server
 import socket
@@ -857,7 +857,7 @@ if __name__ == '__main__':
     print("=" * 60)
     print(f"💻 कंप्यूटर पर खोलें:   http://localhost:{PORT}")
     print(f"📱 मोबाइल फोन पर खोलें: http://{local_ip}:{PORT}")
-    print(f"🗄️ SQLite डेटाबेस:     {DB_PATH}")
+    print(f"🗄️ सुरक्षित डेटाबेस:     {DB_PATH}")
     print("🔒 2-डिवाइस हॉटस्टार लिमिट व लाइव सिंक सक्रिय!")
     print("=" * 60)
     print("💡 मोबाइल पर चलाने के लिए: आपका मोबाइल और कंप्यूटर एक ही Wi-Fi या हॉटस्पॉट से जुड़े होने चाहिए।")

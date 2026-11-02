@@ -1168,6 +1168,17 @@ function findCustomerFuzzy(text) {
   return null;
 }
 
+function findSupplierFuzzy(text) {
+  if (!appData.suppliers || !appData.suppliers.length) return null;
+  const t = text.toLowerCase();
+  for (let supp of appData.suppliers) {
+    const rawName = supp.name.toLowerCase();
+    const cleanName = rawName.split(' ')[0].replace(/[^a-z\u0900-\u097F]/gi, '');
+    if (t.includes(cleanName) || t.includes(rawName)) return supp;
+  }
+  return null;
+}
+
 function showAiVoiceReply(title, message) {
   const card = document.getElementById('aiVoiceReplyCard');
   const titleEl = document.getElementById('aiVoiceReplyTitle');
@@ -1812,7 +1823,235 @@ function processVoiceCommand(rawText) {
     if (answered) return;
   }
 
-  // Navigation Commands
+  // ===================================================================
+  // 1. UNIFIED VOICE ADD & REGISTRATION COMMANDS (बोलकर पशु, सप्लायर, ग्राहक जोड़ना)
+  // उदा: "पशु में ये ऐड कर दे", "सप्लायर में ऐड करो", "ग्राहक में ये डिटेल्स ऐड करो"
+  //     "नया पशु जोड़ो गंगा साहीवाल 8 लीटर", "सप्लायर जोड़ो रामकिशन 20 लीटर भाव 48", "नया ग्राहक जोड़ो सुरेश 2 लीटर भाव 65"
+  // ===================================================================
+  const hasAddAction = /(ऐड|एड|add|जोड़|बना|दर्ज|रजिस्टर|डाल|खोलो|new|नया|नई)/i.test(text);
+  const isSuppTopic = /(सप्लायर|supplier|किसान|farmer)/i.test(text);
+  const isCustTopic = /(ग्राहक|कस्टमर|customer|पार्टी|खरीदार|खाता)/i.test(text);
+  const isAnimTopic = /(पशु|गाय|भैंस|भैस|जानवर|animal|cow|buffalo|pashu)/i.test(text);
+
+  // A. ADD SUPPLIER INTENT (सप्लायर / किसान जोड़ना)
+  if (isSuppTopic && (hasAddAction || text.includes('सप्लायर') || text.includes('supplier') || text.includes('किसान'))) {
+    const isExplicitAdd = hasAddAction || text.includes('नया') || text.includes('नई') || text.includes('add');
+    if (isExplicitAdd && !text.includes('बिकाऊ') && !text.includes('खरीदा')) {
+      let cleanWords = text;
+      const suppTriggers = ['सप्लायर में ये ऐड कर दे', 'सप्लायर में ऐड कर दे', 'सप्लायर में ऐड करो', 'सप्लायर में ये', 'सप्लायर में', 'नया सप्लायर', 'सप्लायर जोड़ो', 'सप्लायर जोड़ें', 'सप्लायर बनाओ', 'नया किसान', 'किसान जोड़ो', 'किसान जोड़ें', 'किसान ऐड करो', 'सप्लायर ऐड करो', 'add supplier', 'new supplier'];
+      suppTriggers.forEach(tr => { cleanWords = cleanWords.replace(tr, ' '); });
+
+      let rate = appData.farmSettings.defaultPurchaseRate || 48.0;
+      const rateMatch = text.match(/(?:भाव|रेट|rate|रुपये)\s*(\d+)/);
+      if (rateMatch) rate = parseFloat(rateMatch[1]);
+
+      const allNums = (text.match(/\d+(\.\d+)?/g) || []).map(n => parseFloat(n));
+      let quota = 10.0;
+      for (let num of allNums) {
+        if (num !== rate && num <= 100) { quota = num; break; }
+      }
+
+      const phoneMatch = text.match(/\b\d{10}\b/);
+      const phone = phoneMatch ? phoneMatch[0] : `98123${10000 + Math.floor(Math.random() * 89999)}`;
+
+      const stopwords = [
+        'सप्लायर', 'supplier', 'किसान', 'farmer', 'नया', 'नयी', 'नई', 'जोड़ो', 'जोड़ें', 'जोड़', 'बनाओ', 'करो',
+        'ऐड', 'एड', 'add', 'कर', 'दे', 'दो', 'डिटेल्स', 'लीटर', 'दूध', 'भाव', 'रेट', 'रुपये', 'प्रति', 'का', 'की', 'के', 'में', 'है', 'नाम'
+      ];
+      const nameTokens = cleanWords.split(/\s+/).filter(w => w && !stopwords.includes(w) && !w.match(/^\d+(\.\d+)?$/));
+      const extractedName = nameTokens.join(' ').trim();
+
+      if (!extractedName || extractedName.length < 2) {
+        openAddSupplierModal();
+        const rEl = document.getElementById('suppRate');
+        if (rEl) rEl.value = rate;
+        const qMEl = document.getElementById('suppQuotaMorning');
+        if (qMEl) qMEl.value = (quota / 2).toFixed(1);
+        const qEEl = document.getElementById('suppQuotaEvening');
+        if (qEEl) qEEl.value = (quota / 2).toFixed(1);
+        speakAudio('नया सप्लायर जोड़ने का फॉर्म खुल गया है। सप्लायर या किसान का नाम व भाव दर्ज करें।');
+        showAudioToast('🤝 नया सप्लायर फॉर्म खुला (विवरण भरें)');
+        return;
+      }
+
+      const qM = Math.round((quota / 2) * 10) / 10;
+      const qE = Math.round((quota - qM) * 10) / 10;
+      const newSupp = {
+        id: 's_' + Date.now(),
+        name: extractedName,
+        village: 'गाँव',
+        phone: phone,
+        quotaMorning: qM,
+        quotaEvening: qE,
+        rate: rate,
+        rateType: 'fixed',
+        dues: 0,
+        photo: ''
+      };
+      if (!appData.suppliers) appData.suppliers = [];
+      appData.suppliers.push(newSupp);
+      saveData();
+      switchTab('viewSupplier');
+      renderSupplierDedicatedList();
+      renderPurchaseCards();
+
+      speakAudio(`नया सप्लायर ${extractedName} दैनिक कोटा ${quota} लीटर और भाव ₹${rate} के साथ जोड़ दिया गया है!`);
+      showAudioToast(`🤝 नया सप्लायर: ${extractedName} (कोटा: ${quota}L • ₹${rate}/L) जोड़ा गया!`);
+      return;
+    }
+  }
+
+  // B. ADD CUSTOMER INTENT (ग्राहक जोड़ना)
+  if (isCustTopic && (hasAddAction || text.includes('नया') || text.includes('नई') || text.includes('add') || text.includes('खाता खोलो'))) {
+    if (!text.includes('बिकाऊ') && !text.includes('बिक्री')) {
+      if (!isProMember() && (appData.customers || []).length >= 10) {
+        openProPaywallModal('customer', appData.customers.length);
+        return;
+      }
+
+      let cleanWords = text;
+      const custTriggers = ['ग्राहक में ये ऐड कर दे', 'ग्राहक में ऐड कर दे', 'ग्राहक में ऐड करो', 'ग्राहक में ये', 'ग्राहक में', 'नया ग्राहक', 'नया कस्टमर', 'ग्राहक जोड़ो', 'ग्राहक बनाओ', 'ग्राहक जोड़ें', 'कस्टमर जोड़ो', 'कस्टमर जोड़ें', 'कस्टमर ऐड करो', 'ग्राहक ऐड करो', 'नया खाता खोलो', 'खाता खोलो', 'add customer', 'new customer'];
+      custTriggers.forEach(tr => { cleanWords = cleanWords.replace(tr, ' '); });
+
+      let rate = appData.farmSettings.defaultRate || 60.0;
+      const rateMatch = text.match(/(?:भाव|रेट|rate|रुपये)\s*(\d+)/);
+      if (rateMatch) rate = parseFloat(rateMatch[1]);
+
+      const allNums = (text.match(/\d+(\.\d+)?/g) || []).map(n => parseFloat(n));
+      let quota = 2.0;
+      for (let num of allNums) {
+        if (num !== rate && num <= 20) { quota = num; break; }
+      }
+
+      const phoneMatch = text.match(/\b\d{10}\b/);
+      const phone = phoneMatch ? phoneMatch[0] : `98765${10000 + Math.floor(Math.random() * 89999)}`;
+
+      const stopwords = [
+        'ग्राहक', 'customer', 'कस्टमर', 'पार्टी', 'खरीदार', 'खाता', 'नया', 'नयी', 'नई', 'जोड़ो', 'जोड़ें', 'जोड़', 'बनाओ', 'करो',
+        'ऐड', 'एड', 'add', 'कर', 'दे', 'दो', 'डिटेल्स', 'खोलो', 'लीटर', 'कोटा', 'दूध', 'भाव', 'रेट', 'रुपये', 'प्रति', 'का', 'की', 'के', 'में', 'है', 'नाम'
+      ];
+      const nameTokens = cleanWords.split(/\s+/).filter(w => w && !stopwords.includes(w) && !w.match(/^\d+(\.\d+)?$/));
+      const extractedName = nameTokens.join(' ').trim();
+
+      if (!extractedName || extractedName.length < 2) {
+        openAddCustomerModal();
+        const qM = document.getElementById('custQuotaMorning');
+        if (qM) qM.value = (quota / 2).toFixed(1);
+        const qE = document.getElementById('custQuotaEvening');
+        if (qE) qE.value = (quota / 2).toFixed(1);
+        const rEl = document.getElementById('custRate');
+        if (rEl) rEl.value = rate;
+        speakAudio('नया ग्राहक जोड़ने का फॉर्म खुल गया है। ग्राहक का नाम और भाव दर्ज करें।');
+        showAudioToast('👤 नया ग्राहक फॉर्म खुला (विवरण भरें)');
+        return;
+      }
+
+      const qM = Math.round((quota / 2) * 10) / 10;
+      const qE = Math.round((quota - qM) * 10) / 10;
+      const newCust = {
+        id: 'c_' + Date.now(),
+        name: extractedName,
+        phone: phone,
+        address: '',
+        quotaMorning: qM,
+        quotaEvening: qE,
+        rate: rate,
+        dues: 0,
+        photo: ''
+      };
+      if (!appData.customers) appData.customers = [];
+      appData.customers.push(newCust);
+      saveData();
+      switchTab('viewKhata');
+      renderCustomerKhata();
+      renderDeliveryCards();
+
+      speakAudio(`नया ग्राहक ${extractedName} दैनिक कोटा ${quota} लीटर और भाव ₹${rate} के साथ जोड़ दिया गया है!`);
+      showAudioToast(`👤 नया ग्राहक: ${extractedName} (कोटा: ${quota}L • ₹${rate}/L) जोड़ा गया!`);
+      return;
+    }
+  }
+
+  // C. ADD ANIMAL INTENT (पशु जोड़ना)
+  if (isAnimTopic && (hasAddAction || text.includes('नया') || text.includes('नई') || text.includes('add'))) {
+    if (!text.includes('बिकाऊ') && !text.includes('मेला') && !text.includes('खरीदा') && !text.match(/\d+\s*(लीटर|l)\s*(दिया|निकला|हुआ)/)) {
+      if (!isProMember() && (appData.animals || []).length >= 4) {
+        openProPaywallModal('animal', (appData.animals || []).length);
+        return;
+      }
+
+      let cleanWords = text;
+      const animTriggers = ['पशु में ये ऐड कर दे', 'पशु में ऐड कर दे', 'पशु में ऐड करो', 'पशु में ये', 'पशु में', 'नया पशु', 'नई गाय', 'नई भैंस', 'नया जानवर', 'पशु जोड़ो', 'पशु जोड़ें', 'गाय जोड़ो', 'भैंस जोड़ो', 'पशु ऐड करो', 'गाय ऐड करो', 'भैंस ऐड करो', 'add animal', 'new animal', 'add cow', 'add buffalo'];
+      animTriggers.forEach(tr => { cleanWords = cleanWords.replace(tr, ' '); });
+
+      const isBuffalo = (text.includes('भैंस') || text.includes('भैस') || text.includes('मुर्रा') || text.includes('buffalo'));
+      const animalType = isBuffalo ? 'buffalo' : 'cow';
+
+      let breed = animalType === 'cow' ? 'देसी गाय' : 'देसी भैंस';
+      if (text.includes('मुर्रा')) breed = 'मुर्रा';
+      else if (text.includes('गिर')) breed = 'गिर';
+      else if (text.includes('साहीवाल')) breed = 'साहीवाल';
+      else if (text.includes('जर्सी')) breed = 'जर्सी';
+      else if (text.includes('hf') || text.includes('एचएफ') || text.includes('संकर')) breed = 'HF / संकर';
+      else if (text.includes('राठी')) breed = 'राठी';
+      else if (text.includes('थारपारकर')) breed = 'थारपारकर';
+
+      let status = 'milking';
+      if (text.includes('गाभिन') || text.includes('गर्भवती') || text.includes('प्रेग्नेंट') || text.includes('ग्याभिन')) status = 'pregnant';
+      else if (text.includes('सूखी') || text.includes('सूखा') || text.includes('ड्राई') || text.includes('dry')) status = 'dry';
+
+      const yieldVal = parseHindiNumbers(text) || (animalType === 'buffalo' ? 8.0 : 6.0);
+
+      const stopwords = [
+        'पशु', 'animal', 'cow', 'buffalo', 'गाय', 'भैंस', 'भैस', 'जानवर', 'नया', 'नयी', 'नई', 'जोड़ो', 'जोड़ें', 'जोड़', 'करो',
+        'ऐड', 'एड', 'add', 'कर', 'दे', 'दो', 'डिटेल्स', 'लीटर', 'दूध', 'दुधारू', 'गाभिन', 'गर्भवती', 'प्रेग्नेंट',
+        'साहीवाल', 'गिर', 'मुर्रा', 'जर्सी', 'राठी', 'थारपारकर', 'एचएफ', 'hf', 'संकर',
+        'देसी', 'क्षमता', 'की', 'का', 'के', 'में', 'वाला', 'वाली', 'है', 'देती', 'नाम'
+      ];
+      const nameTokens = cleanWords.split(/\s+/).filter(w => w && !stopwords.includes(w) && !w.match(/^\d+(\.\d+)?$/));
+      const extractedName = nameTokens.join(' ').trim();
+
+      if (!extractedName || extractedName.length < 2) {
+        openAddAnimalModal();
+        const tEl = document.getElementById('animalType');
+        if (tEl) tEl.value = animalType;
+        const bEl = document.getElementById('animalBreed');
+        if (bEl) bEl.value = breed;
+        const sEl = document.getElementById('animalStatus');
+        if (sEl) sEl.value = status;
+        const yEl = document.getElementById('animalYield');
+        if (yEl) yEl.value = yieldVal;
+        speakAudio('नया पशु जोड़ने का फॉर्म खुल गया है। पशु का नाम और फोटो जोड़ें।');
+        showAudioToast('🐄 नया पशु फॉर्म खुला (विवरण भरें)');
+        return;
+      }
+
+      const fullAnimalName = `${extractedName} (${breed})`;
+      const newAnimal = {
+        id: 'a_' + Date.now(),
+        name: fullAnimalName,
+        type: animalType,
+        breed: breed,
+        status: status,
+        expectedYield: yieldVal,
+        photo: ''
+      };
+      if (!appData.animals) appData.animals = [];
+      appData.animals.push(newAnimal);
+      saveData();
+      switchTab('viewCattle');
+      renderMilkingCards();
+      renderCattleRegister();
+
+      const typeHindi = animalType === 'cow' ? 'गाय' : 'भैंस';
+      const statusHindi = status === 'pregnant' ? 'गाभिन' : (status === 'dry' ? 'सूखी' : 'दुधारू');
+      speakAudio(`बधाई हो! नया पशु ${extractedName} ${breed} ${typeHindi} फार्म में जोड़ दी गई है!`);
+      showAudioToast(`🐄 नया पशु: ${fullAnimalName} (${yieldVal}L ${statusHindi}) जोड़ा गया!`);
+      return;
+    }
+  }
+
+  // 2. NAVIGATION COMMANDS (जब कोई जोड़ो / ऐड कमांड न हो)
   if (text.includes('होम') || text.includes('home') || text.includes('डैशबोर्ड') || text.includes('मुख्य पन्ना') || text.includes('landing page')) {
     switchTab('viewHome');
     speakAudio('होम डैशबोर्ड खुल गया');
@@ -1823,6 +2062,16 @@ function processVoiceCommand(rawText) {
     speakAudio('पशुओं के दूध का पन्ना खुल गया');
     return;
   }
+  if (text.includes('दूध खरीदा') || text.includes('सप्लायर संकलन') || text.includes('खरीद संकलन')) {
+    const bType = (appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
+    if (bType === 'vendor' || bType === 'hybrid') {
+      currentInwardMode = 'purchase';
+      switchTab('viewMilking');
+      renderPurchaseCards();
+      speakAudio('दूध खरीद संकलन खुल गया');
+      return;
+    }
+  }
   if (text.includes('बांट') || text.includes('वितरण') || text.includes('डिलीवरी')) {
     switchTab('viewDelivery');
     speakAudio('दूध वितरण का पन्ना खुल गया');
@@ -1831,6 +2080,11 @@ function processVoiceCommand(rawText) {
   if (text.includes('खाता') || text.includes('बिल') || text.includes('उधार')) {
     switchTab('viewKhata');
     speakAudio('ग्राहक खाता खुल गया');
+    return;
+  }
+  if (text.includes('सप्लायर') && (text.includes('पन्ना') || text.includes('टैब') || text.includes('खोलो') || text.includes('दिखाओ'))) {
+    switchTab('viewSupplier');
+    speakAudio('सप्लायर खाता खुल गया');
     return;
   }
   if ((text.includes('पशु') || text.includes('गाय') || text.includes('भैंस')) && !text.match(/\d/)) {
@@ -1844,166 +2098,13 @@ function processVoiceCommand(rawText) {
     return;
   }
 
-  // Reset / New Day Voice Commands (उदा. "आज का नया दिन शुरू करो", "सारे काउंटर 0 करो")
+  // 3. Reset / New Day Voice Commands
   if (
     text.includes('नया दिन') || text.includes('सारे काउंटर 0') ||
     text.includes('सब 0 करो') || text.includes('0 कर दो') ||
     text.includes('reset today') || text.includes('reset counter')
   ) {
     resetTodayCounters();
-    return;
-  }
-
-    // ===================================================================
-  // 1. VOICE: ADD NEW ANIMAL (बोलकर नया पशु जोड़ना)
-  // उदा. "नया पशु जोड़ो गंगा साहीवाल 8 लीटर", "नई भैंस जोड़ो चमेली 10 लीटर", "नया पशु जोड़ो"
-  // ===================================================================
-  const addAnimalTriggers = ['नया पशु', 'नई गाय', 'नई भैंस', 'नया जानवर', 'पशु जोड़ो', 'पशु जोड़ें', 'गाय जोड़ो', 'भैंस जोड़ो', 'add animal', 'new animal', 'add cow', 'add buffalo'];
-  if (addAnimalTriggers.some(tr => text.includes(tr))) {
-    // Check Free Plan Limit (Max 4 animals)
-    if (!isProMember() && (appData.animals || []).length >= 4) {
-      openProPaywallModal('animal', appData.animals.length);
-      return;
-    }
-
-    let cleanWords = text;
-    addAnimalTriggers.forEach(tr => { cleanWords = cleanWords.replace(tr, ' '); });
-    cleanWords = cleanWords.trim();
-
-    const isBuffalo = (text.includes('भैंस') || text.includes('भैस') || text.includes('मुर्रा') || text.includes('buffalo'));
-    const animalType = isBuffalo ? 'buffalo' : 'cow';
-
-    let breed = animalType === 'cow' ? 'देसी गाय' : 'देसी भैंस';
-    if (text.includes('मुर्रा')) breed = 'मुर्रा';
-    else if (text.includes('गिर')) breed = 'गिर';
-    else if (text.includes('साहीवाल')) breed = 'साहीवाल';
-    else if (text.includes('जर्सी')) breed = 'जर्सी';
-    else if (text.includes('hf') || text.includes('एचएफ') || text.includes('संकर')) breed = 'HF / संकर';
-    else if (text.includes('राठी')) breed = 'राठी';
-    else if (text.includes('थारपारकर')) breed = 'थारपारकर';
-
-    let status = 'milking';
-    if (text.includes('गाभिन') || text.includes('गर्भवती') || text.includes('प्रेग्नेंट') || text.includes('ग्याभिन')) status = 'pregnant';
-    else if (text.includes('सूखी') || text.includes('सूखा') || text.includes('ड्राई') || text.includes('dry')) status = 'dry';
-
-    const yieldVal = parseHindiNumbers(text) || (animalType === 'buffalo' ? 8.0 : 6.0);
-
-    const stopwords = [
-      'नया', 'नयी', 'नई', 'पशु', 'जानवर', 'जोड़ो', 'जोड़ें', 'जोड़', 'करो',
-      'गाय', 'भैंस', 'भैस', 'लीटर', 'दूध', 'दुधारू', 'गाभिन', 'गर्भवती', 'प्रेग्नेंट',
-      'साहीवाल', 'गिर', 'मुर्रा', 'जर्सी', 'राठी', 'थारपारकर', 'एचएफ', 'hf', 'संकर',
-      'देसी', 'क्षमता', 'की', 'का', 'के', 'वाला', 'वाली', 'है', 'देती', 'नाम', 'add', 'animal', 'new', 'cow', 'buffalo'
-    ];
-    const nameTokens = cleanWords.split(/\s+/).filter(w => w && !stopwords.includes(w) && !w.match(/^\d+(\.\d+)?$/));
-    const extractedName = nameTokens.join(' ').trim();
-
-    if (!extractedName) {
-      openAddAnimalModal();
-      document.getElementById('animalType').value = animalType;
-      document.getElementById('animalBreed').value = breed;
-      document.getElementById('animalStatus').value = status;
-      document.getElementById('animalYield').value = yieldVal;
-      speakAudio('नया पशु जोड़ने का फॉर्म खुल गया है। पशु का नाम और फोटो जोड़ें।');
-      showAudioToast('🐄 नया पशु फॉर्म खुला (विवरण भरें)');
-      return;
-    }
-
-    const fullAnimalName = `${extractedName} (${breed})`;
-    const newAnimal = {
-      id: 'a_' + Date.now(),
-      name: fullAnimalName,
-      type: animalType,
-      breed: breed,
-      status: status,
-      expectedYield: yieldVal,
-      photo: ''
-    };
-    appData.animals.push(newAnimal);
-    saveData();
-    switchTab('viewCattle');
-    renderMilkingCards();
-    renderCattleRegister();
-
-    const typeHindi = animalType === 'cow' ? 'गाय' : 'भैंस';
-    const statusHindi = status === 'pregnant' ? 'गाभिन' : (status === 'dry' ? 'सूखी' : 'दुधारू');
-    speakAudio(`बधाई हो! नया पशु ${extractedName} ${breed} ${typeHindi} फार्म में जोड़ दी गई है!`);
-    showAudioToast(`🐄 नया पशु: ${fullAnimalName} (${yieldVal}L ${statusHindi}) जोड़ा गया!`);
-    return;
-  }
-
-  // ===================================================================
-  // 2. VOICE: ADD NEW CUSTOMER (बोलकर नया ग्राहक जोड़ना)
-  // उदा. "नया ग्राहक जोड़ो सुरेश जी 2 लीटर भाव 65", "नया कस्टमर जोड़ो महेश 3 लीटर", "नया ग्राहक जोड़ो"
-  // ===================================================================
-  const addCustTriggers = ['नया ग्राहक', 'नया कस्टमर', 'ग्राहक जोड़ो', 'ग्राहक बनाओ', 'ग्राहक जोड़ें', 'कस्टमर जोड़ो', 'नया खाता खोलो', 'add customer', 'new customer'];
-  if (addCustTriggers.some(tr => text.includes(tr))) {
-    // Check Free Plan Limit (Max 10 customers)
-    if (!isProMember() && (appData.customers || []).length >= 10) {
-      openProPaywallModal('customer', appData.customers.length);
-      return;
-    }
-
-    let cleanWords = text;
-    addCustTriggers.forEach(tr => { cleanWords = cleanWords.replace(tr, ' '); });
-    cleanWords = cleanWords.trim();
-
-    let rate = appData.farmSettings.defaultRate || 60.0;
-    const rateMatch = text.match(/(?:भाव|रेट|rate|रुपये)\s*(\d+)/);
-    if (rateMatch) {
-      rate = parseFloat(rateMatch[1]);
-    }
-
-    const allNums = (text.match(/\d+(\.\d+)?/g) || []).map(n => parseFloat(n));
-    let quota = 2.0;
-    for (let num of allNums) {
-      if (num !== rate && num <= 20) {
-        quota = num;
-        break;
-      }
-    }
-
-    const phoneMatch = text.match(/\b\d{10}\b/);
-    const phone = phoneMatch ? phoneMatch[0] : `98765${10000 + Math.floor(Math.random() * 89999)}`;
-
-    const stopwords = [
-      'नया', 'ग्राहक', 'कस्टमर', 'जोड़ो', 'जोड़ें', 'जोड़', 'बनाओ', 'करो', 'खाता',
-      'लीटर', 'कोटा', 'दूध', 'भाव', 'रेट', 'रुपये', 'प्रति', 'का', 'की', 'के', 'है',
-      'नाम', 'add', 'customer', 'new', 'rate', 'quota'
-    ];
-    const nameTokens = cleanWords.split(/\s+/).filter(w => w && !stopwords.includes(w) && !w.match(/^\d+(\.\d+)?$/));
-    const extractedName = nameTokens.join(' ').trim();
-
-    if (!extractedName) {
-      openAddCustomerModal();
-      document.getElementById('custQuotaMorning').value = (quota / 2).toFixed(1);
-      document.getElementById('custQuotaEvening').value = (quota / 2).toFixed(1);
-      document.getElementById('custRate').value = rate;
-      speakAudio('नया ग्राहक जोड़ने का फॉर्म खुल गया है। ग्राहक का नाम दर्ज करें।');
-      showAudioToast('👤 नया ग्राहक फॉर्म खुला (विवरण भरें)');
-      return;
-    }
-
-    const qM = Math.round((quota / 2) * 10) / 10;
-    const qE = Math.round((quota - qM) * 10) / 10;
-    const newCust = {
-      id: 'c_' + Date.now(),
-      name: extractedName,
-      phone: phone,
-      address: '',
-      quotaMorning: qM,
-      quotaEvening: qE,
-      rate: rate,
-      dues: 0,
-      photo: ''
-    };
-    appData.customers.push(newCust);
-    saveData();
-    switchTab('viewKhata');
-    renderCustomerKhata();
-    renderDeliveryCards();
-
-    speakAudio(`नया ग्राहक ${extractedName} दैनिक कोटा ${quota} लीटर और भाव ₹${rate} के साथ जोड़ दिया गया है!`);
-    showAudioToast(`👤 नया ग्राहक: ${extractedName} (कोटा: ${quota}L • ₹${rate}/L) जोड़ा गया!`);
     return;
   }
 
@@ -2064,6 +2165,47 @@ function processVoiceCommand(rawText) {
       speakAudio(`${matchedCustVoice.name} को ${shiftLabel} का ${defaultLitres} लीटर दूध दिया गया!`);
       const resEl = document.getElementById('voiceResult');
       if (resEl) resEl.innerText = `✅ ${matchedCustVoice.name} (${shiftLabel}): ${defaultLitres} L`;
+      return;
+    }
+  }
+
+  // Supplier Purchase Commands (बोलकर सप्लायर से दूध खरीद दर्ज करना)
+  // उदा. "रामकिशन से 20 लीटर खरीदा", "कालूराम 15 लीटर"
+  const matchedSuppVoice = findSupplierFuzzy(text);
+  if (matchedSuppVoice) {
+    const litres = parseHindiNumbers(text);
+    if (litres !== null) {
+      const explicitShift = detectShiftInText(text);
+      const targetShift = explicitShift || currentShift;
+      const shiftLabel = targetShift === 'morning' ? 'सुबह' : 'शाम';
+
+      initTodayRecord();
+      if (!appData.dailyRecords[currentDateKey].purchases) {
+        appData.dailyRecords[currentDateKey].purchases = { morning: {}, evening: {} };
+      }
+      if (!appData.dailyRecords[currentDateKey].purchases[targetShift]) {
+        appData.dailyRecords[currentDateKey].purchases[targetShift] = {};
+      }
+
+      const curRate = matchedSuppVoice.rate || appData.farmSettings.defaultPurchaseRate || 48;
+      appData.dailyRecords[currentDateKey].purchases[targetShift][matchedSuppVoice.id] = {
+        litres: litres,
+        rate: curRate,
+        status: 'recorded'
+      };
+      saveData();
+
+      if (explicitShift && explicitShift !== currentShift) {
+        setShift(explicitShift, true);
+      }
+      currentInwardMode = 'purchase';
+      switchTab('viewMilking');
+      renderPurchaseCards();
+      updateStatsHeader();
+
+      speakAudio(`${matchedSuppVoice.name} से ${shiftLabel} का ${litres} लीटर दूध खरीद दर्ज हो गई!`);
+      const resEl = document.getElementById('voiceResult');
+      if (resEl) resEl.innerText = `✅ ${matchedSuppVoice.name} (${shiftLabel}): ${litres} L खरीद दर्ज`;
       return;
     }
   }
@@ -4123,15 +4265,35 @@ function switchTab(tabId) {
   if (tabId === 'viewHome') renderHomeDashboard();
   if (tabId === 'viewMilking') {
     const bType = (appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
+    const mList = document.getElementById('milkingCardsList');
+    const pList = document.getElementById('purchaseCardsList');
+    const toggleOwn = document.getElementById('toggleOwnCattleBtn');
+    const togglePur = document.getElementById('togglePurchaseBtn');
+
     if (bType === 'vendor') {
+      currentInwardMode = 'purchase';
+      if (mList) mList.classList.add('hidden');
+      if (pList) pList.classList.remove('hidden');
       renderPurchaseCards();
     } else if (bType === 'hybrid') {
       if (currentInwardMode === 'purchase') {
+        if (togglePur) togglePur.classList.add('active');
+        if (toggleOwn) toggleOwn.classList.remove('active');
+        if (mList) mList.classList.add('hidden');
+        if (pList) pList.classList.remove('hidden');
         renderPurchaseCards();
       } else {
+        currentInwardMode = 'cattle';
+        if (toggleOwn) toggleOwn.classList.add('active');
+        if (togglePur) togglePur.classList.remove('active');
+        if (mList) mList.classList.remove('hidden');
+        if (pList) pList.classList.add('hidden');
         renderMilkingCards();
       }
     } else {
+      currentInwardMode = 'cattle';
+      if (mList) mList.classList.remove('hidden');
+      if (pList) pList.classList.add('hidden');
       renderMilkingCards();
     }
   }
@@ -9628,6 +9790,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Setup Profile Mode Chooser & Check Initial Startup
+  setupProfileModeModalListeners();
+  checkInitialProfileMode();
+
   // Apply active language on initial startup
   applyTranslations();
 
@@ -10186,6 +10352,7 @@ let currentKhataMode = 'customer'; // 'customer' | 'supplier'
 function setBusinessType(type, silent = false) {
   if (!appData.farmSettings) appData.farmSettings = {};
   appData.farmSettings.businessType = type;
+  localStorage.setItem('dm_business_mode_selected', type);
   saveData();
 
   // Update Settings modal cards UI
@@ -10221,7 +10388,11 @@ function setBusinessType(type, silent = false) {
   const cattleNavLabel = document.getElementById('bottomNavCattleLabel');
   const cattleNavIcon = document.getElementById('bottomNavCattleIcon');
 
+  const toggleOwn = document.getElementById('toggleOwnCattleBtn');
+  const togglePur = document.getElementById('togglePurchaseBtn');
+
   if (type === 'vendor') {
+    currentInwardMode = 'purchase';
     if (tabTitle) tabTitle.innerText = '📥 दूध खरीदा / संकलन';
     if (subTitle) subTitle.innerText = 'गाँव के किसानों व सप्लायरों से दूध खरीद दर्ज करें';
     if (addSuppBtn) addSuppBtn.classList.remove('hidden');
@@ -10239,12 +10410,20 @@ function setBusinessType(type, silent = false) {
     if (tab5Btn) tab5Btn.setAttribute('data-tab', 'viewSupplier');
     if (cattleNavLabel) cattleNavLabel.innerText = 'सप्लायर';
     if (cattleNavIcon) cattleNavIcon.innerText = '🤝';
+    renderPurchaseCards();
   } else if (type === 'hybrid') {
+    currentInwardMode = 'cattle';
     if (tabTitle) tabTitle.innerText = '🥛 दूध आवक (फार्म व खरीद)';
     if (subTitle) subTitle.innerText = 'अपने पशुओं का दोहन व किसानों से खरीद';
     if (addSuppBtn) addSuppBtn.classList.remove('hidden');
     if (addAnimalBtn) addAnimalBtn.classList.remove('hidden');
     if (inwardToggle) inwardToggle.classList.remove('hidden');
+
+    // Default to own cattle milking in hybrid mode!
+    if (toggleOwn) toggleOwn.classList.add('active');
+    if (togglePur) togglePur.classList.remove('active');
+    if (milkingList) milkingList.classList.remove('hidden');
+    if (purchaseList) purchaseList.classList.add('hidden');
 
     if (milkingNavLabel) milkingNavLabel.innerText = 'दूध आवक';
     if (milkingNavIcon) milkingNavIcon.innerText = '🥛';
@@ -10254,8 +10433,10 @@ function setBusinessType(type, silent = false) {
     if (tab5Btn) tab5Btn.setAttribute('data-tab', 'viewCattle');
     if (cattleNavLabel) cattleNavLabel.innerText = 'पशु';
     if (cattleNavIcon) cattleNavIcon.innerText = '🐄';
+    renderMilkingCards();
   } else {
     // farmer
+    currentInwardMode = 'cattle';
     if (tabTitle) tabTitle.innerText = '🥛 पशुओं का दूध';
     if (subTitle) subTitle.innerText = 'सुबह की शिफ्ट की एंट्री करें';
     if (addSuppBtn) addSuppBtn.classList.add('hidden');
@@ -10272,6 +10453,7 @@ function setBusinessType(type, silent = false) {
     if (tab5Btn) tab5Btn.setAttribute('data-tab', 'viewCattle');
     if (cattleNavLabel) cattleNavLabel.innerText = 'पशु';
     if (cattleNavIcon) cattleNavIcon.innerText = '🐄';
+    renderMilkingCards();
   }
 
   renderHomeDashboard();
@@ -11234,4 +11416,74 @@ function renderSupplierDedicatedList() {
 
     container.appendChild(card);
   });
+}
+
+// ===================================================================
+// STARTUP BUSINESS PROFILE MODE CHOOSER (#profileModeModal)
+// ===================================================================
+let selectedStartupBizType = (appData && appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
+
+function openProfileModeModal() {
+  const modal = document.getElementById('profileModeModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    updateProfileModeModalUI();
+  }
+}
+
+function closeProfileModeModal() {
+  const modal = document.getElementById('profileModeModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function updateProfileModeModalUI() {
+  const currentBiz = selectedStartupBizType || (appData && appData.farmSettings && appData.farmSettings.businessType) || 'farmer';
+  document.querySelectorAll('.welcome-biz-card').forEach(card => {
+    if (card.getAttribute('data-biz') === currentBiz) {
+      card.classList.add('active');
+    } else {
+      card.classList.remove('active');
+    }
+  });
+}
+
+function checkInitialProfileMode() {
+  const hasChosen = localStorage.getItem('dm_business_mode_selected');
+  if (!hasChosen) {
+    setTimeout(() => {
+      openProfileModeModal();
+    }, 700);
+  }
+}
+
+function setupProfileModeModalListeners() {
+  document.querySelectorAll('.welcome-biz-card').forEach(card => {
+    card.addEventListener('click', () => {
+      selectedStartupBizType = card.getAttribute('data-biz');
+      updateProfileModeModalUI();
+    });
+  });
+
+  const confirmBtn = document.getElementById('btnConfirmProfileMode');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', () => {
+      const bizType = selectedStartupBizType || 'farmer';
+      setBusinessType(bizType);
+      closeProfileModeModal();
+    });
+  }
+
+  const closeBtn = document.getElementById('closeProfileModeModalBtn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      closeProfileModeModal();
+    });
+  }
+
+  const openFromSettings = document.getElementById('btnOpenFullProfileModal');
+  if (openFromSettings) {
+    openFromSettings.addEventListener('click', () => {
+      openProfileModeModal();
+    });
+  }
 }
