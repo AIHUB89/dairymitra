@@ -8446,3 +8446,315 @@ html, body {
   border-color: #10b981;
   color: #ffffff;
 }
+
+
+/* ===================================================================
+   DIGITAL FARMER ID CARD & SUBSCRIBER IDENTITY (Prime / Netflix Style)
+   =================================================================== */
+.member-id-card {
+  position: relative;
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #022c22 100%);
+  border-radius: 16px;
+  padding: 16px 18px;
+  color: #ffffff;
+  box-shadow: 0 10px 25px -5px rgba(6, 78, 59, 0.4), 0 0 0 1px rgba(251, 191, 36, 0.4);
+  margin-bottom: 18px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.member-id-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.member-id-card.free-tier {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.member-id-card.free-tier::before {
+  background: radial-gradient(circle, rgba(148, 163, 184, 0.15) 0%, transparent 70%);
+}
+
+.member-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.member-card-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+/* Amazon Prime / Netflix VIP Tag */
+.prime-vip-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  color: #78350f;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 11px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  border: 1px solid #fef08a;
+  text-transform: uppercase;
+  animation: primeShimmer 3s infinite ease-in-out;
+}
+
+@keyframes primeShimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15) drop-shadow(0 0 6px rgba(251, 191, 36, 0.6)); }
+}
+
+.free-member-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.member-card-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.member-avatar-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.member-id-card:not(.free-tier) .member-avatar-wrap {
+  border-color: #fbbf24;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(6, 78, 59, 0.8) 100%);
+}
+
+.member-verified-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  background: #10b981;
+  color: #ffffff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #064e3b;
+}
+
+.member-id-card.free-tier .member-verified-badge {
+  background: #64748b;
+  border-color: #1e293b;
+}
+
+.member-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.id-farmer-name {
+  font-size: 17px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.2;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.id-farm-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.id-farmer-phone {
+  font-size: 11.5px;
+  color: #cbd5e1;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.member-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 11px;
+}
+
+.id-member-number {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.id-validity-pill {
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.id-validity-pill.pro {
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.2);
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.id-validity-pill.free {
+  color: #cbd5e1;
+}
+
+/* Header Prime Badge (Amazon/Netflix Style) */
+.header-prime-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #78350f;
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 12px;
+  margin-left: 4px;
+  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.4);
+  letter-spacing: 0.3px;
+  border: 1px solid #fef08a;
+  vertical-align: middle;
+}
+
+/* Country Delight Hero Subscriber Tag */
+.cd-subscriber-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+.cd-subscriber-tag.vip-member {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  box-shadow: 0 1px 4px rgba(217, 119, 6, 0.2);
+}
+
+.cd-subscriber-tag.free-tier {
+  background: rgba(255, 255, 255, 0.85);
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+/* Invoice Empty State (when user has not subscribed) */
+.invoice-empty-state {
+  text-align: center;
+  padding: 24px 16px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1.5px dashed #cbd5e1;
+  margin-bottom: 12px;
+}
+
+.empty-state-icon {
+  font-size: 46px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.empty-state-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.empty-status-pill {
+  display: inline-block;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.empty-state-desc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0 auto 14px;
+  max-width: 440px;
+}
+
+.empty-state-benefits {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.benefit-row {
+  font-size: 12.5px;
+  color: #334155;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

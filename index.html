@@ -46,6 +46,7 @@
                   <span class="cloud-sync-dot"></span>
                   <span class="cloud-sync-text" id="cloudSyncText">लाइव सिंक</span>
                 </div>
+                <span class="header-prime-badge hidden" id="headerPrimeBadge" title="डेयरी मित्र प्रो VIP सदस्य">👑 PRO VIP</span>
               </div>
               <p class="brand-tagline" id="farmNameDisplay">श्री कृष्णा डेयरी फार्म</p>
             </div>
@@ -205,7 +206,10 @@
               <div class="cd-hero-chip" id="cdGreetingChip">
                 <span class="cd-chip-dot"></span> <span id="cdLiveShiftText">सुबह की शिफ्ट सक्रिय</span>
               </div>
-              <h2 class="cd-hero-greeting" id="cdHeroGreeting">🌅 सुप्रभात, शुक्ला जी!</h2>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <h2 class="cd-hero-greeting" id="cdHeroGreeting" style="margin: 0;">🌅 सुप्रभात, शुक्ला जी!</h2>
+                <span class="cd-subscriber-tag vip-member" id="cdHeroSubscriberTag">👑 PRO VIP MEMBER</span>
+              </div>
               <p class="cd-hero-tagline" id="cdHeroTagline">✨ शुद्धता, ताज़गी व भरोसे का डिजिटल डेयरी प्रबंधन</p>
             </div>
             <div class="cd-hero-badges">
@@ -3285,6 +3289,32 @@
         <!-- Section 1: Farmer & Farm Profile -->
         <div class="settings-section">
           <h4 class="settings-sec-title">👤 किसान व डेयरी प्रोफाइल</h4>
+
+          <!-- Digital Farmer ID Card (Amazon Prime / Netflix Style Member Identity Card) -->
+          <div class="member-id-card" id="settingsMemberIdCard">
+            <div class="member-card-header">
+              <div class="member-card-brand">
+                <span>🥛</span> DAIRYMITRA ID
+              </div>
+              <span class="prime-vip-tag" id="memberCardTag">👑 VIP PRO MEMBER</span>
+            </div>
+            <div class="member-card-body">
+              <div class="member-avatar-wrap">
+                <span>👤</span>
+                <span class="member-verified-badge" id="memberVerifiedBadge">✓</span>
+              </div>
+              <div class="member-card-info">
+                <div class="id-farmer-name" id="cardOwnerNameDisplay">रमेश यादव</div>
+                <div class="id-farm-name" id="cardFarmNameDisplay">श्री कृष्णा डेयरी फार्म</div>
+                <div class="id-farmer-phone" id="cardPhoneDisplay">+91 98765 43210</div>
+              </div>
+            </div>
+            <div class="member-card-footer">
+              <span class="id-member-number" id="cardMemberId">ID: DM-2026-8991</span>
+              <span class="id-validity-pill pro" id="cardMemberTier">✨ प्रो VIP • 365 दिन वैध</span>
+            </div>
+          </div>
+
           <div class="settings-profile-form">
             <div class="form-group">
               <label for="settingsOwnerName" class="form-label">किसान / मालिक का नाम</label>
@@ -3412,7 +3442,25 @@
       </div>
 
       <div class="modal-body invoice-body">
-        <!-- Printable Receipt Slip Area -->
+        <!-- 1. Empty State (When user is on Free Tier / Has not purchased subscription) -->
+        <div class="invoice-empty-state hidden" id="invoiceEmptyState">
+          <span class="empty-state-icon">📜</span>
+          <h3 class="empty-state-title">कोई सक्रिय सदस्यता रसीद नहीं है</h3>
+          <div class="empty-status-pill">⚪ वर्तमान खाता स्थिति: फ्री प्लान (Free Tier)</div>
+          <p class="empty-state-desc">
+            आधिकारिक डिजिटल जीएसटी टैक्स इनवॉइस (Tax Invoice) केवल तभी जनरेट होती है जब आप कोई प्रो प्लान (VIP Suite) एक्टिवेट करते हैं।
+          </p>
+          <div class="empty-state-benefits">
+            <div class="benefit-row">✓ आपके पंजीकृत नाम व मोबाइल नंबर से रसीद बनेगी</div>
+            <div class="benefit-row">✓ वास्तविक UPI भुगतान ID (UTR) व टैक्स छूट विवरण दर्ज होगा</div>
+            <div class="benefit-row">✓ 2-फोन लाइव सिंक व असीमित पशु डेटा बैकअप की डिजिटल गारंटी</div>
+          </div>
+          <button type="button" class="btn-primary" id="btnUpgradeFromEmptyInvoice" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 800; border-radius: 12px;">
+            👑 प्रो प्लान चुनें व एक्टिव करें (मात्र ₹33/माह) ➔
+          </button>
+        </div>
+
+        <!-- 2. Printable Receipt Slip Area (Only shown when Pro subscription is active) -->
         <div class="invoice-slip-wrapper" id="printableReceiptArea">
           <div class="invoice-slip">
             

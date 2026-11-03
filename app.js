@@ -1171,12 +1171,107 @@ function findCustomerFuzzy(text) {
 function findSupplierFuzzy(text) {
   if (!appData.suppliers || !appData.suppliers.length) return null;
   const t = text.toLowerCase();
+
+  // Helper to phonetically normalize Hindi characters
+  const norm = (s) => s.toLowerCase()
+    .replace(/[शष]/g, 'स')
+    .replace(/[व]/g, 'ब')
+    .replace(/[ी]/g, 'ि')
+    .replace(/[ू]/g, 'ु');
+
+  const tNorm = norm(t);
+
   for (let supp of appData.suppliers) {
     const rawName = supp.name.toLowerCase();
     const cleanName = rawName.split(' ')[0].replace(/[^a-z\u0900-\u097F]/gi, '');
+
+    // 1. Direct or clean match
     if (t.includes(cleanName) || t.includes(rawName)) return supp;
+
+    // 2. Normalized phonetics
+    if (tNorm.includes(norm(cleanName))) return supp;
+
+    // 3. Known aliases & nicknames
+    // कालू / कालूराम / kalu / kaloo
+    if (cleanName.includes('कालू') && (
+      t.includes('कालू') || t.includes('कालु') || t.includes('kalu') || t.includes('kaloo') || t.includes('कालूराम') || t.includes('तबेला')
+    )) return supp;
+
+    // रामकिशन / रामकिसन / ramkishan / ramkisan
+    if (cleanName.includes('रामकिशन') && (
+      t.includes('रामकिशन') || t.includes('रामकिसन') || t.includes('रामकिशना') || t.includes('रामकिसना') ||
+      t.includes('ramkishan') || t.includes('ramkisan') || t.includes('ramkisna')
+    )) return supp;
+
+    // बलबीर / बलवीर / balbir
+    if (cleanName.includes('बलबीर') && (
+      t.includes('बलबीर') || t.includes('बलवीर') || t.includes('balbir') || t.includes('balveer') || t.includes('संकलन')
+    )) return supp;
+
+    // 4. Prefix match (e.g. user says 3+ chars prefix of cleanName)
+    const tokens = t.match(/[\u0900-\u097Fa-z]{3,}/g) || [];
+    for (let tok of tokens) {
+      if (cleanName.startsWith(tok) || tok.startsWith(cleanName)) return supp;
+    }
   }
   return null;
+}
+
+function sendSupplierWhatsAppBill(suppId, year = currentKhataYear, month = currentKhataMonth) {
+  const supp = appData.suppliers.find(s => s.id === suppId);
+  if (!supp) return;
+
+  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
+  const monthName = getHindiMonthName(month);
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const today = new Date();
+  const maxDay = (year === today.getFullYear() && month === (today.getMonth() + 1)) ? today.getDate() : daysInMonth;
+
+  let totalLitres = 0;
+  let activeDays = 0;
+  for (let d = 1; d <= maxDay; d++) {
+    const dKey = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const m = appData.dailyRecords[dKey]?.purchases?.morning?.[supp.id];
+    const e = appData.dailyRecords[dKey]?.purchases?.evening?.[supp.id];
+    let dayL = 0;
+    if (m && m.litres > 0) dayL += parseFloat(m.litres);
+    if (e && e.litres > 0) dayL += parseFloat(e.litres);
+    if (dayL > 0) {
+      totalLitres += dayL;
+      activeDays++;
+    }
+  }
+
+  totalLitres = Math.round(totalLitres * 10) / 10;
+  const rate = supp.rate || appData.farmSettings.defaultPurchaseRate || 48;
+  const monthCost = Math.round(totalLitres * rate);
+  const dues = supp.dues || 0;
+  const totalPayable = monthCost + dues;
+
+  const passbookUrl = generateSupplierPassbookUrl(suppId, year, month);
+
+  const message = `🤝 *${farmName} - किसान दूध खरीद व भुगतान बिल* 🥛\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `नमस्ते *${supp.name}* जी! 🙏\n` +
+    `डेयरी पर आपके ${monthName} ${year} माह का दूध संकलन व हिसाब निम्नलिखित है:\n\n` +
+    `📅 *माह:* ${monthName} ${year} (1 से ${maxDay} तारीख तक)\n` +
+    `🥛 *कुल संकलित दूध:* *${totalLitres.toFixed(1)} लीटर* (${activeDays} दिन संकलन)\n` +
+    `💰 *दूध खरीद भाव:* *₹${rate}/लीटर*\n` +
+    `💵 *इस माह का दूध हिसाब:* *₹${monthCost.toLocaleString('en-IN')}*\n` +
+    (dues > 0 ? `➕ *पिछला देय बकाया:* *₹${dues.toLocaleString('en-IN')}*\n` : '') +
+    `🏷️ *कुल शुद्ध देय राशि:* *₹${totalPayable.toLocaleString('en-IN')}*\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `📲 *अपनी पूरी 30-दिन डिजिटल पासबुक व दैनिक पर्ची देखने के लिए यहाँ दबाएँ:*\n` +
+    `👉 ${passbookUrl}\n\n` +
+    `धन्यवाद! 🙏\n_${farmName}_`;
+
+  const cleanPhone = (supp.phone || '').replace(/[^0-9]/g, '');
+  const url = cleanPhone ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}` : `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+  speakAudio(`${supp.name} का सप्लायर बिल WhatsApp पर तैयार है`);
+  showAudioToast(`📲 ${supp.name} का WhatsApp बिल भेजा गया`);
+  window.open(url, '_blank');
 }
 
 function showAiVoiceReply(title, message) {
@@ -1209,6 +1304,7 @@ function handleDairyAiVoiceQuery(text, rawText) {
 
   const matchedAnimal = findAnimalFuzzy(text);
   const matchedCust = findCustomerFuzzy(text);
+  const matchedSupp = findSupplierFuzzy(text);
   const dateRange = extractDayRange(text);
 
   // ===================================================================
@@ -1365,6 +1461,148 @@ function handleDairyAiVoiceQuery(text, rawText) {
     const reply = `${targetA.name} का बिकाऊ विज्ञापन कार्ड खुल गया है। आप इसे 1-क्लिक में WhatsApp पर शेयर कर सकते हैं।`;
     showAiVoiceReply('🎪 डिजिटल पशु मेला', reply);
     return true;
+  }
+
+  // ===================================================================
+  // 0.8 SPECIFIC SUPPLIER MILK PURCHASE QUERY (Priority 0.8)
+  // उदा. "कालू के यहाँ से कल कितना दूध आया था", "रामकिशन का अभी तक कितना दूध आ गया और उसका कितना हिसाब हो गया"
+  // ===================================================================
+  if (matchedSupp) {
+    const isSpecificDay = (text.includes('कल') || text.includes('आज') || text.includes('yesterday') || text.includes('kal') || text.includes('aaj')) &&
+                          !text.includes('अब तक') && !text.includes('महीने') && !text.includes('total') && !text.includes('कुल');
+
+    if (isSpecificDay) {
+      initTodayRecord();
+      const purchases = appData.dailyRecords[targetDate]?.purchases || { morning: {}, evening: {} };
+      const mEntry = purchases.morning?.[matchedSupp.id] || { litres: 0 };
+      const eEntry = purchases.evening?.[matchedSupp.id] || { litres: 0 };
+      const mL = parseFloat(mEntry.litres) || 0;
+      const eL = parseFloat(eEntry.litres) || 0;
+      const dayTot = mL + eL;
+      const curRate = mEntry.rate || eEntry.rate || matchedSupp.rate || 48;
+      const cost = Math.round(dayTot * curRate);
+
+      let reply = '';
+      if (dayTot === 0) {
+        reply = `${dateLabel} ${matchedSupp.name} से कोई दूध संकलन दर्ज नहीं है (0 लीटर)।`;
+      } else {
+        reply = `${dateLabel} ${matchedSupp.name} से कुल ${dayTot.toFixed(1)} लीटर दूध आया था — सुबह ${mL.toFixed(1)}L और शाम को ${eL.toFixed(1)}L (भाव ₹${curRate}/लीटर, ${dateLabel} का हिसाब ₹${cost})।`;
+      }
+      showAiVoiceReply(`🤝 ${matchedSupp.name} का दूध (${dateLabel})`, reply);
+      return true;
+    } else {
+      // Month / Total / Hisab Inquiry (उदा. "रामकिशन का अभी तक कितना दूध आ गया और उसका कितना हिसाब हो गया")
+      const targetYear = queryMonth ? queryMonth.year : now.getFullYear();
+      const targetMonth = queryMonth ? queryMonth.month : (now.getMonth() + 1);
+      const targetMonthName = queryMonth ? queryMonth.monthName : getHindiMonthName(now.getMonth() + 1);
+      const isPast = queryMonth ? queryMonth.isPast : false;
+      const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+      const endDay = (isPast ? daysInTargetMonth : now.getDate());
+
+      let totalLitres = 0;
+      let activeDays = 0;
+      for (let d = 1; d <= endDay; d++) {
+        const dKey = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const m = appData.dailyRecords[dKey]?.purchases?.morning?.[matchedSupp.id];
+        const e = appData.dailyRecords[dKey]?.purchases?.evening?.[matchedSupp.id];
+        let dayL = 0;
+        if (m && m.litres > 0) dayL += parseFloat(m.litres);
+        if (e && e.litres > 0) dayL += parseFloat(e.litres);
+        if (dayL > 0) {
+          totalLitres += dayL;
+          activeDays++;
+        }
+      }
+
+      totalLitres = Math.round(totalLitres * 10) / 10;
+      const rate = matchedSupp.rate || appData.farmSettings.defaultPurchaseRate || 48;
+      const monthCost = Math.round(totalLitres * rate);
+      const dues = matchedSupp.dues || 0;
+      const totalPayable = monthCost + dues;
+
+      const reply = `इस महीने ${targetMonthName} में 1 से ${endDay} तारीख तक ${matchedSupp.name} से कुल ${totalLitres.toFixed(1)} लीटर दूध संकलन हुआ है (${activeDays} दिन)। ₹${rate}/लीटर के भाव से दूध का हिसाब ₹${monthCost.toLocaleString('en-IN')} बनता है। पिछला देय बकाया ₹${dues.toLocaleString('en-IN')} जोड़कर कुल देय हिसाब ₹${totalPayable.toLocaleString('en-IN')} है।`;
+      showAiVoiceReply(`🤝 ${matchedSupp.name} का हिसाब व दूध`, reply);
+      return true;
+    }
+  }
+
+  // ===================================================================
+  // 0.9 OVERALL MILK PURCHASE QUERY (Priority 0.9)
+  // उदा. "आज कितना दूध खरीदा", "कल कुल कितना दूध खरीदा", "इस महीने कितना दूध खरीदा"
+  // ===================================================================
+  const isOverallPurchaseQuery = (
+    text.includes('खरीद') || text.includes('खरीदा') || text.includes('संकलन') || text.includes('आवक')
+  ) && (
+    text.includes('दूध') || text.includes('कितना') || text.includes('kitna') || text.includes('dudh')
+  ) && !matchedCust && !matchedAnimal && !matchedSupp;
+
+  if (isOverallPurchaseQuery) {
+    initTodayRecord();
+    const isMonthly = text.includes('महीने') || text.includes('महीना') || text.includes('अब तक') || text.includes('इस माह');
+
+    if (isMonthly) {
+      const targetYear = queryMonth ? queryMonth.year : now.getFullYear();
+      const targetMonth = queryMonth ? queryMonth.month : (now.getMonth() + 1);
+      const targetMonthName = queryMonth ? queryMonth.monthName : getHindiMonthName(now.getMonth() + 1);
+      const isPast = queryMonth ? queryMonth.isPast : false;
+      const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+      const endDay = (isPast ? daysInTargetMonth : now.getDate());
+
+      let totalLitres = 0;
+      let totalCost = 0;
+
+      (appData.suppliers || []).forEach(supp => {
+        for (let d = 1; d <= endDay; d++) {
+          const dKey = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const m = appData.dailyRecords[dKey]?.purchases?.morning?.[supp.id];
+          const e = appData.dailyRecords[dKey]?.purchases?.evening?.[supp.id];
+          const curRate = supp.rate || 48;
+          if (m && m.litres > 0) {
+            totalLitres += parseFloat(m.litres);
+            totalCost += (parseFloat(m.litres) * (m.rate || curRate));
+          }
+          if (e && e.litres > 0) {
+            totalLitres += parseFloat(e.litres);
+            totalCost += (parseFloat(e.litres) * (e.rate || curRate));
+          }
+        }
+      });
+
+      totalLitres = Math.round(totalLitres * 10) / 10;
+      const reply = `इस महीने ${targetMonthName} में 1 से ${endDay} तारीख तक सभी किसानों व सप्लायरों से कुल मिलाकर ${totalLitres.toFixed(1)} लीटर दूध खरीदा गया है, जिसकी कुल खरीद लागत ₹${Math.round(totalCost).toLocaleString('en-IN')} है।`;
+      showAiVoiceReply(`📥 कुल दूध खरीद (${targetMonthName})`, reply);
+      return true;
+    } else {
+      // Day (Today or Yesterday)
+      const purchases = appData.dailyRecords[targetDate]?.purchases || { morning: {}, evening: {} };
+      let morningL = 0;
+      let eveningL = 0;
+      let totalCost = 0;
+
+      (appData.suppliers || []).forEach(supp => {
+        const m = purchases.morning?.[supp.id];
+        const e = purchases.evening?.[supp.id];
+        const curRate = supp.rate || 48;
+        if (m && m.litres > 0) {
+          morningL += parseFloat(m.litres);
+          totalCost += (parseFloat(m.litres) * (m.rate || curRate));
+        }
+        if (e && e.litres > 0) {
+          eveningL += parseFloat(e.litres);
+          totalCost += (parseFloat(e.litres) * (e.rate || curRate));
+        }
+      });
+
+      const totalL = Math.round((morningL + eveningL) * 10) / 10;
+      let reply = '';
+      if (totalL === 0) {
+        reply = `${dateLabel} सप्लायरों व किसानों से कोई दूध खरीद दर्ज नहीं है (0 लीटर)।`;
+      } else {
+        reply = `${dateLabel} सभी किसानों व सप्लायरों से कुल मिलाकर ${totalL.toFixed(1)} लीटर दूध खरीदा गया है (सुबह ${morningL.toFixed(1)}L, शाम ${eveningL.toFixed(1)}L), जिसकी कुल खरीद लागत ₹${Math.round(totalCost).toLocaleString('en-IN')} है।`;
+      }
+      showAiVoiceReply(`📥 कुल दूध खरीद (${dateLabel})`, reply);
+      return true;
+    }
   }
 
   // ===================================================================
@@ -1817,6 +2055,31 @@ function processVoiceCommand(rawText) {
     return;
   }
 
+  // ===================================================================
+  // 0.2 WHATSAPP DIRECT BILLING VOICE COMMANDS (बोलकर WhatsApp बिल भेजना)
+  // उदा. "रमेश जी का हिसाब निकाल के whats app कर दो", "कालू का सारा हिसाब और बिल whasapp kar do"
+  // ===================================================================
+  const isWhatsAppIntent = /(whats\s*app|whas\s*app|whatsapp|व्हाट्सएप|व्हाट्सअप|वॉट्सएप|वाट्सएप|\bwa\b)/i.test(text);
+  if (isWhatsAppIntent) {
+    const matchedCustWa = findCustomerFuzzy(text);
+    if (matchedCustWa) {
+      sendWhatsAppBill(matchedCustWa.id);
+      showAudioToast(`📲 ${matchedCustWa.name} का WhatsApp बिल भेजा गया`);
+      const resEl = document.getElementById('voiceResult');
+      if (resEl) resEl.innerText = `📲 ${matchedCustWa.name}: WhatsApp बिल भेजा गया`;
+      return;
+    }
+
+    const matchedSuppWa = findSupplierFuzzy(text);
+    if (matchedSuppWa) {
+      sendSupplierWhatsAppBill(matchedSuppWa.id);
+      showAudioToast(`📲 ${matchedSuppWa.name} का WhatsApp बिल भेजा गया`);
+      const resEl = document.getElementById('voiceResult');
+      if (resEl) resEl.innerText = `📲 ${matchedSuppWa.name}: WhatsApp बिल भेजा गया`;
+      return;
+    }
+  }
+
   // 0. CHECK IF USER IS ASKING A QUESTION (AI VOICE QUERY)
   if (isVoiceQuery(text)) {
     const answered = handleDairyAiVoiceQuery(text, rawText);
@@ -2170,7 +2433,7 @@ function processVoiceCommand(rawText) {
   }
 
   // Supplier Purchase Commands (बोलकर सप्लायर से दूध खरीद दर्ज करना)
-  // उदा. "रामकिशन से 20 लीटर खरीदा", "कालूराम 15 लीटर"
+  // उदा. "रामकिशन में आज का 4L दूध जोड़ दो", "कालू में 10 लीटर जोड़ दो", "रामकिशन 15 लीटर"
   const matchedSuppVoice = findSupplierFuzzy(text);
   if (matchedSuppVoice) {
     const litres = parseHindiNumbers(text);
@@ -2178,17 +2441,20 @@ function processVoiceCommand(rawText) {
       const explicitShift = detectShiftInText(text);
       const targetShift = explicitShift || currentShift;
       const shiftLabel = targetShift === 'morning' ? 'सुबह' : 'शाम';
+      const isYest = text.includes('कल') || text.includes('yesterday') || text.includes('kal');
+      const targetDateKey = isYest ? getYesterdayDateKey() : currentDateKey;
+      const dateLabel = isYest ? 'कल' : 'आज';
 
       initTodayRecord();
-      if (!appData.dailyRecords[currentDateKey].purchases) {
-        appData.dailyRecords[currentDateKey].purchases = { morning: {}, evening: {} };
+      if (!appData.dailyRecords[targetDateKey].purchases) {
+        appData.dailyRecords[targetDateKey].purchases = { morning: {}, evening: {} };
       }
-      if (!appData.dailyRecords[currentDateKey].purchases[targetShift]) {
-        appData.dailyRecords[currentDateKey].purchases[targetShift] = {};
+      if (!appData.dailyRecords[targetDateKey].purchases[targetShift]) {
+        appData.dailyRecords[targetDateKey].purchases[targetShift] = {};
       }
 
       const curRate = matchedSuppVoice.rate || appData.farmSettings.defaultPurchaseRate || 48;
-      appData.dailyRecords[currentDateKey].purchases[targetShift][matchedSuppVoice.id] = {
+      appData.dailyRecords[targetDateKey].purchases[targetShift][matchedSuppVoice.id] = {
         litres: litres,
         rate: curRate,
         status: 'recorded'
@@ -2202,10 +2468,12 @@ function processVoiceCommand(rawText) {
       switchTab('viewMilking');
       renderPurchaseCards();
       updateStatsHeader();
+      renderHomeDashboard();
 
-      speakAudio(`${matchedSuppVoice.name} से ${shiftLabel} का ${litres} लीटर दूध खरीद दर्ज हो गई!`);
+      speakAudio(`${matchedSuppVoice.name} के खाते में ${dateLabel} का ${litres} लीटर दूध दर्ज हो गया!`);
       const resEl = document.getElementById('voiceResult');
       if (resEl) resEl.innerText = `✅ ${matchedSuppVoice.name} (${shiftLabel}): ${litres} L खरीद दर्ज`;
+      showAudioToast(`✅ ${matchedSuppVoice.name}: ${litres}L खरीद दर्ज`);
       return;
     }
   }
@@ -8249,7 +8517,98 @@ function updateProModalUI() {
   }
 }
 
+function updateFarmerIdCardUI() {
+  const isPro = isProMember();
+  const daysLeft = getProDaysRemaining();
+  const validUntil = appData.farmSettings.proValidUntil;
+  const phone = appData.farmSettings.ownerPhone || localStorage.getItem('dm_registered_phone') || '';
+  const ownerName = appData.farmSettings.ownerName || 'किसान भाई';
+  const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
+
+  // 1. Digital Farmer ID Card in Settings Modal
+  const card = document.getElementById('settingsMemberIdCard');
+  const tagEl = document.getElementById('memberCardTag');
+  const nameEl = document.getElementById('cardOwnerNameDisplay');
+  const farmEl = document.getElementById('cardFarmNameDisplay');
+  const phoneEl = document.getElementById('cardPhoneDisplay');
+  const idNumEl = document.getElementById('cardMemberId');
+  const tierEl = document.getElementById('cardMemberTier');
+
+  if (card) {
+    if (isPro) {
+      card.classList.remove('free-tier');
+      if (tagEl) {
+        tagEl.innerHTML = '<span class="crown-glow">👑</span> VIP PRO MEMBER';
+        tagEl.className = 'prime-vip-tag';
+      }
+      if (tierEl) {
+        tierEl.className = 'id-validity-pill pro';
+        tierEl.innerText = daysLeft > 0 ? `✨ प्रो VIP • ${daysLeft} दिन शेष` : `✨ प्रो VIP • ${validUntil || 'सक्रिय'} तक`;
+      }
+    } else {
+      card.classList.add('free-tier');
+      if (tagEl) {
+        tagEl.innerHTML = '⚪ बेसिक सदस्य (Free Tier)';
+        tagEl.className = 'free-member-tag';
+      }
+      if (tierEl) {
+        tierEl.className = 'id-validity-pill free';
+        tierEl.innerText = 'बेसिक प्लान (4 पशु सीमा)';
+      }
+    }
+    if (nameEl) nameEl.innerText = ownerName;
+    if (farmEl) farmEl.innerText = farmName;
+    if (phoneEl) phoneEl.innerText = phone ? `+91 ${phone}` : '+91 (पंजीकृत करें)';
+    if (idNumEl) idNumEl.innerText = `ID: DM-${phone ? phone.slice(-4) : '8991'}`;
+  }
+
+  // 2. Header Prime Tag (Amazon/Netflix Style)
+  const headerPrimeTag = document.getElementById('headerPrimeBadge');
+  if (headerPrimeTag) {
+    if (isPro) {
+      headerPrimeTag.classList.remove('hidden');
+    } else {
+      headerPrimeTag.classList.add('hidden');
+    }
+  }
+
+  // 3. Country Delight Hero Subscriber Tag
+  const heroSubTag = document.getElementById('cdHeroSubscriberTag');
+  if (heroSubTag) {
+    if (isPro) {
+      heroSubTag.className = 'cd-subscriber-tag vip-member';
+      heroSubTag.innerHTML = daysLeft > 0 ? `👑 VIP PRO MEMBER (${daysLeft}d)` : `👑 VIP PRO MEMBER`;
+    } else {
+      heroSubTag.className = 'cd-subscriber-tag free-tier';
+      heroSubTag.innerHTML = `⚪ बेसिक सदस्य • ⚡ अपग्रेड`;
+    }
+  }
+
+  // 4. Country Delight Hero Badge
+  const cdProBadge = document.getElementById('cdProBadge');
+  if (cdProBadge) {
+    cdProBadge.innerText = isPro ? '👑 VIP PRO सदस्य' : '⚡ प्रो अपग्रेड';
+    cdProBadge.style.background = isPro ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+  }
+
+  // 5. Settings Modal Section 3 (Pro Membership Status)
+  const settingsProBadge = document.getElementById('settingsProBadge');
+  const settingsProExpiry = document.getElementById('settingsProExpiry');
+  if (settingsProBadge && settingsProExpiry) {
+    if (isPro) {
+      settingsProBadge.innerText = '👑 प्रो VIP सदस्य (सक्रिय)';
+      settingsProBadge.style.color = '#15803d';
+      settingsProExpiry.innerText = `📅 वैधता: ${validUntil || 'सक्रिय'} तक (${daysLeft} दिन शेष)`;
+    } else {
+      settingsProBadge.innerText = '⚪ फ्री प्लान';
+      settingsProBadge.style.color = '#92400e';
+      settingsProExpiry.innerText = 'अधिकतम 4 पशु सीमा (सीमित)';
+    }
+  }
+}
+
 function updateHeaderProBadge() {
+  updateFarmerIdCardUI();
   const btn = document.getElementById('openProModalBtn');
   const btnText = document.getElementById('proBtnText');
   const isPro = isProMember();
@@ -8919,6 +9278,7 @@ function openSettingsModal() {
   const modal = document.getElementById('settingsModal');
   if (!modal) return;
 
+  updateFarmerIdCardUI();
   // Open instantly
   modal.classList.remove('hidden');
 
@@ -9070,6 +9430,7 @@ async function saveSettingsProfile() {
 
   saveData();
   updateStatsHeader();
+  updateFarmerIdCardUI();
 
   if (phone) {
     try {
@@ -9153,13 +9514,85 @@ function openProInvoiceModal() {
   const modal = document.getElementById('proInvoiceModal');
   if (!modal) return;
 
-  const phone = appData.farmSettings.ownerPhone || localStorage.getItem('dm_registered_phone') || '9876543210';
-  const ownerName = appData.farmSettings.ownerName || 'रमेश यादव';
+  const isPro = isProMember();
+  const emptyState = document.getElementById('invoiceEmptyState');
+  const receiptSlip = document.getElementById('printableReceiptArea');
+  const printBtn = document.getElementById('btnPrintReceiptBtn');
+  const shareBtn = document.getElementById('btnShareReceiptWhatsAppBtn');
+
+  if (!isPro) {
+    // ---------------------------------------------------------------
+    // CASE 1: FREE PLAN (जब कोई प्रो प्लान नहीं लिया है)
+    // कोई फर्जी/डिफ़ॉल्ट रसीद नहीं दिखाएँगे, बल्कि साफ खाली-स्थिति दिखाएँगे
+    // ---------------------------------------------------------------
+    if (emptyState) emptyState.classList.remove('hidden');
+    if (receiptSlip) receiptSlip.classList.add('hidden');
+    if (printBtn) printBtn.classList.add('hidden');
+    if (shareBtn) shareBtn.classList.add('hidden');
+    modal.classList.remove('hidden');
+    return;
+  }
+
+  // ---------------------------------------------------------------
+  // CASE 2: PRO PLAN ACTIVE (वास्तविक सक्रिय सदस्यता - रजिस्टर्ड विवरण)
+  // ---------------------------------------------------------------
+  if (emptyState) emptyState.classList.add('hidden');
+  if (receiptSlip) receiptSlip.classList.remove('hidden');
+  if (printBtn) printBtn.classList.remove('hidden');
+  if (shareBtn) shareBtn.classList.remove('hidden');
+
+  const phone = appData.farmSettings.ownerPhone || localStorage.getItem('dm_registered_phone') || '';
+  const ownerName = appData.farmSettings.ownerName || 'किसान भाई';
   const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
   const city = appData.farmSettings.city || 'हरियाणा';
-  const isPro = appData.farmSettings.isPro;
   const validUntil = appData.farmSettings.proValidUntil || '30 अक्टूबर 2027';
 
+  // Persistent Receipt Number (DM-INV-YEAR-PHONE_DIGITS)
+  if (!appData.farmSettings.lastReceiptNo) {
+    const curYear = new Date().getFullYear();
+    const phonePart = phone ? phone.slice(-4) : '8991';
+    appData.farmSettings.lastReceiptNo = `DM-INV-${curYear}-${phonePart}01`;
+    saveData();
+  }
+  const receiptNo = appData.farmSettings.lastReceiptNo;
+
+  // Actual Payment Date
+  let paymentDateStr = new Date().toLocaleDateString('hi-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  if (appData.farmSettings.lastPaymentDate) {
+    try {
+      paymentDateStr = new Date(appData.farmSettings.lastPaymentDate).toLocaleDateString('hi-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch (e) {}
+  }
+
+  // Plan Details (Yearly vs Monthly vs Referral)
+  const planType = appData.farmSettings.lastPlanType || (appData.farmSettings.proValidUntil && getProDaysRemaining() > 60 ? 'yearly' : 'monthly');
+  const isYearly = (planType === 'yearly' || planType === 'annual');
+  const isReferralReward = (planType === 'referral_vip' || planType === 'referral');
+
+  let planPeriodText = '12 महीने (वार्षिक प्रो VIP)';
+  let planAmountText = '₹399.00';
+  let totalPaidText = '₹399.00';
+  let payModeText = 'UPI ऑटो-वेरिफाइड (PhonePe / GPay / QR)';
+  let payIdText = appData.farmSettings.lastPaymentId || `PAY_UPI_${phone ? phone.slice(-6) : '8991'}`;
+
+  if (isReferralReward) {
+    planPeriodText = '12 महीने (रेफरल रिवॉर्ड VIP)';
+    planAmountText = '₹0.00 (100% मुफ़्त रिवॉर्ड)';
+    totalPaidText = '₹0.00';
+    payModeText = '🎁 3 सफल रेफरल रिवॉर्ड एक्टिवेटेड';
+    payIdText = appData.farmSettings.lastPaymentId || `REF_REWARD_${phone.slice(-4) || 'VIP'}`;
+  } else if (!isYearly) {
+    planPeriodText = '1 महीना (मासिक प्रो VIP)';
+    planAmountText = '₹49.00';
+    totalPaidText = '₹49.00';
+    payModeText = 'UPI ऑटो-वेरिफाइड (PhonePe / GPay)';
+  } else {
+    const customAmt = appData.farmSettings.lastPlanAmount || 399;
+    planAmountText = `₹${customAmt}.00`;
+    totalPaidText = `₹${customAmt}.00`;
+  }
+
+  // Populate elements
   const receiptNoEl = document.getElementById('invReceiptNo');
   const receiptDateEl = document.getElementById('invReceiptDate');
   const farmerNameEl = document.getElementById('invFarmerName');
@@ -9169,21 +9602,21 @@ function openProInvoiceModal() {
   const planPeriodEl = document.getElementById('invPlanPeriod');
   const planAmountEl = document.getElementById('invPlanAmount');
   const totalPaidEl = document.getElementById('invTotalPaid');
+  const payModeEl = document.getElementById('invPayMode');
   const payIdEl = document.getElementById('invPayId');
   const validUntilEl = document.getElementById('invValidUntil');
 
-  const todayStr = new Date().toLocaleDateString('hi-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-
-  if (receiptNoEl) receiptNoEl.innerText = `रसीद नं: DM-INV-${new Date().getFullYear()}-${phone.slice(-4)}${Math.floor(10 + Math.random() * 90)}`;
-  if (receiptDateEl) receiptDateEl.innerText = `दिनांक: ${todayStr}`;
+  if (receiptNoEl) receiptNoEl.innerText = `रसीद नं: ${receiptNo}`;
+  if (receiptDateEl) receiptDateEl.innerText = `दिनांक: ${paymentDateStr}`;
   if (farmerNameEl) farmerNameEl.innerText = ownerName;
   if (farmNameEl) farmNameEl.innerText = farmName;
-  if (phoneEl) phoneEl.innerText = `+91 ${phone}`;
+  if (phoneEl) phoneEl.innerText = phone ? `+91 ${phone}` : '+91 (पंजीकृत)';
   if (cityEl) cityEl.innerText = city;
-  if (planPeriodEl) planPeriodEl.innerText = isPro ? '12 महीने (वार्षिक प्रो VIP)' : '1 महीना (प्रो ट्रायल)';
-  if (planAmountEl) planAmountEl.innerText = isPro ? '₹399.00' : '₹49.00';
-  if (totalPaidEl) totalPaidEl.innerText = isPro ? '₹399.00' : '₹49.00';
-  if (payIdEl) payIdEl.innerText = `PAY_AUTO_${phone.slice(-6)}`;
+  if (planPeriodEl) planPeriodEl.innerText = planPeriodText;
+  if (planAmountEl) planAmountEl.innerText = planAmountText;
+  if (totalPaidEl) totalPaidEl.innerText = totalPaidText;
+  if (payModeEl) payModeEl.innerText = payModeText;
+  if (payIdEl) payIdEl.innerText = payIdText;
   if (validUntilEl) validUntilEl.innerText = `${validUntil} तक`;
 
   modal.classList.remove('hidden');
@@ -9200,19 +9633,27 @@ function printProInvoice() {
 }
 
 function shareProInvoiceWhatsApp() {
-  const phone = appData.farmSettings.ownerPhone || '9876543210';
+  if (!isProMember()) {
+    showAudioToast('⚠️ आपकी कोई सक्रिय प्रो सदस्यता नहीं है!');
+    return;
+  }
+
+  const phone = appData.farmSettings.ownerPhone || localStorage.getItem('dm_registered_phone') || '';
   const ownerName = appData.farmSettings.ownerName || 'किसान भाई';
   const farmName = appData.farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
   const validUntil = appData.farmSettings.proValidUntil || '30 अक्टूबर 2027';
+  const planType = appData.farmSettings.lastPlanType || 'yearly';
+  const planName = planType === 'monthly' ? '1 महीना प्रो VIP (₹49)' : '12 महीने प्रो VIP (₹399)';
+  const payId = appData.farmSettings.lastPaymentId || `UPI_${phone.slice(-4)}`;
 
   const text = `🥛 *डेयरी मित्र प्रो (DairyMitra Pro)*\n` +
-    `आधिकारिक सदस्यता रसीद (Official Receipt)\n` +
+    `आधिकारिक सदस्यता रसीद (Official Tax Invoice)\n` +
     `-----------------------------------------\n` +
     `👤 *किसान:* ${ownerName}\n` +
     `🥛 *डेयरी:* ${farmName}\n` +
     `📱 *मोबाइल:* +91 ${phone}\n` +
-    `👑 *प्लान:* 12 महीने प्रो VIP (₹399)\n` +
-    `⚡ *भुगतान:* UPI ऑटो-वेरिफाइड ✅\n` +
+    `👑 *प्लान:* ${planName}\n` +
+    `⚡ *ट्रांजैक्शन ID:* ${payId}\n` +
     `📅 *वैधता:* ${validUntil} तक\n` +
     `📱 *2-फोन लाइव सिंक:* सक्रिय (2 डिवाइस रियल-टाइम सिंक)\n` +
     `-----------------------------------------\n` +
@@ -9643,6 +10084,16 @@ document.addEventListener('DOMContentLoaded', () => {
     cdHeroSettings.addEventListener('click', openSettingsModal);
   }
 
+  const cdHeroSubTag = document.getElementById('cdHeroSubscriberTag');
+  if (cdHeroSubTag) {
+    cdHeroSubTag.addEventListener('click', () => openProSubscriptionModal());
+  }
+
+  const headerPrimeTag = document.getElementById('headerPrimeBadge');
+  if (headerPrimeTag) {
+    headerPrimeTag.addEventListener('click', () => openProSubscriptionModal());
+  }
+
   const closeSettingsModalBtn = document.getElementById('closeSettingsModalBtn');
   if (closeSettingsModalBtn) {
     closeSettingsModalBtn.addEventListener('click', closeSettingsModal);
@@ -9724,6 +10175,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCloseInvoiceBtn = document.getElementById('btnCloseInvoiceBtn');
   if (btnCloseInvoiceBtn) {
     btnCloseInvoiceBtn.addEventListener('click', closeProInvoiceModal);
+  }
+
+  const btnUpgradeEmpty = document.getElementById('btnUpgradeFromEmptyInvoice');
+  if (btnUpgradeEmpty) {
+    btnUpgradeEmpty.addEventListener('click', () => {
+      closeProInvoiceModal();
+      openProSubscriptionModal();
+    });
   }
 
   const btnPrintReceiptBtn = document.getElementById('btnPrintReceiptBtn');
