@@ -795,7 +795,7 @@
           <div>
             <h1 class="farm-title" id="farmNameDisplay">श्री कृष्णा डेयरी फार्म</h1>
             <div class="verified-seal">
-              <span>🛡️</span> अधिकृत डिजिटल दूध पासबुक
+              <span>🛡️</span> <span id="pbBrandSub">अधिकृत डिजिटल दूध पासबुक</span>
             </div>
           </div>
         </div>
@@ -835,20 +835,20 @@
 
       <!-- Executive Billing & Dues Hero Card -->
       <section class="hero-bill-card">
-        <span class="bill-tag">मासिक बिल व देय राशि</span>
+        <span class="bill-tag" id="pbBillTag">मासिक बिल व देय राशि</span>
         
         <div class="bill-amount-row">
-          <div class="bill-label">कुल देय राशि (Total Payable)</div>
+          <div class="bill-label" id="pbBillLabel">कुल देय राशि (Total Payable)</div>
           <div class="bill-total-price" id="totalPayableDisplay">₹0</div>
         </div>
 
         <div class="bill-breakdown-row">
           <div class="breakdown-item">
-            <span>इस माह का दूध (<span id="bdTotalLitres">0.0</span> L):</span>
+            <span id="pbBdMonthMilkText">इस माह का दूध (<span id="bdTotalLitres">0.0</span> L):</span>
             <strong id="bdMonthBill">₹0</strong>
           </div>
           <div class="breakdown-item">
-            <span>पिछला बकाया (Dues):</span>
+            <span id="pbBdDuesText">पिछला बकाया (Dues):</span>
             <strong id="bdPrevDues" style="color: #dc2626;">₹0</strong>
           </div>
         </div>
@@ -861,10 +861,10 @@
         <!-- Secondary Pay Options (QR Code Toggle & Copy ID) -->
         <div class="secondary-pay-actions">
           <button type="button" class="btn-sec-pay" id="btnToggleQr">
-            <span>📲</span> QR कोड देखें
+            <span>📲</span> <span id="pbBtnQrText">QR कोड देखें</span>
           </button>
           <button type="button" class="btn-sec-pay" id="btnCopyUpiId">
-            <span>📋</span> UPI ID कॉपी करें
+            <span>📋</span> <span id="pbBtnCopyText">UPI ID कॉपी करें</span>
           </button>
         </div>
 
@@ -872,7 +872,7 @@
         <div class="qr-card-collapsible" id="qrCollapseCard">
           <img src="" alt="DairyMitra Payment QR" class="qr-card-img" id="passbookQrImg">
           <div class="qr-upi-info">
-            PhonePe, GPay, Paytm या BHIM से स्कैन करें<br>
+            <span id="pbQrScanHint">PhonePe, GPay, Paytm या BHIM से स्कैन करें</span><br>
             <strong id="displayUpiIdText">dairyfarm@upi</strong>
           </div>
         </div>
@@ -881,19 +881,19 @@
       <!-- Monthly Statistics Bar -->
       <section class="stats-strip">
         <div class="stat-pill">
-          <span class="stat-pill-label">कुल दूध</span>
+          <span class="stat-pill-label" id="pbStatTotalMilkLabel">कुल दूध</span>
           <strong class="stat-pill-val" id="statLitres">0.0 L</strong>
         </div>
         <div class="stat-pill">
-          <span class="stat-pill-label">सप्लाई</span>
+          <span class="stat-pill-label" id="pbStatSupplyLabel">सप्लाई</span>
           <strong class="stat-pill-val green" id="statDays">0 दिन</strong>
         </div>
         <div class="stat-pill">
-          <span class="stat-pill-label">नागा/छुट्टी</span>
+          <span class="stat-pill-label" id="pbStatSkipLabel">नागा/छुट्टी</span>
           <strong class="stat-pill-val red" id="statSkipped">0 दिन</strong>
         </div>
         <div class="stat-pill">
-          <span class="stat-pill-label">दूध भाव</span>
+          <span class="stat-pill-label" id="pbStatRateLabel">दूध भाव</span>
           <strong class="stat-pill-val" id="statRate">₹65/L</strong>
         </div>
       </section>
@@ -914,11 +914,11 @@
       <section class="calendar-section">
         <div class="calendar-section-header">
           <div class="section-title">
-            <span>🗓️</span> 30-दिन दैनिक दूध कैलेंडर
+            <span>🗓️</span> <span id="pbCalTitle">30-दिन दैनिक दूध कैलेंडर</span>
           </div>
-          <div class="calendar-legend">
-            <span><span class="legend-dot green"></span> दूध आया</span>
-            <span><span class="legend-dot red"></span> नागा</span>
+          <div class="calendar-legend" id="pbCalLegend">
+            <span><span class="legend-dot green"></span> <span id="pbLegMilkDone">दूध आया</span></span>
+            <span><span class="legend-dot red"></span> <span id="pbLegMilkSkip">नागा</span></span>
           </div>
         </div>
 
@@ -930,20 +930,20 @@
 
       <!-- Direct Contact & Support -->
       <section class="bottom-support-box">
-        <div class="support-title">हिसाब में कोई शंका या दूध घटाने-बढ़ाने हेतु:</div>
+        <div class="support-title" id="pbSupportTitle">हिसाब में कोई शंका या दूध घटाने-बढ़ाने हेतु:</div>
         <div class="support-buttons-row">
           <a href="#" class="btn-support call" id="btnSupportCall">
-            📞 डेयरी को कॉल करें
+            📞 <span id="pbBtnCallText">डेयरी को कॉल करें</span>
           </a>
           <a href="#" class="btn-support whatsapp" id="btnSupportWa" target="_blank">
-            💬 WhatsApp पर लिखें
+            💬 <span id="pbBtnWaText">WhatsApp पर लिखें</span>
           </a>
         </div>
       </section>
 
       <!-- Print / Download PDF -->
       <div class="print-download-row">
-        <button type="button" class="btn-print-slip" onclick="window.print()">
+        <button type="button" class="btn-print-slip" onclick="window.print()" id="pbBtnPrint">
           🖨️ इस माह का विवरण प्रिंट / PDF डाउनलोड करें
         </button>
       </div>
@@ -985,8 +985,354 @@
 
     let deliveryRecords = {};
 
-    const HINDI_MONTHS = ['', 'जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
-    const DAY_NAMES = ['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि'];
+    const MONTH_NAMES_BY_LANG = {
+      hi: ['जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'],
+      en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+      pa: ['ਜਨਵਰੀ', 'ਫ਼ਰਵਰੀ', 'ਮਾਰਚ', 'ਅਪ੍ਰੈਲ', 'ਮਈ', 'ਜੂਨ', 'ਜੁਲਾਈ', 'ਅਗਸਤ', 'ਸਤੰਬਰ', 'ਅਕਤੂਬਰ', 'ਨਵੰਬਰ', 'ਦਸੰਬਰ'],
+      hr: ['जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'],
+      gu: ['જાન્યુઆરી', 'ફેબ્રુઆરી', 'માર્ચ', 'એપ્રિલ', 'મે', 'જૂન', 'જુલાઈ', 'ઓગસ્ટ', 'સપ્ટેમ્બર', 'ઓક્ટોબર', 'નવેમ્બર', 'ડિસેમ્બર'],
+      mr: ['जानेवारी', 'फेब्रुवारी', 'मार्च', 'एप्रिल', 'मे', 'जून', 'जुलै', 'ऑगस्ट', 'सप्टेंबर', 'ऑक्टोबर', 'नोव्हेंबर', 'डिसेंबर'],
+      rj: ['जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'],
+      bn: ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর']
+    };
+
+    function getPbMonthName(m, lang) {
+      const l = lang || getPbLang();
+      const list = MONTH_NAMES_BY_LANG[l] || MONTH_NAMES_BY_LANG['hi'];
+      return list[(m - 1 + 12) % 12];
+    }
+
+
+    const DAY_NAMES_BY_LANG = {
+      hi: ['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि'],
+      en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      pa: ['ਐਤ', 'ਸੋਮ', 'ਮੰਗਲ', 'ਬੁੱਧ', 'ਵੀਰ', 'ਸ਼ੁੱਕਰ', 'ਸ਼ਨੀ'],
+      hr: ['रवि', 'सोम', 'मंगल', 'बुध', 'बृहस्पत', 'शुक्र', 'शनि'],
+      gu: ['રવિ', 'સોਮ', 'મંગળ', 'બુધ', 'ગુરુ', 'શુક્ર', 'શનિ'],
+      mr: ['रवि', 'सोम', 'मंगळ', 'बुध', 'गुरु', 'शुक्र', 'शनि'],
+      rj: ['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि'],
+      bn: ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি']
+    };
+
+    const PB_TRANSLATIONS = {
+      hi: {
+        default_farm_name: "श्री कृष्णा डेयरी फार्म",
+        pb_brand_sub: "अधिकृत डिजिटल दूध पासबुक",
+        prev: "◀ पिछला",
+        next: "अगला ▶",
+        bill_tag: "मासिक बिल व देय राशि",
+        bill_label: "कुल देय राशि (Total Payable)",
+        this_month_milk: "इस माह का दूध",
+        prev_dues: "पिछला बकाया (Dues):",
+        pay_btn_prefix: "Google Pay / PhonePe से",
+        pay_btn_suffix: "चुकाएं",
+        qr_btn: "QR कोड देखें",
+        copy_btn: "UPI ID कॉपी करें",
+        qr_scan_hint: "PhonePe, GPay, Paytm या BHIM से स्कैन करें",
+        total_milk: "कुल दूध",
+        supplied: "सप्लाई",
+        skipped: "नागा/छुट्टी",
+        rate: "दूध भाव",
+        unit_day: "दिन",
+        cal_title: "30-दिन दैनिक दूध कैलेंडर",
+        leg_milk_done: "दूध आया",
+        leg_milk_skip: "नागा",
+        support_title: "हिसाब में कोई शंका या दूध घटाने-बढ़ाने हेतु:",
+        call_btn: "डेयरी को कॉल करें",
+        wa_btn: "WhatsApp पर लिखें",
+        print_btn: "🖨️ इस माह का विवरण प्रिंट / PDF डाउनलोड करें",
+        quota_prefix: "कोटा",
+        rate_prefix: "भाव",
+        cow: "गाय",
+        buffalo: "भैंस",
+        both: "दोनों",
+        day_morning: "सुबह",
+        day_evening: "शाम",
+        day_delivered: "✓ दूध डिलीवर",
+        day_skipped: "✕ नागा"
+      },
+      en: {
+        default_farm_name: "Shree Krishna Dairy Farm",
+        pb_brand_sub: "Official Digital Milk Passbook",
+        prev: "◀ Previous",
+        next: "Next ▶",
+        bill_tag: "Monthly Bill & Payable Dues",
+        bill_label: "Total Amount Payable",
+        this_month_milk: "This Month Milk",
+        prev_dues: "Previous Dues:",
+        pay_btn_prefix: "Pay",
+        pay_btn_suffix: "via Google Pay / PhonePe",
+        qr_btn: "View QR Code",
+        copy_btn: "Copy UPI ID",
+        qr_scan_hint: "Scan with PhonePe, GPay, Paytm, or BHIM",
+        total_milk: "Total Milk",
+        supplied: "Supplied",
+        skipped: "Skipped",
+        rate: "Milk Rate",
+        unit_day: "Days",
+        cal_title: "30-Day Daily Milk Calendar",
+        leg_milk_done: "Delivered",
+        leg_milk_skip: "Skipped",
+        support_title: "For bill queries or quantity changes:",
+        call_btn: "Call Dairy Owner",
+        wa_btn: "Message on WhatsApp",
+        print_btn: "🖨️ Print / Download Monthly PDF",
+        quota_prefix: "Quota",
+        rate_prefix: "Rate",
+        cow: "Cow",
+        buffalo: "Buffalo",
+        both: "Both",
+        day_morning: "Morning",
+        day_evening: "Evening",
+        day_delivered: "✓ Delivered",
+        day_skipped: "✕ Skipped"
+      },
+      pa: {
+        default_farm_name: "ਸ਼੍ਰੀ ਕ੍ਰਿਸ਼ਨਾ ਡੇਅਰੀ ਫ਼ਾਰਮ",
+        pb_brand_sub: "ਅਧਿਕਾਰਤ ਡਿਜੀਟਲ ਦੁੱਧ ਪਾਸਬੁੱਕ",
+        prev: "◀ ਪਿਛਲਾ",
+        next: "ਅਗਲਾ ▶",
+        bill_tag: "ਮਹੀਨਾਵਾਰ ਬਿੱਲ ਤੇ ਦੇਣਦਾਰੀ",
+        bill_label: "ਕੁੱਲ ਦੇਣਯੋਗ ਰਕਮ (Total Payable)",
+        this_month_milk: "ਇਸ ਮਹੀਨੇ ਦਾ ਦੁੱਧ",
+        prev_dues: "ਪਿਛਲਾ ਬਕਾਇਆ:",
+        pay_btn_prefix: "Google Pay / PhonePe ਰਾਹੀਂ",
+        pay_btn_suffix: "ਭੁਗਤਾਨ ਕਰੋ",
+        qr_btn: "QR ਕੋਡ ਦੇਖੋ",
+        copy_btn: "UPI ID ਕਾਪੀ ਕਰੋ",
+        qr_scan_hint: "PhonePe, GPay, Paytm ਜਾਂ BHIM ਨਾਲ ਸਕੈਨ ਕਰੋ",
+        total_milk: "ਕੁੱਲ ਦੁੱਧ",
+        supplied: "ਸਪਲਾਈ",
+        skipped: "ਨਾਗਾ/ਛੁੱਟੀ",
+        rate: "ਦੁੱਧ ਦਾ ਭਾਅ",
+        unit_day: "ਦਿਨ",
+        cal_title: "30-ਦਿਨ ਰੋਜ਼ਾਨਾ ਦੁੱਧ ਕੈਲੰਡਰ",
+        leg_milk_done: "ਦੁੱਧ ਆਇਆ",
+        leg_milk_skip: "ਨਾਗਾ",
+        support_title: "ਹਿਸਾਬ ਵਿੱਚ ਕਿਸੇ ਸ਼ੰਕਾ ਜਾਂ ਤਬਦੀਲੀ ਲਈ:",
+        call_btn: "ਡੇਅਰੀ ਨੂੰ ਕਾਲ ਕਰੋ",
+        wa_btn: "WhatsApp 'ਤੇ ਲਿਖੋ",
+        print_btn: "🖨️ ਮਹੀਨਾਵਾਰ ਵੇਰਵਾ ਪ੍ਰਿੰਟ / PDF ਡਾਊਨਲੋਡ ਕਰੋ",
+        quota_prefix: "ਕੋਟਾ",
+        rate_prefix: "ਭਾਅ",
+        cow: "ਗਾਂ",
+        buffalo: "ਮੱਝ",
+        both: "ਦੋਵੇਂ",
+        day_morning: "ਸਵੇਰ",
+        day_evening: "ਸ਼ਾਮ",
+        day_delivered: "✓ ਸਪਲਾਈ ਹੋਇਆ",
+        day_skipped: "✕ ਨਾਗਾ"
+      },
+      hr: {
+        default_farm_name: "श्री कृष्णा डेयरी फार्म",
+        pb_brand_sub: "अधिकृत डिजिटल दूध पासबुक",
+        prev: "◀ पिछला",
+        next: "अगला ▶",
+        bill_tag: "मासिक बिल व देय राशि",
+        bill_label: "कुल देय राशि (Total Payable)",
+        this_month_milk: "इस महीने का दूध",
+        prev_dues: "पिछला बकाया:",
+        pay_btn_prefix: "Google Pay / PhonePe तै",
+        pay_btn_suffix: "चुकाओ",
+        qr_btn: "QR कोड देखो",
+        copy_btn: "UPI ID कॉपी करो",
+        qr_scan_hint: "PhonePe, GPay, Paytm या BHIM तै स्कैन करो",
+        total_milk: "कुल दूध",
+        supplied: "सप्लाई",
+        skipped: "नागा/छुट्टी",
+        rate: "दूध का भाव",
+        unit_day: "दिन",
+        cal_title: "30-दिन दैनिक दूध कैलेंडर",
+        leg_milk_done: "दूध आया",
+        leg_milk_skip: "नागा",
+        support_title: "हिसाब में कोई शंका खातर:",
+        call_btn: "डेयरी नै फोन करो",
+        wa_btn: "WhatsApp पै लिखो",
+        print_btn: "🖨️ इस महीने का विवरण प्रिंट / PDF डाउनलोड करो",
+        quota_prefix: "कोटा",
+        rate_prefix: "भाव",
+        cow: "गाय",
+        buffalo: "भैंस",
+        both: "दोनो",
+        day_morning: "सुबह",
+        day_evening: "शाम",
+        day_delivered: "✓ दूध डिलीवर",
+        day_skipped: "✕ नागा"
+      },
+      gu: {
+        default_farm_name: "શ્રી કૃષ્ણા ડેરી ફાર્મ",
+        pb_brand_sub: "અધિકૃત ડિજિટલ દૂધ પાસબુક",
+        prev: "◀ પાછલું",
+        next: "આગલું ▶",
+        bill_tag: "માસિક બિલ અને ચૂકવવાપાત્ર રકમ",
+        bill_label: "કુલ ચૂકવવાપાત્ર રકમ",
+        this_month_milk: "આ મહિનાનું દૂધ",
+        prev_dues: "પાછલી બાકી રકમ:",
+        pay_btn_prefix: "Google Pay / PhonePe થી",
+        pay_btn_suffix: "ચૂકવો",
+        qr_btn: "QR કોડ જુઓ",
+        copy_btn: "UPI ID કૉપિ કરો",
+        qr_scan_hint: "PhonePe, GPay, Paytm અથવા BHIM થી સ્કેન કરો",
+        total_milk: "કુલ દૂધ",
+        supplied: "સપ્લાય",
+        skipped: "રજા",
+        rate: "દૂધનો ભાવ",
+        unit_day: "દિવસ",
+        cal_title: "30-દિવસ દૈનિક દૂધ કેલેન્ડર",
+        leg_milk_done: "દૂધ આવ્યું",
+        leg_milk_skip: "રજા",
+        support_title: "હિસાબમાં કોઈ પ્રશ્ન હોય તો:",
+        call_btn: "ડેરીને કૉલ કરો",
+        wa_btn: "WhatsApp પર લખો",
+        print_btn: "🖨️ માસિક વિગતો પ્રિન્ટ / PDF ડાઉનલોડ કરો",
+        quota_prefix: "ક્વોટા",
+        rate_prefix: "ભાવ",
+        cow: "ગાય",
+        buffalo: "ભેંસ",
+        both: "બંને",
+        day_morning: "સવાર",
+        day_evening: "સાંજ",
+        day_delivered: "✓ દૂધ વિતરણ",
+        day_skipped: "✕ રજા"
+      },
+      mr: {
+        default_farm_name: "श्री कृष्णा डेअरी फार्म",
+        pb_brand_sub: "अधिकृत डिजिटल दूध पासबुक",
+        prev: "◀ मागील",
+        next: "पुढील ▶",
+        bill_tag: "मासिक बिल व देय रक्कम",
+        bill_label: "एकूण देय रक्कम",
+        this_month_milk: "या महिन्याचे दूध",
+        prev_dues: "मागील बाकी:",
+        pay_btn_prefix: "Google Pay / PhonePe द्वारे",
+        pay_btn_suffix: "भरा",
+        qr_btn: "QR कोड पहा",
+        copy_btn: "UPI ID कॉपी करा",
+        qr_scan_hint: "PhonePe, GPay, Paytm किंवा BHIM द्वारे स्कॅन करा",
+        total_milk: "एकूण दूध",
+        supplied: "पुरवठा",
+        skipped: "सुट्टी",
+        rate: "दूध दर",
+        unit_day: "दिवस",
+        cal_title: "30-दिवस दैनिक दूध दिनदर्शिका",
+        leg_milk_done: "दूध आले",
+        leg_milk_skip: "सुट्टी",
+        support_title: "हिशोबात काही अडचण असल्यास:",
+        call_btn: "डेअरीला कॉल करा",
+        wa_btn: "WhatsApp वर लिहा",
+        print_btn: "🖨️ या महिन्याचा तपशील प्रिंट / PDF डाउनलोड करा",
+        quota_prefix: "कोटा",
+        rate_prefix: "दर",
+        cow: "गाय",
+        buffalo: "म्हैस",
+        both: "दोन्ही",
+        day_morning: "सकाळ",
+        day_evening: "संध्याकाळ",
+        day_delivered: "✓ दूध वितरित",
+        day_skipped: "✕ सुट्टी"
+      },
+      rj: {
+        default_farm_name: "श्री कृष्णा डेयरी फार्म",
+        pb_brand_sub: "अधिकृत डिजिटल दूध पासबुक",
+        prev: "◀ पाछलो",
+        next: "आगलो ▶",
+        bill_tag: "मासिक बिल व देय राशि",
+        bill_label: "कुल देय राशि (Total Payable)",
+        this_month_milk: "इण महीने रो दूध",
+        prev_dues: "पाछलो बकायो:",
+        pay_btn_prefix: "Google Pay / PhonePe सूं",
+        pay_btn_suffix: "चुकावो",
+        qr_btn: "QR कोड देखो",
+        copy_btn: "UPI ID कॉपी करो",
+        qr_scan_hint: "PhonePe, GPay, Paytm या BHIM सूं स्कैन करो",
+        total_milk: "कुल दूध",
+        supplied: "सप्लाई",
+        skipped: "नागा/छुट्टी",
+        rate: "दूध रो भाव",
+        unit_day: "दिन",
+        cal_title: "30-दिन दैनिक दूध कैलेंडर",
+        leg_milk_done: "दूध आयो",
+        leg_milk_skip: "नागो",
+        support_title: "हिसाब में कोई शंका होवै तो:",
+        call_btn: "डेयरी नै कॉल करो",
+        wa_btn: "WhatsApp पर लिखो",
+        print_btn: "🖨️ इण महीने रो विवरण प्रिंट / PDF डाउनलोड करो",
+        quota_prefix: "कोटा",
+        rate_prefix: "भाव",
+        cow: "गाय",
+        buffalo: "भैंस",
+        both: "दोनूं",
+        day_morning: "सुबह",
+        day_evening: "शाम",
+        day_delivered: "✓ दूध डिलीवर",
+        day_skipped: "✕ नागो"
+      },
+      bn: {
+        default_farm_name: "শ্রী কৃষ্ণা ডেইরি ফার্ম",
+        pb_brand_sub: "অনুমোদিত ডিজিটাল দুধ পাসবুক",
+        prev: "◀ পূর্ববর্তী",
+        next: "পরবর্তী ▶",
+        bill_tag: "মাসিক বিল ও প্রদেয় বকেয়া",
+        bill_label: "মোট প্রদেয় অর্থ (Total Payable)",
+        this_month_milk: "চলতি মাসের দুধ",
+        prev_dues: "পূর্বের বকেয়া:",
+        pay_btn_prefix: "Google Pay / PhonePe দিয়ে",
+        pay_btn_suffix: "পরিশোধ করুন",
+        qr_btn: "QR কোড দেখুন",
+        copy_btn: "UPI ID কপি করুন",
+        qr_scan_hint: "PhonePe, GPay, Paytm বা BHIM দিয়ে স্ক্যান করুন",
+        total_milk: "মোট দুধ",
+        supplied: "সরবরাহ",
+        skipped: "ছুটি",
+        rate: "দুধের দর",
+        unit_day: "দিন",
+        cal_title: "৩০-দিনের দৈনিক দুধ ক্যালেন্ডার",
+        leg_milk_done: "দুধ এসেছে",
+        leg_milk_skip: "ছুটি",
+        support_title: "হিসাবে কোনো প্রশ্ন থাকলে যোগাযোগ করুন:",
+        call_btn: "ডেইরিতে কল করুন",
+        wa_btn: "WhatsApp-এ লিখুন",
+        print_btn: "🖨️ মাসিক বিবরণ প্রিন্ট / PDF ডাউনলোড করুন",
+        quota_prefix: "কোটা",
+        rate_prefix: "দর",
+        cow: "গরু",
+        buffalo: "মহিষ",
+        both: "উভয়",
+        day_morning: "সকাল",
+        day_evening: "সন্ধ্যা",
+        day_delivered: "✓ বিতরণ সম্পন্ন",
+        day_skipped: "✕ ছুটি"
+      }
+    };
+
+    function getPbLang() {
+      const urlParams = new URLSearchParams(window.location.search);
+      let lang = urlParams.get('lang');
+      if (!lang && window.location.hash && window.location.hash.startsWith('#d=')) {
+        try {
+          const rawB64 = window.location.hash.substring(3);
+          const decodedJson = decodeURIComponent(escape(atob(rawB64)));
+          const payload = JSON.parse(decodedJson);
+          if (payload.lang) lang = payload.lang;
+        } catch(e) {}
+      }
+      return lang || localStorage.getItem('dairymitra_lang') || 'hi';
+    }
+
+    function pbt(key, fallback = '') {
+      const lang = getPbLang();
+      const dict = PB_TRANSLATIONS[lang] || PB_TRANSLATIONS['hi'];
+      if (dict && dict[key] !== undefined) return dict[key];
+      if (PB_TRANSLATIONS['hi'] && PB_TRANSLATIONS['hi'][key] !== undefined) return PB_TRANSLATIONS['hi'][key];
+      return fallback;
+    }
+
+    function getHindiMonthName(m, lang) {
+      const l = lang || getPbLang();
+      const list = MONTH_NAMES_BY_LANG[l] || MONTH_NAMES_BY_LANG['hi'];
+      return list[(m - 1 + 12) % 12];
+    }
+
 
     function showToast(msg) {
       const toast = document.getElementById('passbookToast');
@@ -1184,16 +1530,80 @@
 
     function renderAll() {
       const urlParams = new URLSearchParams(window.location.search);
+      const stats = calculateMonthStats(currentYear, currentMonth);
       const isSupplier = (urlParams.get('type') === 'supplier') || (window.location.hash && window.location.hash.includes('"type":"supplier"'));
 
+      // Apply translations to static labels
+      const lang = getPbLang();
+      document.documentElement.lang = lang;
+      const pbSub = document.getElementById('pbBrandSub');
+      if (pbSub) pbSub.innerText = pbt('pb_brand_sub', 'अधिकृत डिजिटल दूध पासबुक');
+      const bPrev = document.getElementById('btnPrevMonth');
+      if (bPrev) bPrev.innerText = pbt('prev', '◀ पिछला');
+      const bNext = document.getElementById('btnNextMonth');
+      if (bNext) bNext.innerText = pbt('next', 'अगला ▶');
+      const bTag = document.getElementById('pbBillTag');
+      if (bTag) bTag.innerText = pbt('bill_tag', 'मासिक बिल व देय राशि');
+      const bLbl = document.getElementById('pbBillLabel');
+      if (bLbl) bLbl.innerText = pbt('bill_label', 'कुल देय राशि (Total Payable)');
+            const bdMonthMilkEl = document.getElementById('pbBdMonthMilkText');
+      if (bdMonthMilkEl) {
+        const litresSpan = document.getElementById('bdTotalLitres');
+        const lVal = litresSpan ? litresSpan.innerText : '0.0';
+        bdMonthMilkEl.innerHTML = `${pbt('this_month_milk', 'This Month Milk')} (<span id="bdTotalLitres">${lVal}</span> L):`;
+      }
+      const bdDues = document.getElementById('pbBdDuesText');
+      if (bdDues) bdDues.innerText = pbt('prev_dues', 'पिछला बकाया (Dues):');
+      const btnQr = document.getElementById('pbBtnQrText');
+      if (btnQr) btnQr.innerText = pbt('qr_btn', 'QR कोड देखें');
+      const btnCopy = document.getElementById('pbBtnCopyText');
+      if (btnCopy) btnCopy.innerText = pbt('copy_btn', 'UPI ID कॉपी करें');
+      const qrHint = document.getElementById('pbQrScanHint');
+      if (qrHint) qrHint.innerText = pbt('qr_scan_hint', 'PhonePe, GPay, Paytm या BHIM से स्कैन करें');
+      const lblTot = document.getElementById('pbStatTotalMilkLabel');
+      if (lblTot) lblTot.innerText = pbt('total_milk', 'कुल दूध');
+      const lblSup = document.getElementById('pbStatSupplyLabel');
+      if (lblSup) lblSup.innerText = pbt('supplied', 'सप्लाई');
+      const lblSkp = document.getElementById('pbStatSkipLabel');
+      if (lblSkp) lblSkp.innerText = pbt('skipped', 'नागा/छुट्टी');
+      const lblRt = document.getElementById('pbStatRateLabel');
+      if (lblRt) lblRt.innerText = pbt('rate', 'दूध भाव');
+      const calTitle = document.getElementById('pbCalTitle');
+      if (calTitle) calTitle.innerText = pbt('cal_title', '30-दिन दैनिक दूध कैलेंडर');
+      const legDone = document.getElementById('pbLegMilkDone');
+      if (legDone) legDone.innerText = pbt('leg_milk_done', 'दूध आया');
+      const legSkip = document.getElementById('pbLegMilkSkip');
+      if (legSkip) legSkip.innerText = pbt('leg_milk_skip', 'नागा');
+      const supTitle = document.getElementById('pbSupportTitle');
+      if (supTitle) supTitle.innerText = pbt('support_title', 'हिसाब में कोई शंका या दूध घटाने-बढ़ाने हेतु:');
+      const btnCall = document.getElementById('pbBtnCallText');
+      if (btnCall) btnCall.innerText = pbt('call_btn', 'डेयरी को कॉल करें');
+      const btnWa = document.getElementById('pbBtnWaText');
+      if (btnWa) btnWa.innerText = pbt('wa_btn', 'WhatsApp पर लिखें');
+      const btnPrn = document.getElementById('pbBtnPrint');
+      if (btnPrn) btnPrn.innerText = pbt('print_btn', '🖨️ इस माह का विवरण प्रिंट / PDF डाउनलोड करें');
+
       // 1. Header Details
-      document.getElementById('farmNameDisplay').innerText = farmSettings.farmName || 'श्री कृष्णा डेयरी फार्म';
+      const rawFarm = farmSettings.farmName || '';
+      if (!rawFarm || rawFarm === 'श्री कृष्णा डेयरी फार्म' || rawFarm === 'DairyMitra') {
+        document.getElementById('farmNameDisplay').innerText = pbt('default_farm_name', 'श्री कृष्णा डेयरी फार्म');
+      } else {
+        document.getElementById('farmNameDisplay').innerText = rawFarm;
+      }
+
+      // Update Breakdown This Month Milk Label
+      const bdMonthMilkEl = document.getElementById('pbBdMonthMilkText');
+      if (bdMonthMilkEl) {
+        bdMonthMilkEl.innerHTML = `${pbt('this_month_milk', 'इस माह का दूध')} (<span id="bdTotalLitres">${stats.totalLitres.toFixed(1)}</span> L):`;
+      }
       document.getElementById('custNameDisplay').innerText = customerData.name || (isSupplier ? 'किसान सप्लायर' : 'ग्राहक');
       document.getElementById('custPhoneDisplay').innerText = customerData.phone ? `📱 ${customerData.phone}` : (customerData.village ? `📍 ${customerData.village}` : '');
       
       const totalQuota = ((customerData.quotaMorning || 0) + (customerData.quotaEvening || 0)).toFixed(1);
-      document.getElementById('custQuotaDisplay').innerText = isSupplier ? `अनुमानित: ${totalQuota} L/दिन` : `कोटा: ${totalQuota} L/दिन`;
-      document.getElementById('custRateDisplay').innerText = isSupplier ? `खरीद भाव: ₹${customerData.rate || 48}/L` : `भाव: ₹${customerData.rate || 65}/L`;
+      document.getElementById('custQuotaDisplay').innerText = isSupplier ? `${pbt('quota_prefix', 'कोटा')}: ${totalQuota} L/${pbt('unit_day', 'दिन')}` : `${pbt('quota_prefix', 'कोटा')}: ${totalQuota} L/${pbt('unit_day', 'दिन')}`;
+      const mType = customerData.milkType || 'buffalo';
+      const mTypeIcon = mType === 'cow' ? `🐄 ${pbt('cow', 'गाय')}` : (mType === 'both' ? `🥛 ${pbt('both', 'दोनों')}` : `🐃 ${pbt('buffalo', 'भैंस')}`);
+      document.getElementById('custRateDisplay').innerText = `${pbt('rate_prefix', 'भाव')}: ${mTypeIcon} ₹${customerData.rate || 65}/L`;
 
       if (isSupplier) {
         document.title = `डिजिटल दूध संकलन पासबुक • ${customerData.name}`;
@@ -1223,27 +1633,27 @@
       document.getElementById('btnSupportWa').href = waLink;
 
       // 2. Month Display
-      document.getElementById('currentMonthYearText').innerText = `${HINDI_MONTHS[currentMonth]} ${currentYear}`;
+      document.getElementById('currentMonthYearText').innerText = `${getHindiMonthName(currentMonth, getPbLang())} ${currentYear}`;
 
       // 3. Stats & Billing
-      const stats = calculateMonthStats(currentYear, currentMonth);
+      // stats calculated at top
 
       document.getElementById('totalPayableDisplay').innerText = `₹${stats.totalPayable.toLocaleString('en-IN')}`;
       document.getElementById('bdTotalLitres').innerText = stats.totalLitres.toFixed(1);
       document.getElementById('bdMonthBill').innerText = `₹${stats.monthBill.toLocaleString('en-IN')}`;
       document.getElementById('bdPrevDues').innerText = `₹${stats.dues.toLocaleString('en-IN')}`;
-      document.getElementById('btnPayText').innerText = `Google Pay / PhonePe से ₹${stats.totalPayable.toLocaleString('en-IN')} चुकाएं`;
+      document.getElementById('btnPayText').innerText = `${pbt('pay_btn_prefix', 'Google Pay / PhonePe से')} ₹${stats.totalPayable.toLocaleString('en-IN')} ${pbt('pay_btn_suffix', 'चुकाएं')}`;
 
       document.getElementById('statLitres').innerText = `${stats.totalLitres.toFixed(1)} L`;
-      document.getElementById('statDays').innerText = `${stats.deliveredDays} दिन`;
-      document.getElementById('statSkipped').innerText = `${stats.skippedDays} दिन`;
+      document.getElementById('statDays').innerText = `${stats.deliveredDays} ${pbt('unit_day', 'दिन')}`;
+      document.getElementById('statSkipped').innerText = `${stats.skippedDays} ${pbt('unit_day', 'दिन')}`;
       document.getElementById('statRate').innerText = `₹${stats.rate}/L`;
 
       // 4. Setup UPI Deep Link & QR Code
       const upiId = farmSettings.upiId || 'dairyfarm@upi';
       const upiName = farmSettings.farmName || 'DairyMitra';
       const amount = stats.totalPayable > 0 ? stats.totalPayable : 1;
-      const tn = encodeURIComponent(`MilkBill-${customerData.name}-${HINDI_MONTHS[currentMonth]}`);
+      const tn = encodeURIComponent(`MilkBill-${customerData.name}-${getPbMonthName(currentMonth)}`);
       const upiParams = `pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${amount}&cu=INR&tn=${tn}`;
       const genericUpi = `upi://pay?${upiParams}`;
 
@@ -1276,7 +1686,8 @@
       const firstDayIndex = new Date(currentYear, currentMonth - 1, 1).getDay();
 
       // Day of week headers
-      DAY_NAMES.forEach(dayName => {
+      const dayList = DAY_NAMES_BY_LANG[getPbLang()] || DAY_NAMES_BY_LANG['hi'];
+      dayList.forEach(dayName => {
         const h = document.createElement('div');
         h.className = 'day-col-header';
         h.innerText = dayName;
@@ -1329,7 +1740,7 @@
       const costEl = document.getElementById('detailCost');
       const badge = document.getElementById('detailStatusBadge');
 
-      dateHeading.innerText = `${d.dayNum} ${HINDI_MONTHS[currentMonth]} ${currentYear}`;
+      dateHeading.innerText = `${d.dayNum} ${getPbMonthName(currentMonth)} ${currentYear}`;
       shiftBreakdown.innerText = `🌅 सुबह: ${(d.morningQty || 0).toFixed(1)} L • 🌇 शाम: ${(d.eveningQty || 0).toFixed(1)} L`;
       costEl.innerText = `₹${d.cost}`;
 
