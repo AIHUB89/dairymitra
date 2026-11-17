@@ -30,90 +30,11 @@ const DEFAULT_STATE = {
     hasUsedReferral: false,
     businessType: 'farmer', // 'farmer' | 'vendor' | 'hybrid'
   },
-  animals: [
-    { id: 'a1', name: 'लाली (मुर्रा)', type: 'buffalo', breed: 'मुर्रा', status: 'milking', expectedYield: 8.0, photo: '' },
-    { id: 'a2', name: 'भूरी (गिर गाय)', type: 'cow', breed: 'गिर', status: 'milking', expectedYield: 7.0, photo: '' },
-    { id: 'a3', name: 'कजरी (भैंस)', type: 'buffalo', breed: 'देसी', status: 'milking', expectedYield: 6.5, photo: '' },
-    { id: 'a4', name: 'गौरी (साहीवाल)', type: 'cow', breed: 'साहीवाल', status: 'pregnant', expectedYield: 5.5, photo: '' },
-    { id: 'a5', name: 'रानी (HF क्रॉस)', type: 'cow', breed: 'HF / संकर', status: 'dry', expectedYield: 0, photo: '' }
-  ],
-  customers: [
-    { id: 'c1', name: 'रमेश जी', phone: '9876543211', address: 'मकान नं 12, गली 2', quotaMorning: 2.0, quotaEvening: 1.0, rate: 65, dues: 1850, photo: '' },
-    { id: 'c2', name: 'शर्मा जी (किराना)', phone: '9876543212', address: 'दुकान चौक', quotaMorning: 1.5, quotaEvening: 0.0, rate: 60, dues: 900, photo: '' },
-    { id: 'c3', name: 'वर्मा मास्टर जी', phone: '9876543213', address: 'स्कूल के पास', quotaMorning: 1.0, quotaEvening: 1.0, rate: 60, dues: 480, photo: '' },
-    { id: 'c4', name: 'गुप्ता जी', phone: '9876543214', address: 'प्लॉट नं 45', quotaMorning: 2.5, quotaEvening: 2.0, rate: 65, dues: 3200, photo: '' }
-  ],
-  suppliers: [
-    { id: 's1', name: 'रामकिशन (किसान)', phone: '9812345671', village: 'रामपुर', rate: 48, fatBased: false, quotaMorning: 25.0, quotaEvening: 20.0, dues: 2400, photo: '' },
-    { id: 's2', name: 'कालूराम (तबेला)', phone: '9812345672', village: 'सुल्तानपुर', rate: 50, fatBased: false, quotaMorning: 30.0, quotaEvening: 25.0, dues: 1500, photo: '' },
-    { id: 's3', name: 'बलबीर संकलन केंद्र', phone: '9812345673', village: 'मुख्य चौक', rate: 46, fatBased: true, quotaMorning: 20.0, quotaEvening: 15.0, dues: 0, photo: '' }
-  ],
-  // Breeding & Insemination Records (गर्भाधान व सीमन डायरी)
-  breedingRecords: [
-    {
-      id: 'br_sample_1',
-      animalId: 'a4', // गौरी (साहीवाल गाय)
-      aiDate: '2026-04-15', // ~190 दिन पहले (गाभिन अवस्था)
-      semenDetails: 'साहीवाल A2 बुल (स्ट्रॉ #402)',
-      doctorName: 'डॉ. वर्मा (पशु चिकित्सालय)',
-      doctorPhone: '9876501234',
-      status: 'active',
-      heatCheckDone: true,
-      heatCheckResult: 'passed',
-      pdCheckDone: true,
-      pdCheckResult: 'positive',
-      dryOffDone: false,
-      notes: 'पहला सीमन सफल रहा'
-    },
-    {
-      id: 'br_sample_2',
-      animalId: 'a1', // लाली (मुर्रा भैंस)
-      aiDate: '2026-10-06', // ~16 दिन पहले (5 दिन में 21-दिन हीट चेक अलर्ट)
-      semenDetails: 'मुर्रा चैंपियन बुल (#901)',
-      doctorName: 'डॉ. शर्मा',
-      doctorPhone: '9876549988',
-      status: 'active',
-      heatCheckDone: false,
-      heatCheckResult: null,
-      pdCheckDone: false,
-      pdCheckResult: null,
-      dryOffDone: false,
-      notes: 'शाम 5 बजे सीमन लगवाया'
-    }
-  ],
-  // Daily Milk Testing Records (फैट व SNF संकलन रिकॉर्ड)
-  milkTests: [
-    {
-      id: 'mt_sample_1',
-      date: '2026-10-22',
-      time: '07:30 AM',
-      shift: 'सुबह',
-      name: 'लाली (मुर्रा)',
-      type: 'buffalo',
-      litres: 8.0,
-      fat: 7.2,
-      clr: 29.0,
-      snf: 9.05,
-      rate: 57.6,
-      total: 460.8,
-      quality: '🟢 शुद्ध व उत्तम'
-    },
-    {
-      id: 'mt_sample_2',
-      date: '2026-10-22',
-      time: '08:15 AM',
-      shift: 'सुबह',
-      name: 'भूरी (गिर गाय)',
-      type: 'cow',
-      litres: 6.5,
-      fat: 4.2,
-      clr: 28.0,
-      snf: 8.60,
-      rate: 33.6,
-      total: 218.4,
-      quality: '🟢 शुद्ध व उत्तम'
-    }
-  ],
+  animals: [],
+  customers: [],
+  suppliers: [],
+  breedingRecords: [],
+  milkTests: [],
   // Daily records keyed by date string "YYYY-MM-DD"
   dailyRecords: {}
 };
@@ -201,9 +122,6 @@ function getHindiMonthName(m, lang) {
   return list[(m - 1 + 12) % 12];
 }
 
-// Ensure today's record structure exists
-initTodayRecord();
-
 function loadData() {
   const saved = localStorage.getItem('dairymitra_db_v1');
   if (saved) {
@@ -253,6 +171,59 @@ function loadData() {
         localStorage.setItem('dairymitra_db_v1', JSON.stringify(data));
       }
 
+      // One-time migration to purge mock/demo hardcoded sample data (Lali, Bhuri, Ramesh ji, Kaluram)
+      if (!data._v9CleanDemoData) {
+        data._v9CleanDemoData = true;
+        const demoAnimalIds = ['a1', 'a2', 'a3', 'a4', 'a5'];
+        const demoCustIds = ['c1', 'c2', 'c3', 'c4'];
+        const demoSuppIds = ['s1', 's2', 's3'];
+
+        if (data.animals) {
+          data.animals = data.animals.filter(a => !demoAnimalIds.includes(a.id));
+        }
+        if (data.customers) {
+          data.customers = data.customers.filter(c => !demoCustIds.includes(c.id));
+        }
+        if (data.suppliers) {
+          data.suppliers = data.suppliers.filter(s => !demoSuppIds.includes(s.id));
+        }
+        if (data.breedingRecords) {
+          data.breedingRecords = data.breedingRecords.filter(b => !demoAnimalIds.includes(b.animalId));
+        }
+        if (data.dailyRecords) {
+          Object.keys(data.dailyRecords).forEach(dateKey => {
+            const dayRec = data.dailyRecords[dateKey];
+            if (dayRec) {
+              if (dayRec.milking) {
+                demoAnimalIds.forEach(id => {
+                  if (dayRec.milking.morning) delete dayRec.milking.morning[id];
+                  if (dayRec.milking.evening) delete dayRec.milking.evening[id];
+                });
+              }
+              if (dayRec.delivery) {
+                demoCustIds.forEach(id => {
+                  if (dayRec.delivery.morning) delete dayRec.delivery.morning[id];
+                  if (dayRec.delivery.evening) delete dayRec.delivery.evening[id];
+                });
+              }
+              if (dayRec.purchases) {
+                demoSuppIds.forEach(id => {
+                  if (dayRec.purchases.morning) delete dayRec.purchases.morning[id];
+                  if (dayRec.purchases.evening) delete dayRec.purchases.evening[id];
+                });
+              }
+            }
+          });
+        }
+        if (data.khataTransactions) {
+          demoCustIds.forEach(id => delete data.khataTransactions[id]);
+        }
+        if (data.supplierKhataTransactions) {
+          demoSuppIds.forEach(id => delete data.supplierKhataTransactions[id]);
+        }
+        localStorage.setItem('dairymitra_db_v1', JSON.stringify(data));
+      }
+
       // Always ensure any future dates are purged from dailyRecords
       const curTodayKey = getTodayDateKey();
       if (data.dailyRecords) {
@@ -268,8 +239,8 @@ function loadData() {
       if (typeof data.farmSettings.isPro === 'undefined') data.farmSettings.isPro = false;
       if (!data.farmSettings.businessType) data.farmSettings.businessType = 'farmer';
       if (!data.farmSettings.defaultPurchaseRate) data.farmSettings.defaultPurchaseRate = 48;
-      if (!data.suppliers || data.suppliers.length === 0) {
-        data.suppliers = JSON.parse(JSON.stringify(DEFAULT_STATE.suppliers));
+      if (!data.suppliers) {
+        data.suppliers = [];
       }
       if (typeof data.farmSettings.referralsCount === 'undefined') data.farmSettings.referralsCount = 0;
       if (!data.farmSettings.referralCode) {
@@ -309,6 +280,8 @@ function getTodayDateKey() {
 }
 
 function initTodayRecord(forceReset = false) {
+  if (!appData) return;
+  if (!appData.dailyRecords) appData.dailyRecords = {};
   const freshDateKey = getTodayDateKey();
   if (freshDateKey !== currentDateKey) {
     currentDateKey = freshDateKey;
@@ -327,17 +300,24 @@ function initTodayRecord(forceReset = false) {
       purchases: {
         morning: {},
         evening: {}
+      },
+      expenses: {
+        feed: 0,
+        greenFodder: 0,
+        dryFodder: 0,
+        medical: 0,
+        other: 0
       }
     };
 
     // On a new day, every animal starts clean at 0.0 L (clean slate for milking)
-    appData.animals.forEach(a => {
+    (appData.animals || []).forEach(a => {
       appData.dailyRecords[currentDateKey].milking.morning[a.id] = 0;
       appData.dailyRecords[currentDateKey].milking.evening[a.id] = 0;
     });
 
     // On a new day, all customer deliveries start as 'pending' (0 L delivered until checked)
-    appData.customers.forEach(c => {
+    (appData.customers || []).forEach(c => {
       appData.dailyRecords[currentDateKey].delivery.morning[c.id] = {
         status: 'pending',
         litres: 0
@@ -348,27 +328,24 @@ function initTodayRecord(forceReset = false) {
       };
     });
 
-    // Daily farm expenses (दाना, चारा, भूसा, दवाई, अन्य)
-    appData.dailyRecords[currentDateKey].expenses = {
-      feed: 0,
-      greenFodder: 0,
-      dryFodder: 0,
-      medical: 0,
-      other: 0
-    };
-
-    saveData();
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      saveData();
+    }
   }
 
-  // Ensure expenses exists even if dailyRecord was created earlier
-  if (!appData.dailyRecords[currentDateKey].expenses) {
-    appData.dailyRecords[currentDateKey].expenses = {
-      feed: 0,
-      greenFodder: 0,
-      dryFodder: 0,
-      medical: 0,
-      other: 0
-    };
+  // Ensure all sub-objects exist even if partially stored
+  const todayRec = appData.dailyRecords[currentDateKey];
+  if (todayRec) {
+    if (!todayRec.milking) todayRec.milking = { morning: {}, evening: {} };
+    if (!todayRec.milking.morning) todayRec.milking.morning = {};
+    if (!todayRec.milking.evening) todayRec.milking.evening = {};
+    if (!todayRec.delivery) todayRec.delivery = { morning: {}, evening: {} };
+    if (!todayRec.delivery.morning) todayRec.delivery.morning = {};
+    if (!todayRec.delivery.evening) todayRec.delivery.evening = {};
+    if (!todayRec.purchases) todayRec.purchases = { morning: {}, evening: {} };
+    if (!todayRec.purchases.morning) todayRec.purchases.morning = {};
+    if (!todayRec.purchases.evening) todayRec.purchases.evening = {};
+    if (!todayRec.expenses) todayRec.expenses = { feed: 0, greenFodder: 0, dryFodder: 0, medical: 0, other: 0 };
   }
 }
 
@@ -1354,7 +1331,7 @@ function sendSupplierWhatsAppBill(suppId, year = currentKhataYear, month = curre
     else if (mType === 'both') mTypeDisp = `🔄 Both: Cow (${cowLitres}L @ ₹${supp.rateCow || 44}) + Buffalo (${bufLitres}L @ ₹${supp.rateBuffalo || supp.rate || 54})`;
 
     message = `🤝 *${farmName} - Farmer Milk Purchase & Payment Bill* 🥛\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `Hello *${supp.name}*! 🙏\n` +
       `Here is your milk purchase summary for ${monthName} ${year}:\n\n` +
       `📅 *Month:* ${monthName} ${year} (Days 1 to ${maxDay})\n` +
@@ -1363,13 +1340,13 @@ function sendSupplierWhatsAppBill(suppId, year = currentKhataYear, month = curre
       `💵 *This Month Milk Value:* *₹${monthCost.toLocaleString('en-IN')}*\n` +
       (dues > 0 ? `➕ *Previous Balance Dues:* *₹${dues.toLocaleString('en-IN')}*\n` : '') +
       `🏷️ *Total Payable to You:* *₹${totalPayable.toLocaleString('en-IN')}*\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 *View your 30-day live digital passbook & slips here:*\n` +
       `👉 ${passbookUrl}\n\n` +
       `Thank you for supplying pure milk! 🙏\n_${farmName}_`;
   } else {
     message = `🤝 *${farmName} - किसान दूध खरीद व भुगतान बिल* 🥛\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `नमस्ते *${supp.name}* जी! 🙏\n` +
       `डेयरी पर आपके ${monthName} ${year} माह का दूध संकलन व हिसाब निम्नलिखित है:\n\n` +
       `📅 *माह:* ${monthName} ${year} (1 से ${maxDay} तारीख तक)\n` +
@@ -1378,7 +1355,7 @@ function sendSupplierWhatsAppBill(suppId, year = currentKhataYear, month = curre
       `💵 *इस माह का दूध हिसाब:* *₹${monthCost.toLocaleString('en-IN')}*\n` +
       (dues > 0 ? `➕ *पिछला देय बकाया:* *₹${dues.toLocaleString('en-IN')}*\n` : '') +
       `🏷️ *कुल शुद्ध देय राशि:* *₹${totalPayable.toLocaleString('en-IN')}*\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 *अपनी पूरी 30-दिन डिजिटल पासबुक व दैनिक पर्ची देखने के लिए यहाँ दबाएँ:*\n` +
       `👉 ${passbookUrl}\n\n` +
       `धन्यवाद! 🙏\n_${farmName}_`;
@@ -3247,10 +3224,20 @@ function applyTranslations() {
   const navKhata = document.querySelector('[data-tab="viewKhata"] .nav-label');
   if (navKhata) navKhata.innerText = t('nav_khata', 'खाता-बिल');
 
-  const navCattle = document.querySelector('[data-tab="viewCattle"] .nav-label');
-  if (navCattle) {
-    if (bType === 'vendor') navCattle.innerText = t('nav_cattle_vendor', 'सप्लायर');
-    else navCattle.innerText = t('nav_cattle', 'पशु');
+  const tab5Btn = document.getElementById('bottomNavTab5Btn');
+  const cattleNavIcon = document.getElementById('bottomNavCattleIcon');
+  const cattleNavLabel = document.getElementById('bottomNavCattleLabel') || (tab5Btn ? tab5Btn.querySelector('.nav-label') : null);
+
+  if (tab5Btn) {
+    if (bType === 'vendor') {
+      tab5Btn.setAttribute('data-tab', 'viewSupplier');
+      if (cattleNavIcon) cattleNavIcon.innerText = '🤝';
+      if (cattleNavLabel) cattleNavLabel.innerText = t('nav_cattle_vendor', 'सप्लायर');
+    } else {
+      tab5Btn.setAttribute('data-tab', 'viewCattle');
+      if (cattleNavIcon) cattleNavIcon.innerText = '🐄';
+      if (cattleNavLabel) cattleNavLabel.innerText = t('nav_cattle', 'पशु');
+    }
   }
 
   const navDoctor = document.querySelector('[data-tab="viewDoctor"] .nav-label');
@@ -3330,6 +3317,22 @@ function renderMilkingCards() {
   const container = document.getElementById('milkingCardsList');
   if (!container) return;
   container.innerHTML = '';
+
+  if (!appData.animals || appData.animals.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state-card" style="text-align: center; padding: 32px 18px; background: #ffffff; border-radius: 18px; border: 1.5px dashed #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin: 12px 0;">
+        <span style="font-size: 38px; display: block; margin-bottom: 8px;">🐄</span>
+        <h4 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 6px;">${t('empty_cattle_title', 'डेयरी में कोई पशु दर्ज नहीं है')}</h4>
+        <p style="font-size: 13px; color: #64748b; margin: 0 0 16px; line-height: 1.4;">${t('empty_cattle_sub', 'दूध निकालने और रिकॉर्ड रखने के लिए अपनी गाय या भैंस जोड़ें।')}</p>
+        <button type="button" class="btn-primary" id="emptyAddAnimalMilkingBtn" style="display: inline-block; width: auto; padding: 10px 22px; font-weight: 700; border-radius: 12px;">
+          ${t('btn_add_first_animal', '➕ पहला पशु जोड़ें')}
+        </button>
+      </div>
+    `;
+    const b = document.getElementById('emptyAddAnimalMilkingBtn');
+    if (b) b.addEventListener('click', openAddAnimalModal);
+    return;
+  }
 
   const day = appData.dailyRecords[currentDateKey];
   const shiftMilking = day.milking[currentShift] || {};
@@ -3457,6 +3460,22 @@ function renderDeliveryCards() {
   const container = document.getElementById('deliveryCardsList');
   if (!container) return;
   container.innerHTML = '';
+
+  if (!appData.customers || appData.customers.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state-card" style="text-align: center; padding: 32px 18px; background: #ffffff; border-radius: 18px; border: 1.5px dashed #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin: 12px 0;">
+        <span style="font-size: 38px; display: block; margin-bottom: 8px;">🥛</span>
+        <h4 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 6px;">${t('empty_delivery_title', 'कोई दूध ग्राहक दर्ज नहीं है')}</h4>
+        <p style="font-size: 13px; color: #64748b; margin: 0 0 16px; line-height: 1.4;">${t('empty_delivery_sub', 'घर-घर दूध पहुँचाने और ऑटो-हिसाब के लिए ग्राहक जोड़ें।')}</p>
+        <button type="button" class="btn-primary" id="emptyAddCustDeliveryBtn" style="display: inline-block; width: auto; padding: 10px 22px; font-weight: 700; border-radius: 12px;">
+          ${t('btn_add_first_customer', '➕ पहला ग्राहक जोड़ें')}
+        </button>
+      </div>
+    `;
+    const b = document.getElementById('emptyAddCustDeliveryBtn');
+    if (b) b.addEventListener('click', openAddCustomerModal);
+    return;
+  }
 
   const day = appData.dailyRecords[currentDateKey];
   const shiftDelivery = day.delivery[currentShift] || {};
@@ -4088,7 +4107,7 @@ function shareCustomerPassbookWhatsApp(custId, year = currentKhataYear, month = 
   let msg = '';
   if (curL === 'en') {
     msg = `🥛 *${farmName} - Your Digital Milk Passbook* 📲\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `Hello *${cust.name}*! 🙏\n` +
       `Your milk account statement is now completely digital & verified.\n\n` +
       `📅 *Month:* ${monthName} ${year}\n` +
@@ -4100,11 +4119,11 @@ function shareCustomerPassbookWhatsApp(custId, year = currentKhataYear, month = 
       `• 30-day morning & evening milk attendance calendar\n` +
       `• Transparent rate and previous balance statement\n` +
       `• 1-Click pay via PhonePe / Google Pay / Paytm\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `Thank you! 🙏\n*${farmName}*`;
   } else if (curL === 'pa') {
     msg = `🥛 *${farmName} - ਤੁਹਾਡੀ ਡਿਜੀਟਲ ਦੁੱਧ ਪਾਸਬੁੱਕ* 📲\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ *${cust.name}* ਜੀ! 🙏\n` +
       `ਤੁਹਾਡਾ ਦੁੱਧ ਹਿਸਾਬ ਹੁਣ ਪੂਰੀ ਤਰ੍ਹਾਂ ਡਿਜੀਟਲ ਤੇ ਪਾਰਦਰਸ਼ੀ ਹੈ।\n\n` +
       `📅 *ਮਹੀਨਾ:* ${monthName} ${year}\n` +
@@ -4115,7 +4134,7 @@ function shareCustomerPassbookWhatsApp(custId, year = currentKhataYear, month = 
       `ਧੰਨਵਾਦ! 🙏\n*${farmName}*`;
   } else {
     msg = `🥛 *${farmName} - आपकी डिजिटल दूध पासबुक* 📲\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `नमस्ते *${cust.name}* जी! 🙏\n` +
       `आपके फार्म का दूध हिसाब अब पूरी तरह डिजिटल और पारदर्शी है।\n\n` +
       `📅 *माह:* ${monthName} ${year}\n` +
@@ -4127,7 +4146,7 @@ function shareCustomerPassbookWhatsApp(custId, year = currentKhataYear, month = 
       `• पूरे 30 दिन का सुबह-शाम का दूध और नागा कैलेंडर\n` +
       `• दूध का सटीक भाव व पिछला बकाया हिसाब\n` +
       `• Google Pay / PhonePe / Paytm से 1-क्लिक भुगतान\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `धन्यवाद! 🙏\n*${farmName}*`;
   }
 
@@ -4151,6 +4170,24 @@ function renderCustomerKhata() {
   }
 
   let totalDues = 0;
+
+  if (!appData.customers || appData.customers.length === 0) {
+    const totalDuesEl = document.getElementById('khataTotalDuesDisplay');
+    if (totalDuesEl) totalDuesEl.innerText = '₹0';
+    container.innerHTML = `
+      <div class="empty-state-card" style="text-align: center; padding: 32px 18px; background: #ffffff; border-radius: 18px; border: 1.5px dashed #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin: 12px 0;">
+        <span style="font-size: 38px; display: block; margin-bottom: 8px;">👥</span>
+        <h4 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 6px;">${t('empty_khata_title', 'कोई ग्राहक खाता नहीं है')}</h4>
+        <p style="font-size: 13px; color: #64748b; margin: 0 0 16px; line-height: 1.4;">${t('empty_khata_sub', 'महीने का बिल, नागा कैलेंडर और डिजिटल पासबुक के लिए ग्राहक जोड़ें।')}</p>
+        <button type="button" class="btn-primary" id="emptyAddCustKhataBtn" style="display: inline-block; width: auto; padding: 10px 22px; font-weight: 700; border-radius: 12px;">
+          ${t('btn_add_first_customer', '➕ नया ग्राहक जोड़ें')}
+        </button>
+      </div>
+    `;
+    const b = document.getElementById('emptyAddCustKhataBtn');
+    if (b) b.addEventListener('click', openAddCustomerModal);
+    return;
+  }
 
   appData.customers.forEach(cust => {
     totalDues += (cust.dues || 0);
@@ -4290,7 +4327,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
     return `🥛 *${farmName} - Monthly Milk Bill* 🥛\n\n` +
       `Hello *${cust.name}*,\n` +
       `Here is your milk account statement for ${monthName} ${year}:\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📅 Month: *${monthName} ${year}*\n` +
       `🥛 Total Milk: *${stats.totalLitres.toFixed(1)} Litres* (${stats.deliveredDays} days supplied)\n` +
       `🐄 Milk Type: *${mTypeDisp}*\n` +
@@ -4298,7 +4335,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
       `💵 This Month Bill: *₹${stats.monthBill.toLocaleString('en-IN')}*\n` +
       (cust.dues > 0 ? `➕ Previous Dues: *₹${(cust.dues).toLocaleString('en-IN')}*\n` : '') +
       `🏷️ Total Amount Payable: *₹${stats.totalPayable.toLocaleString('en-IN')}*\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 Please pay via Google Pay / PhonePe to this UPI ID:\n` +
       `👉 *${farm.upiId}*\n\n` +
       `_Please contact for 30-day milk calendar & attendance breakdown._\n` +
@@ -4315,7 +4352,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
     return `🥛 *${farmName} - ਮਹੀਨਾਵਾਰ ਦੁੱਧ ਬਿੱਲ* 🥛\n\n` +
       `ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ *${cust.name}* ਜੀ,\n` +
       `ਤੁਹਾਡੇ ${monthName} ${year} ਮਹੀਨੇ ਦਾ ਦੁੱਧ ਹਿਸਾਬ ਹੇਠ ਲਿਖੇ ਅਨੁਸਾਰ ਹੈ:\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📅 ਮਹੀਨਾ: *${monthName} ${year}*\n` +
       `🥛 ਕੁੱਲ ਦੁੱਧ: *${stats.totalLitres.toFixed(1)} ਲਿਟਰ* (${stats.deliveredDays} ਦਿਨ ਸਪਲਾਈ)\n` +
       `🐄 ਦੁੱਧ ਦੀ ਕਿਸਮ: *${mTypeDisp}*\n` +
@@ -4323,7 +4360,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
       `💵 ਇਸ ਮਹੀਨੇ ਦਾ ਬਿੱਲ: *₹${stats.monthBill.toLocaleString('en-IN')}*\n` +
       (cust.dues > 0 ? `➕ ਪਿਛਲਾ ਬਕਾਇਆ: *₹${(cust.dues).toLocaleString('en-IN')}*\n` : '') +
       `🏷️ ਕੁੱਲ ਦੇਣਯੋਗ ਰਕਮ: *₹${stats.totalPayable.toLocaleString('en-IN')}*\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 ਕਿਰਪਾ ਕਰਕੇ Google Pay / PhonePe ਰਾਹੀਂ ਇਸ UPI ID 'ਤੇ ਭੁਗਤਾਨ ਕਰੋ:\n` +
       `👉 *${farm.upiId}*\n\n` +
       `ਧੰਨਵਾਦ! 🙏\n_${farmName}_`;
@@ -4339,7 +4376,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
     return `🥛 *${farmName} - महीने का दूध बिल* 🥛\n\n` +
       `राम-राम *${cust.name}* जी,\n` +
       `थारे ${monthName} ${year} महीने का दूध हिसाब यो है:\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📅 महीना: *${monthName} ${year}*\n` +
       `🥛 कुल दूध: *${stats.totalLitres.toFixed(1)} लीटर* (${stats.deliveredDays} दिन सप्लाई)\n` +
       `🐄 दूध का प्रकार: *${mTypeDisp}*\n` +
@@ -4347,7 +4384,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
       `💵 इस महीने का बिल: *₹${stats.monthBill.toLocaleString('en-IN')}*\n` +
       (cust.dues > 0 ? `➕ पिछला बकाया: *₹${(cust.dues).toLocaleString('en-IN')}*\n` : '') +
       `🏷️ कुल देय बकाया: *₹${stats.totalPayable.toLocaleString('en-IN')}*\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 कृपया Google Pay / PhonePe तै इस UPI ID पे भुगतान करो:\n` +
       `👉 *${farm.upiId}*\n\n` +
       `धन्यवाद! 🙏\n_${farmName}_`;
@@ -4363,7 +4400,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
     return `🥛 *${farmName} - માસિક દૂધ બિલ* 🥛\n\n` +
       `નમસ્તે *${cust.name}* જી,\n` +
       `તમારા ${monthName} ${year} મહિનાનો દૂધ હિસાબ નીચે મુજબ છે:\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📅 મહિનો: *${monthName} ${year}*\n` +
       `🥛 કુલ દૂધ: *${stats.totalLitres.toFixed(1)} લિટર* (${stats.deliveredDays} દિવસ સપ્લાય)\n` +
       `🐄 દૂધનો પ્રકાર: *${mTypeDisp}*\n` +
@@ -4371,7 +4408,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
       `💵 આ મહિનાનું બિલ: *₹${stats.monthBill.toLocaleString('en-IN')}*\n` +
       (cust.dues > 0 ? `➕ પાછલું બાકી: *₹${(cust.dues).toLocaleString('en-IN')}*\n` : '') +
       `🏷️ કુલ ચૂકવવાપાત્ર રકમ: *₹${stats.totalPayable.toLocaleString('en-IN')}*\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 કૃપા કરીને Google Pay / PhonePe દ્વારા આ UPI ID પર ચુકવણી કરો:\n` +
       `👉 *${farm.upiId}*\n\n` +
       `આભાર! 🙏\n_${farmName}_`;
@@ -4387,7 +4424,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
     return `🥛 *${farmName} - मासिक दूध बिल* 🥛\n\n` +
       `नमस्कार *${cust.name}* जी,\n` +
       `आपल्या ${monthName} ${year} महिन्याचा दूध हिशोब खालीलप्रमाणे आहे:\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📅 महिना: *${monthName} ${year}*\n` +
       `🥛 एकूण दूध: *${stats.totalLitres.toFixed(1)} लिटर* (${stats.deliveredDays} दिवस पुरवठा)\n` +
       `🐄 दुधाचा प्रकार: *${mTypeDisp}*\n` +
@@ -4395,7 +4432,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
       `💵 या महिन्याचे बिल: *₹${stats.monthBill.toLocaleString('en-IN')}*\n` +
       (cust.dues > 0 ? `➕ मागील बाकी: *₹${(cust.dues).toLocaleString('en-IN')}*\n` : '') +
       `🏷️ एकूण देय रक्कम: *₹${stats.totalPayable.toLocaleString('en-IN')}*\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 कृपया Google Pay / PhonePe द्वारे या UPI ID वर पेमेंट करा:\n` +
       `👉 *${farm.upiId}*\n\n` +
       `धन्यवाद! 🙏\n_${farmName}_`;
@@ -4411,7 +4448,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
     return `🥛 *${farmName} - महीनावारी दूध बिल* 🥛\n\n` +
       `खम्मा घणी *${cust.name}* जी,\n` +
       `थारे ${monthName} ${year} महीना को दूध हिसाब इण प्रकार है:\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📅 महीनो: *${monthName} ${year}*\n` +
       `🥛 कुल दूध: *${stats.totalLitres.toFixed(1)} लीटर* (${stats.deliveredDays} दिन सप्लाई)\n` +
       `🐄 दूध को प्रकार: *${mTypeDisp}*\n` +
@@ -4419,7 +4456,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
       `💵 इण महीना को बिल: *₹${stats.monthBill.toLocaleString('en-IN')}*\n` +
       (cust.dues > 0 ? `➕ पाछलो बकायो: *₹${(cust.dues).toLocaleString('en-IN')}*\n` : '') +
       `🏷️ कुल देय बकायो: *₹${stats.totalPayable.toLocaleString('en-IN')}*\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 कृपा कर Google Pay / PhonePe सूं इण UPI ID पे भुगतान करो:\n` +
       `👉 *${farm.upiId}*\n\n` +
       `धन्यवाद! 🙏\n_${farmName}_`;
@@ -4435,7 +4472,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
     return `🥛 *${farmName} - মাসিক দুধের বিল* 🥛\n\n` +
       `নমস্কার *${cust.name}* বাবু,\n` +
       `আপনার ${monthName} ${year} মাসের দুধের হিসাব নিচে দেওয়া হলো:\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📅 মাস: *${monthName} ${year}*\n` +
       `🥛 মোট দুধ: *${stats.totalLitres.toFixed(1)} লিটার* (${stats.deliveredDays} দিন সরবরাহ)\n` +
       `🐄 দুধের ধরন: *${mTypeDisp}*\n` +
@@ -4443,7 +4480,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
       `💵 এই মাসের বিল: *₹${stats.monthBill.toLocaleString('en-IN')}*\n` +
       (cust.dues > 0 ? `➕ পূর্বের বকেয়া: *₹${(cust.dues).toLocaleString('en-IN')}*\n` : '') +
       `🏷️ মোট প্রদেয় বকেয়া: *₹${stats.totalPayable.toLocaleString('en-IN')}*\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 অনুগ্রহ করে Google Pay / PhonePe এর মাধ্যমে এই UPI ID তে পেমেন্ট করুন:\n` +
       `👉 *${farm.upiId}*\n\n` +
       `ধন্যবাদ! 🙏\n_${farmName}_`;
@@ -4460,7 +4497,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
     return `🥛 *${farmName} - मासिक दूध बिल* 🥛\n\n` +
       `नमस्ते *${cust.name}* जी,\n` +
       `आपके ${monthName} ${year} माह का दूध हिसाब निम्नलिखित है:\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📅 महीना: *${monthName} ${year}*\n` +
       `🥛 कुल दूध: *${stats.totalLitres.toFixed(1)} लीटर* (${stats.deliveredDays} दिन सप्लाई)\n` +
       `🐄 दूध का प्रकार: *${mTypeDisp}*\n` +
@@ -4468,7 +4505,7 @@ function getLocalizedWhatsAppCustomerBill(cust, stats, farm, monthName, year, la
       `💵 इस माह का बिल: *₹${stats.monthBill.toLocaleString('en-IN')}*\n` +
       (cust.dues > 0 ? `➕ पिछला बकाया: *₹${(cust.dues).toLocaleString('en-IN')}*\n` : '') +
       `🏷️ कुल शुद्ध बकाया: *₹${stats.totalPayable.toLocaleString('en-IN')}*\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 कृपया Google Pay / PhonePe द्वारा इस UPI ID पर भुगतान करें:\n` +
       `👉 *${farm.upiId}*\n\n` +
       `_नागा या हाज़िरी का पूरा 30-दिन कैलेंडर विवरण देखने हेतु सम्पर्क करें।_\n` +
@@ -4702,6 +4739,22 @@ function renderCattleRegister() {
   // Render Breeding Urgent Alerts Banner
   renderBreedingAlerts();
 
+  if (!appData.animals || appData.animals.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state-card" style="text-align: center; padding: 32px 18px; background: #ffffff; border-radius: 18px; border: 1.5px dashed #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin: 12px 0;">
+        <span style="font-size: 38px; display: block; margin-bottom: 8px;">📋</span>
+        <h4 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0 0 6px;">${t('empty_register_title', 'पशु रजिस्टर अभी खाली है')}</h4>
+        <p style="font-size: 13px; color: #64748b; margin: 0 0 16px; line-height: 1.4;">${t('empty_register_sub', 'अपने डेयरी फार्म के सभी पशुओं को यहाँ पंजीकृत करें।')}</p>
+        <button type="button" class="btn-primary" id="emptyAddAnimalRegisterBtn" style="display: inline-block; width: auto; padding: 10px 22px; font-weight: 700; border-radius: 12px;">
+          ${t('btn_add_first_animal', '➕ पहला पशु जोड़ें')}
+        </button>
+      </div>
+    `;
+    const b = document.getElementById('emptyAddAnimalRegisterBtn');
+    if (b) b.addEventListener('click', openAddAnimalModal);
+    return;
+  }
+
   const filtered = appData.animals.filter(a => {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'pregnant') {
@@ -4795,7 +4848,7 @@ function renderCattleRegister() {
       </div>
       <div class="animal-smart-actions-row">
         <button type="button" class="btn-card-action btn-animal-cal-card" data-aid="${animal.id}">
-          📅 ${t('btn_milk_cal', 'दूध कैलेंडर')}
+          ${t('btn_milk_cal', '📅 दूध कैलेंडर')}
         </button>
         <button type="button" class="btn-smart-action btn-animal-kundali" data-kundali-aid="${animal.id}" title="डिजिटल पशु कुंडली व हेल्थ कार्ड">
           🪪 ${t('trend_kundali', 'कुंडली')}
@@ -6485,19 +6538,19 @@ function sendWhatsAppMilkSlip() {
   const farm = appData.farmSettings;
 
   const msg = `🥛 *${farm.farmName} - दूध संकलन पर्ची* 🥛\n` +
-    `━━━━━━━━━━━━━━━━━━\n` +
+    `--------------------------------\n` +
     `📅 *दिनांक:* ${formatHindiDate(d.date)} (${d.shift})\n` +
     `🐾 *पशु का नाम:* ${d.name}\n` +
     `🥛 *दूध मात्रा:* ${d.litres.toFixed(1)} लीटर (${d.type === 'cow' ? 'गाय' : 'भैंस'})\n` +
-    `━━━━━━━━━━━━━━━━━━\n` +
+    `--------------------------------\n` +
     `🧪 *फैट (FAT):* ${d.fat.toFixed(1)}%\n` +
     `🔬 *लैक्टो (CLR):* ${d.clr.toFixed(1)}\n` +
     `📊 *एस.एन.एफ (SNF):* ${d.snf.toFixed(2)}%\n` +
     `✨ *गुणवत्ता:* ${d.quality}\n` +
-    `━━━━━━━━━━━━━━━━━━\n` +
+    `--------------------------------\n` +
     `💰 *दूध का भाव:* ₹${d.rate.toFixed(2)}/लीटर\n` +
     `💵 *कुल भुगतान:* ₹${d.total.toFixed(2)}\n` +
-    `━━━━━━━━━━━━━━━━━━\n` +
+    `--------------------------------\n` +
     `धन्यवाद! 🙏\n_${farm.farmName}_`;
 
   const encoded = encodeURIComponent(msg);
@@ -7202,20 +7255,20 @@ function sendWhatsAppCalendarStatement(custId, year, month) {
       : `✨ *Skipped:* 0 days (Regular daily milk supplied)`;
 
     msg = `🥛 *${farmName} - 30-Day Milk Statement* 🥛\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `👤 *Customer:* ${cust.name}\n` +
       `📅 *Month:* ${monthName} ${year}\n` +
       `🥛 *Daily Quota:* ${(cust.quotaMorning + cust.quotaEvening).toFixed(1)} L (Morn ${cust.quotaMorning}L + Eve ${cust.quotaEvening}L)\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `✅ *Delivered Days:* ${stats.deliveredDays} days\n` +
       `${nagaText}\n` +
       `🥛 *Total Milk Supplied:* ${stats.totalLitres.toFixed(1)} Litres\n` +
       `💰 *Milk Rate:* ₹${cust.rate}/L\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `💵 *This Month Bill:* ₹${stats.monthBill.toLocaleString('en-IN')}\n` +
       (cust.dues > 0 ? `➕ *Previous Dues:* ₹${(cust.dues).toLocaleString('en-IN')}\n` : '') +
       `🏷️ *Total Amount Payable:* ₹${stats.totalPayable.toLocaleString('en-IN')}\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 UPI ID: *${farm.upiId}*\n` +
       `_This is the official statement for 30-day attendance & quantity audit._\n` +
       `Thank you! 🙏\n_${farmName}_`;
@@ -7225,20 +7278,20 @@ function sendWhatsAppCalendarStatement(custId, year, month) {
       : `✨ *नागा (छुट्टी):* 0 दिन (पूरे माह नियमित दूध लिया)`;
 
     msg = `🥛 *${farmName} - 30-दिन दूध व हाज़िरी विवरण* 🥛\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `👤 *ग्राहक:* ${cust.name}\n` +
       `📅 *महीना:* ${monthName} ${year}\n` +
       `🥛 *रोज़ाना कोटा:* ${(cust.quotaMorning + cust.quotaEvening).toFixed(1)} L (सुबह ${cust.quotaMorning}L + शाम ${cust.quotaEvening}L)\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `✅ *दूध दिया गया:* ${stats.deliveredDays} दिन\n` +
       `${nagaText}\n` +
       `🥛 *कुल दूध मात्रा:* ${stats.totalLitres.toFixed(1)} लीटर\n` +
       `💰 *दूध का भाव:* ₹${cust.rate}/लीटर\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `💵 *इस माह का बिल:* ₹${stats.monthBill.toLocaleString('en-IN')}\n` +
       (cust.dues > 0 ? `➕ *पिछला बकाया:* ₹${(cust.dues).toLocaleString('en-IN')}\n` : '') +
       `🏷️ *कुल शुद्ध देय:* ₹${stats.totalPayable.toLocaleString('en-IN')}\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `📲 UPI ID: *${farm.upiId}*\n` +
       `_नागा या दूध मात्रा के मिलान हेतु यह आधिकारिक विवरण है।_\n` +
       `धन्यवाद! 🙏\n_${farmName}_`;
@@ -8354,7 +8407,7 @@ function sendUpiWhatsAppBill() {
   if (curL === 'en') {
     msg = 
 `🥛 *${farmName} - Digital Milk Slip* 🧾\n` +
-`━━━━━━━━━━━━━━━━━━\n` +
+`--------------------------------\n` +
 `👤 *Customer:* ${cust.name}\n` +
 `📅 *Month:* ${monthName} ${year}\n` +
 `🥛 *Total Milk:* ${stats.totalLitres.toFixed(1)} Litres\n` +
@@ -8362,7 +8415,7 @@ function sendUpiWhatsAppBill() {
 `💵 *Monthly Bill:* ₹${stats.monthBill.toLocaleString('en-IN')}\n` +
 (cust.dues > stats.monthBill ? `📌 *Previous Dues:* ₹${(cust.dues - stats.monthBill).toLocaleString('en-IN')}\n` : '') +
 `💰 *Total Amount Payable:* *₹${payableAmount.toLocaleString('en-IN')}*\n` +
-`━━━━━━━━━━━━━━━━━━\n` +
+`--------------------------------\n` +
 `📲 *1-Click UPI Payment Link:*\n` +
 `${upiPayUrl}\n\n` +
 `🏦 *UPI ID:* \`${upiId}\`\n` +
@@ -8372,7 +8425,7 @@ function sendUpiWhatsAppBill() {
   } else {
     msg = 
 `🥛 *${farmName} - डिजिटल दूध पर्ची* 🧾\n` +
-`━━━━━━━━━━━━━━━━━━\n` +
+`--------------------------------\n` +
 `👤 *ग्राहक:* ${cust.name}\n` +
 `📅 *माह:* ${monthName} ${year}\n` +
 `🥛 *कुल दूध:* ${stats.totalLitres.toFixed(1)} लीटर\n` +
@@ -8380,7 +8433,7 @@ function sendUpiWhatsAppBill() {
 `💵 *मासिक बिल:* ₹${stats.monthBill.toLocaleString('en-IN')}\n` +
 (cust.dues > stats.monthBill ? `📌 *पिछला बकाया:* ₹${(cust.dues - stats.monthBill).toLocaleString('en-IN')}\n` : '') +
 `💰 *कुल देय राशि:* *₹${payableAmount.toLocaleString('en-IN')}*\n` +
-`━━━━━━━━━━━━━━━━━━\n` +
+`--------------------------------\n` +
 `📲 *1-क्लिक UPI भुगतान लिंक:*\n` +
 `${upiPayUrl}\n\n` +
 `🏦 *UPI ID:* \`${upiId}\`\n` +
@@ -8609,7 +8662,7 @@ function shareDailyProfitWhatsApp() {
   const msg = 
 `📊 *${farmName} - दैनिक बैलेंस शीट* 💰
 📅 *तारीख:* ${dKey}
-━━━━━━━━━━━━━━━━━━
+--------------------------------
 🥛 कुल दूध उत्पादन: ${prof.totalMilkProduced.toFixed(1)} L
 🚚 दूध बिक्री: ${prof.totalMilkSold.toFixed(1)} L
 🏡 घर में बचा: ${prof.homeMilk.toFixed(1)} L
@@ -8622,12 +8675,12 @@ function shareDailyProfitWhatsApp() {
 • दवाई / मिनरल: ₹${prof.expenses.medical || 0}
 • अन्य / मजदूरी: ₹${prof.expenses.other || 0}
 🔻 *कुल खर्च:* *₹${prof.totalExpenses.toLocaleString('en-IN')}*
-━━━━━━━━━━━━━━━━━━
+--------------------------------
 ⭐ *दैनिक शुद्ध लाभ (Net Profit):*
 👉 *₹${prof.netProfit.toLocaleString('en-IN')}* 👈
 📊 1 लीटर दूध की उत्पादन लागत: ₹${prof.costPerLitre.toFixed(1)}
 📈 1 लीटर पर शुद्ध मुनाफा: ₹${prof.profitPerLitre.toFixed(1)}
-━━━━━━━━━━━━━━━━━━
+--------------------------------
 डेयरी मित्र - स्मार्ट पशु बहीखाता द्वारा प्रमाणित ✨`;
 
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
@@ -8760,36 +8813,97 @@ function shareFeedWhatsApp() {
   if (curL === 'en') {
     const locBreed = getLocalizedBreed(animal.breed) || (animal.type === 'cow' ? 'Cow' : 'Buffalo');
     msg = `🌾 *${animal.name} - AI Balanced Daily Feed Ration Chart* 🥛\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `🐮 *Animal:* ${animal.name} (${locBreed})\n` +
       `⚖️ *Body Weight:* ${wt} kg | 🥛 *Daily Milk:* ${milk} L\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `🌿 *Green Fodder:* ${ration.greenFodder}\n` +
       `🍂 *Dry Straw / Fodder:* ${ration.dryFodder}\n` +
       `🌾 *Balanced Concentrate Feed:* ${ration.concentrate}\n` +
       `💊 *Mineral Mixture:* ${ration.mineral}\n` +
       `🧂 *Salt & Soda:* ${ration.salt}\n` +
       `💧 *Fresh Water:* ${ration.water}\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `_Recommended as per ICAR/NDRI Dairy Standards via DairyMitra_`;
   } else {
     msg = `🌾 *${animal.name} - AI संतुलित आहार चार्ट (Daily Ration)* 🥛\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `🐮 *पशु:* ${animal.name} (${animal.breed || (animal.type === 'cow' ? 'गाय' : 'भैंस')})\n` +
       `⚖️ *वजन:* ${wt} kg | 🥛 *दैनिक दूध:* ${milk} L\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `🌿 *हरा चारा:* ${ration.greenFodder}\n` +
       `🍂 *सूखा भूसा:* ${ration.dryFodder}\n` +
       `🌾 *संतुलित दाना:* ${ration.concentrate}\n` +
       `💊 *मिनरल मिक्चर:* ${ration.mineral}\n` +
       `🧂 *नमक व मीठा सोडा:* ${ration.salt}\n` +
       `💧 *साफ पानी:* ${ration.water}\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `_ICAR / NDRI वैज्ञानिक पोषण मानकों पर आधारित • डेयरी मित्र_`;
   }
 
   showAudioToast('📲 WhatsApp पर आहार चार्ट खुल रहा है...');
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function openAnimalKundaliModal(animalId) {
+  const modal = document.getElementById('animalKundaliModal');
+  if (!modal) return;
+
+  let animal = null;
+  if (animalId) {
+    animal = (appData.animals || []).find(a => a.id === animalId);
+  }
+  if (!animal && appData.animals && appData.animals.length > 0) {
+    animal = appData.animals[0];
+  }
+  if (!animal) {
+    showAudioToast(t('no_animal_found', 'कृपया पहले पशु जोड़ें!'));
+    openAddAnimalModal();
+    return;
+  }
+
+  currentKundaliAnimalId = animal.id;
+  const isCow = animal.type === 'cow';
+  const stats = (typeof getAnimalMonthlyMilkingStats === 'function') 
+    ? getAnimalMonthlyMilkingStats(animal.id, currentKhataYear, currentKhataMonth) 
+    : { avgDailyMilk: 0 };
+  const dailyYield = stats.avgDailyMilk > 0 ? stats.avgDailyMilk : (animal.expectedYield || 8.0);
+  const peakYield = ((animal.expectedYield || dailyYield) * 1.35).toFixed(1);
+  const locBreed = (typeof getLocalizedBreed === 'function') ? getLocalizedBreed(animal.breed) : (animal.breed || (isCow ? 'देशी गोवंश' : 'मुर्रा नस्ल'));
+
+  const avatarEl = document.getElementById('kundaliAvatarEmoji');
+  if (avatarEl) avatarEl.textContent = animal.avatar || (isCow ? '🐄' : '🐃');
+
+  const nameEl = document.getElementById('kundaliAnimalName');
+  if (nameEl) nameEl.textContent = `${animal.name} (${isCow ? t('cow', 'गाय') : t('buffalo', 'भैंस')})`;
+
+  const tagEl = document.getElementById('kundaliTagId');
+  if (tagEl) tagEl.textContent = `${t('tag_label', 'टैग')}: #DM-${(animal.id || '101').toUpperCase()}`;
+
+  const breedEl = document.getElementById('kundaliBreed');
+  if (breedEl) breedEl.textContent = `${locBreed} (${isCow ? t('desi_cow_breed', 'देशी गोवंश') : t('murrah_buffalo_breed', 'मुर्रा नस्ल')})`;
+
+  const lactEl = document.getElementById('kundaliLactation');
+  if (lactEl) lactEl.textContent = animal.lactation ? `${animal.lactation} ${t('lactation_text', 'ब्यात')}` : t('kundali_second_calving', 'दूसरा ब्यात');
+
+  const dailyEl = document.getElementById('kundaliDailyYield');
+  if (dailyEl) dailyEl.textContent = `${dailyYield} L / ${t('per_day', 'दिन')}`;
+
+  const peakEl = document.getElementById('kundaliPeakYield');
+  if (peakEl) peakEl.textContent = `${peakYield} L / ${t('per_day', 'दिन')}`;
+
+  const statusEl = document.getElementById('kundaliCurrentStatus');
+  if (statusEl) {
+    const isMilking = animal.status === 'milking' || !animal.status || animal.status === 'दूध चालू';
+    statusEl.textContent = isMilking ? t('status_milking', 'दूध चालू') : (animal.status || t('status_dry', 'सूखी'));
+  }
+
+  const semenEl = document.getElementById('kundaliSemenRecord');
+  if (semenEl) {
+    semenEl.textContent = animal.semenRecord || t('kundali_semen_high', 'उच्च नस्ल सीमेन बुल #A2-402');
+  }
+
+  modal.classList.remove('hidden');
 }
 
 function shareKundaliWhatsApp() {
@@ -8804,7 +8918,7 @@ function shareKundaliWhatsApp() {
   if (curL === 'en') {
     const locBreed = getLocalizedBreed(animal.breed) || (isCow ? 'Indigenous Cow' : 'Murrah Buffalo');
     msg = `🪪 *${farmName} - Digital Cattle Passport & Kundali* ✨\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `🏷️ *Name:* ${animal.name} (Tag: #DM-${animal.id.toUpperCase()})\n` +
       `🧬 *Species:* ${isCow ? 'Cow' : 'Buffalo'} | *Breed:* ${locBreed}\n` +
       `🥛 *Current Milk:* ${stats.avgDailyMilk > 0 ? stats.avgDailyMilk : (animal.expectedYield || 8.0)} L/day (Peak: ${((animal.expectedYield || 8.0) * 1.35).toFixed(1)} L/day)\n` +
@@ -8816,7 +8930,7 @@ function shareKundaliWhatsApp() {
       `_Certified via DairyMitra Digital Dairy Tech_`;
   } else {
     msg = `🪪 *${farmName} - डिजिटल पशु कुंडली व पासपोर्ट* ✨\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `🏷️ *नाम:* ${animal.name} (टैग: #DM-${animal.id.toUpperCase()})\n` +
       `🧬 *प्रजाति:* ${isCow ? 'गाय (Cow)' : 'भैंस (Buffalo)'} | *नस्ल:* ${animal.breed || 'शुद्ध नस्ल'}\n` +
       `🥛 *वर्तमान दूध:* ${stats.avgDailyMilk > 0 ? stats.avgDailyMilk : (animal.expectedYield || 8.0)} L/दिन (पीक: ${((animal.expectedYield || 8.0) * 1.35).toFixed(1)} L/दिन)\n` +
@@ -8942,25 +9056,25 @@ function shareValuationWhatsApp() {
   if (curL === 'en') {
     const locBreed = getLocalizedBreed(animal.breed) || (animal.type === 'cow' ? 'Cow' : 'Buffalo');
     msg = `🏷️ *AI Cattle Valuation & Market Price Report* 🐮\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `Animal: *${animal.name}* (${locBreed})\n` +
       `Daily Milk Yield: ${animal.expectedYield || 8} L/day\n\n` +
       `💰 *Estimated Fair Market Value:* *₹${val.fair.toLocaleString('en-IN')}*\n` +
       `📊 *Price Range:* ₹${val.low.toLocaleString('en-IN')} to ₹${val.high.toLocaleString('en-IN')}\n\n` +
       `🔍 *Key Valuation Factors:*\n` +
       val.factors.map(f => `${f.icon} ${f.text}`).join('\n') + `\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `_Generated via DairyMitra AI Cattle Intelligence_`;
   } else {
     msg = `🏷️ *AI पशु बाजार भाव व मूल्यांकन रिपोर्ट* 🐮\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `पशु: *${animal.name}* (${animal.breed || ''})\n` +
       `दैनिक दूध: ${animal.expectedYield || 8} L/दिन\n\n` +
       `💰 *उचित बाजार मूल्य (Fair Price):* *₹${val.fair.toLocaleString('en-IN')}*\n` +
       `📊 *अनुमानित रेंज:* ₹${val.low.toLocaleString('en-IN')} से ₹${val.high.toLocaleString('en-IN')}\n\n` +
       `🔍 *मूल्य निर्धारण के मुख्य कारण:*\n` +
       val.factors.map(f => `${f.icon} ${f.text}`).join('\n') + `\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `_डेयरी मित्र AI पशु इंटेलिजेंस द्वारा प्रमाणित_`;
   }
 
@@ -9005,7 +9119,7 @@ function sharePurityWhatsApp() {
 
   const msg = 
 `🥛 *${farmName} - 100% शुद्धता गारंटी पत्र* 🏅
-━━━━━━━━━━━━━━━━━━
+--------------------------------
 ⭐ *शुद्धता हमारी पहचान • स्वास्थ्य आपका अधिकार* ⭐
 
 🥛 *भैंस का दूध:* Fat 7.0% - 7.5% | SNF 9.0+ (गाढ़ा व मलाईदार)
@@ -9018,7 +9132,7 @@ function sharePurityWhatsApp() {
 
 📞 *घर पर ताजा दूध आर्डर करने हेतु संपर्क करें:*
 📱 *${ownerPhone}*
-━━━━━━━━━━━━━━━━━━
+--------------------------------
 डेयरी मित्र द्वारा 100% शुद्धता प्रमाणित ✨`;
 
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
@@ -9192,11 +9306,11 @@ function getFormattedPashuMelaAdText() {
 
   const msg = 
 `🔴 *बिकाऊ है (FOR SALE) • डिजिटल पशु मेला* ${isCow ? '🐄' : '🐃'}
-━━━━━━━━━━━━━━━━━━━━━━
+--------------------------------━━━━
 📢 *पशु:* ${animal.name} (${animal.breed || 'शुद्ध नस्ल'} ${animalTypeLabel})
 💰 *माँग कीमत:* *₹${askingPrice.toLocaleString('en-IN')}* (${nego})
 🤝 *0% दलाली • सीधे किसान से खरीदें*
-━━━━━━━━━━━━━━━━━━━━━━
+--------------------------------━━━━
 📊 *पशु की मुख्य जानकारी:*
 🥛 *दैनिक दूध क्षमता:* ${milkYield.toFixed(1)} लीटर/दिन (दोनों समय की पक्की दुहाई)
 🍼 *ब्यात (Lactation):* ${lactation}
@@ -9209,7 +9323,7 @@ ${selectedTags.map(t => `✅ ${t}`).join('\n')}
 📞 *मालिक से सीधे संपर्क करें:* ${phone}
 💬 *सीधा WhatsApp चैट लिंक:*
 ${chatUrl}
-━━━━━━━━━━━━━━━━━━━━━━
+--------------------------------━━━━
 ✨ *डेयरी मित्र - डिजिटल पशु मेला* (किसान का अपना मंच)`;
 
   return msg;
@@ -9624,7 +9738,7 @@ function shareReferralWhatsApp() {
   const appUrl = window.location.href.split('#')[0];
   const msg = 
 `🥛 *डेयरी मित्र प्रो (DairyMitra Pro)* 👑
-━━━━━━━━━━━━━━━━━━━━━━
+--------------------------------━━━━
 नमस्ते किसान भाई! 🙏
 मैं अपने डेयरी फार्म का पूरा दूध हिसाब, पशु रिकॉर्ड और 1-क्लिक WhatsApp पर्ची *डेयरी मित्र ऐप* से बहुत आसानी से चला रहा हूँ।
 
@@ -9637,7 +9751,7 @@ function shareReferralWhatsApp() {
 ${appUrl}
 
 (कोड कॉपी करके ऐप के "प्रो • रेफर" बटन में डालें और 30 दिन का VIP आनंद लें!)
-━━━━━━━━━━━━━━━━━━━━━━
+--------------------------------━━━━
 डेयरी मित्र - किसान का अपना डिजिटल साथी ✨`;
 
   showAudioToast('📲 WhatsApp इनवाइट खुल रहा है...');
@@ -11906,14 +12020,14 @@ function setBusinessType(type, silent = false) {
     if (milkingList) milkingList.classList.add('hidden');
     if (purchaseList) purchaseList.classList.remove('hidden');
 
-    if (milkingNavLabel) milkingNavLabel.innerText = 'दूध खरीदा';
+    if (milkingNavLabel) milkingNavLabel.innerText = t('nav_milking_vendor', 'दूध खरीदा');
     if (milkingNavIcon) milkingNavIcon.innerText = '📥';
-    if (khataNavLabel) khataNavLabel.innerText = 'ग्राहक खाता';
+    if (khataNavLabel) khataNavLabel.innerText = t('nav_khata_cust', 'ग्राहक खाता');
     if (khataNavIcon) khataNavIcon.innerText = '👥';
 
     // Button 5 becomes dedicated Supplier Tab
     if (tab5Btn) tab5Btn.setAttribute('data-tab', 'viewSupplier');
-    if (cattleNavLabel) cattleNavLabel.innerText = 'सप्लायर';
+    if (cattleNavLabel) cattleNavLabel.innerText = t('nav_cattle_vendor', 'सप्लायर');
     if (cattleNavIcon) cattleNavIcon.innerText = '🤝';
     renderPurchaseCards();
   } else if (type === 'hybrid') {
@@ -12776,7 +12890,7 @@ function shareSupplierPassbookWhatsApp(suppId, year = currentKhataYear, month = 
   let msg = '';
   if (curL === 'en') {
     msg = `🤝 *${farmName} - Farmer Milk Purchase Passbook* 📲\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `Hello *${supp.name}*! 🙏\n` +
       `Your daily milk supply account is available online with verified accuracy.\n\n` +
       `📅 *Month:* ${monthName} ${year}\n` +
@@ -12787,7 +12901,7 @@ function shareSupplierPassbookWhatsApp(suppId, year = currentKhataYear, month = 
       `_Powered by DairyMitra Smart Dairy Solutions_`;
   } else {
     msg = `🤝 *${farmName} - किसान दूध खरीद पासबुक* 📲\n` +
-      `━━━━━━━━━━━━━━━━━━\n` +
+      `--------------------------------\n` +
       `नमस्ते *${supp.name}* जी! 🙏\n` +
       `डेयरी पर आपके दूध संकलन का दैनिक हिसाब पारदर्शी रूप से ऑनलाइन दर्ज है।\n\n` +
       `📅 *माह:* ${monthName} ${year}\n` +

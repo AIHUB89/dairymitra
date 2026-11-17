@@ -1,4 +1,4 @@
-// DairyMitra Master Multilingual Dictionary (8 Languages • 1,060 Keys)
+// DairyMitra Master Multilingual Dictionary (8 Languages • Complete Translations)
 const TRANSLATIONS = {
   "hi": {
     "sec_today_tasks": "आज के मुख्य कार्य",
@@ -1064,7 +1064,20 @@ const TRANSLATIONS = {
     "k_____80": "🥛 गाय व भैंस के डिफ़ॉल्ट मानक भाव (Default Standard Rates):",
     "k_ai_": "🧬 AI गर्भाधान",
     "k____24": "🧾 दूध पर्ची देखें",
-    "k_bolkar_entry": "बोलकर एंट्री"
+    "k_bolkar_entry": "बोलकर एंट्री",
+    "empty_cattle_title": "डेयरी में कोई पशु दर्ज नहीं है",
+    "empty_cattle_sub": "दूध निकालने और रिकॉर्ड रखने के लिए अपनी गाय या भैंस जोड़ें।",
+    "empty_delivery_title": "कोई दूध ग्राहक दर्ज नहीं है",
+    "empty_delivery_sub": "घर-घर दूध पहुँचाने और ऑटो-हिसाब के लिए ग्राहक जोड़ें।",
+    "empty_khata_title": "कोई ग्राहक खाता नहीं है",
+    "empty_khata_sub": "महीने का बिल, नागा कैलेंडर और डिजिटल पासबुक के लिए ग्राहक जोड़ें।",
+    "empty_register_title": "पशु रजिस्टर अभी खाली है",
+    "empty_register_sub": "अपने डेयरी फार्म के सभी पशुओं को यहाँ पंजीकृत करें।",
+    "empty_supplier_title": "कोई सप्लायर / किसान नहीं है",
+    "empty_supplier_sub": "गाँव या डेयरी के सप्लायर जोड़ें जिनसे आप दूध खरीदते हैं।",
+    "btn_add_first_animal": "➕ पहला पशु जोड़ें",
+    "btn_add_first_customer": "➕ पहला ग्राहक जोड़ें",
+    "btn_add_supplier": "➕ नया सप्लायर जोड़ें"
   },
   "en": {
     "sec_today_tasks": "Today's Core Tasks",
@@ -2130,7 +2143,20 @@ const TRANSLATIONS = {
     "k_____80": "🥛 Default Standard Rates for Cow & Buffalo:",
     "k_ai_": "🧬 AI Breeding",
     "k____24": "🧾 View Milk Slip",
-    "k_bolkar_entry": "Voice Entry"
+    "k_bolkar_entry": "Voice Entry",
+    "empty_cattle_title": "No Cattle Registered",
+    "empty_cattle_sub": "Add your cows or buffaloes to record milk yields and health.",
+    "empty_delivery_title": "No Milk Customers Added",
+    "empty_delivery_sub": "Add customers to start recording daily door-to-door deliveries.",
+    "empty_khata_title": "No Customer Accounts Found",
+    "empty_khata_sub": "Add customers to view monthly bills, attendance, and passbooks.",
+    "empty_register_title": "Cattle Register is Empty",
+    "empty_register_sub": "Register all cows and buffaloes on your dairy farm here.",
+    "empty_supplier_title": "No Suppliers / Farmers Found",
+    "empty_supplier_sub": "Add village farmers or milk suppliers from whom you purchase milk.",
+    "btn_add_first_animal": "➕ Add First Cattle",
+    "btn_add_first_customer": "➕ Add First Customer",
+    "btn_add_supplier": "➕ Add New Supplier"
   },
   "pa": {
     "sec_today_tasks": "ਅੱਜ ਦੇ ਮੁੱਖ ਕੰਮ",
@@ -3196,7 +3222,20 @@ const TRANSLATIONS = {
     "k_____80": "🥛 ਗਾਂ ਅਤੇ ਮੱਝ ਦੇ ਮੂਲ ਮਿਆਰੀ ਭਾਅ:",
     "k_ai_": "🧬 AI ਗਰਭਧਾਰਨ",
     "k____24": "🧾 ਦੁੱਧ ਪਰਚੀ ਦੇਖੋ",
-    "k_bolkar_entry": "ਬੋਲ ਕੇ ਐਂਟਰੀ"
+    "k_bolkar_entry": "ਬੋਲ ਕੇ ਐਂਟਰੀ",
+    "empty_cattle_title": "ਡੇਅਰੀ ਵਿੱਚ ਕੋਈ ਪਸ਼ੂ ਦਰਜ ਨਹੀਂ ਹੈ",
+    "empty_cattle_sub": "ਦੁੱਧ ਕੱਢਣ ਅਤੇ ਰਿਕਾਰਡ ਰੱਖਣ ਲਈ ਆਪਣੀ ਗਾਂ ਜਾਂ ਮੱਝ ਸ਼ਾਮਲ ਕਰੋ।",
+    "empty_delivery_title": "ਕੋਈ ਦੁੱਧ ਗਾਹਕ ਦਰਜ ਨਹੀਂ ਹੈ",
+    "empty_delivery_sub": "ਘਰ-ਘਰ ਦੁੱਧ ਪਹੁੰਚਾਉਣ ਅਤੇ ਆਟੋ-ਹਿਸਾਬ ਲਈ ਗਾਹਕ ਸ਼ਾਮਲ ਕਰੋ।",
+    "empty_khata_title": "ਕੋਈ ਗਾਹਕ ਖਾਤਾ ਨਹੀਂ ਹੈ",
+    "empty_khata_sub": "ਮਹੀਨੇ ਦਾ ਬਿੱਲ, ਨਾਗਾ ਕੈਲੰਡਰ ਅਤੇ ਡਿਜੀਟਲ ਪਾਸਬੁੱਕ ਲਈ ਗਾਹਕ ਸ਼ਾਮਲ ਕਰੋ।",
+    "empty_register_title": "ਪਸ਼ੂ ਰਜਿਸਟਰ ਖਾਲੀ ਹੈ",
+    "empty_register_sub": "ਆਪਣੇ ਡੇਅਰੀ ਫਾਰਮ ਦੇ ਸਾਰੇ ਪਸ਼ੂਆਂ ਨੂੰ ਇੱਥੇ ਰਜਿਸਟਰ ਕਰੋ।",
+    "empty_supplier_title": "ਕੋਈ ਸਪਲਾਇਰ / ਕਿਸਾਨ ਨਹੀਂ ਹੈ",
+    "empty_supplier_sub": "ਪਿੰਡ ਦੇ ਕਿਸਾਨ ਜਾਂ ਡੇਅਰੀ ਸਪਲਾਇਰ ਸ਼ਾਮਲ ਕਰੋ ਜਿਨ੍ਹਾਂ ਤੋਂ ਤੁਸੀਂ ਦੁੱਧ ਖਰੀਦਦੇ ਹੋ।",
+    "btn_add_first_animal": "➕ ਪਹਿਲਾ ਪਸ਼ੂ ਸ਼ਾਮਲ ਕਰੋ",
+    "btn_add_first_customer": "➕ ਪਹਿਲਾ ਗਾਹਕ ਸ਼ਾਮਲ ਕਰੋ",
+    "btn_add_supplier": "➕ ਨਵਾਂ ਸਪਲਾਇਰ ਸ਼ਾਮਲ ਕਰੋ"
   },
   "hr": {
     "sec_today_tasks": "आज के मुख्य काम",
@@ -4262,7 +4301,20 @@ const TRANSLATIONS = {
     "k_____80": "🥛 गाय अर भैंस का डिफ़ॉल्ट भाव:",
     "k_ai_": "🧬 AI गर्भाधान",
     "k____24": "🧾 दूध पर्ची देखो",
-    "k_bolkar_entry": "बोल कै एंट्री"
+    "k_bolkar_entry": "बोल कै एंट्री",
+    "empty_cattle_title": "डेयरी म्है कोई ढोर/पशु दर्ज कोन्या",
+    "empty_cattle_sub": "दूध काढ़ण अर हिसाब खातर अपणी गाय या भैंस जोड़ो।",
+    "empty_delivery_title": "कोई दूध गाहक दर्ज कोन्या",
+    "empty_delivery_sub": "घर-घर दूध बांटण अर पक्का हिसाब खातर गाहक जोड़ो।",
+    "empty_khata_title": "कोई गाहक खाता कोन्या",
+    "empty_khata_sub": "म्हीने का बिल, नागा अर पर्ची देखण खातर गाहक जोड़ो।",
+    "empty_register_title": "पशु रजिस्टर खाली सै",
+    "empty_register_sub": "अपणी डेयरी के सारे पशुवां नै अड़े दर्ज करो।",
+    "empty_supplier_title": "कोई सप्लायर / किसान कोन्या",
+    "empty_supplier_sub": "गाम के किसान जोड़ो जिणां तै आप दूध मोल ल्यो सो।",
+    "btn_add_first_animal": "➕ पैहला पशु जोड़ो",
+    "btn_add_first_customer": "➕ पैहला गाहक जोड़ो",
+    "btn_add_supplier": "➕ नया सप्लायर जोड़ो"
   },
   "gu": {
     "sec_today_tasks": "આજના મુખ્ય કાર્યો",
@@ -5328,7 +5380,20 @@ const TRANSLATIONS = {
     "k_____80": "🥛 ગાય અને ભેંસના મૂળભૂત પ્રમાણભૂત દરો:",
     "k_ai_": "🧬 AI ગર્ભાધાન",
     "k____24": "🧾 દૂધ પર્ચી જુઓ",
-    "k_bolkar_entry": "બોલીને એન્ટ્રી"
+    "k_bolkar_entry": "બોલીને એન્ટ્રી",
+    "empty_cattle_title": "ડેરીમાં કોઈ પશુ નોંધાયેલ નથી",
+    "empty_cattle_sub": "દૂધ દોહન અને રેકોર્ડ રાખવા માટે તમારી ગાય અથવા ભેંસ ઉમેરો.",
+    "empty_delivery_title": "કોઈ દૂધ ગ્રાહક નોંધાયેલ નથી",
+    "empty_delivery_sub": "ઘેર-ઘેર દૂધ પહોંચાડવા અને હિસાબ માટે ગ્રાહક ઉમેરો.",
+    "empty_khata_title": "કોઈ ગ્રાહક ખાતું નથી",
+    "empty_khata_sub": "માસિક બિલ, રજા કેલેન્ડર અને પાસબુક માટે ગ્રાહક ઉમેરો.",
+    "empty_register_title": "પશુ રજિસ્ટર ખાલી છે",
+    "empty_register_sub": "તમારા ડેરી ફાર્મના તમામ પશુઓની અહીં નોંધણી કરો.",
+    "empty_supplier_title": "કોઈ સપ્લાયર / ખેડૂત નથી",
+    "empty_supplier_sub": "ગામના ખેડૂતો કે સપ્લાયર્સ ઉમેરો જેમની પાસેથી તમે દૂધ ખરીદો છો.",
+    "btn_add_first_animal": "➕ પ્રથમ પશુ ઉમેરો",
+    "btn_add_first_customer": "➕ પ્રથમ ગ્રાહક ઉમેરો",
+    "btn_add_supplier": "➕ નવો સપ્લાયર ઉમેરો"
   },
   "mr": {
     "sec_today_tasks": "आजची मुख्य कामे",
@@ -6394,7 +6459,20 @@ const TRANSLATIONS = {
     "k_____80": "🥛 गाय आणि म्हशीचे डीफॉल्ट मानक दर:",
     "k_ai_": "🧬 कृत्रिम रेतन",
     "k____24": "🧾 दूध पावती पहा",
-    "k_bolkar_entry": "बोलून नोंद"
+    "k_bolkar_entry": "बोलून नोंद",
+    "empty_cattle_title": "डेअरीमध्ये कोणतेही जनावर नोंदवलेले नाही",
+    "empty_cattle_sub": "दूध काढणे आणि नोंदी ठेवण्यासाठी गाय किंवा म्हैस जोडा.",
+    "empty_delivery_title": "कोणताही दूध ग्राहक नोंदवलेला नाही",
+    "empty_delivery_sub": "घरोघरी दूध वितरण आणि हिशोबासाठी ग्राहक जोडा.",
+    "empty_khata_title": "कोणतेही ग्राहक खाते नाही",
+    "empty_khata_sub": "मासिक बिल, सुट्टी कॅलेंडर आणि पासबुकसाठी ग्राहक जोडा.",
+    "empty_register_title": "जनावर नोंदवही रिकामी आहे",
+    "empty_register_sub": "आपल्या डेअरी फार्ममधील सर्व जनावरांची येथे नोंद करा.",
+    "empty_supplier_title": "कोणताही सप्लायर / शेतकरी नाही",
+    "empty_supplier_sub": "गावातील शेतकरी जोडा ज्यांच्याकडून तुम्ही दूध खरेदी करता.",
+    "btn_add_first_animal": "➕ पहिले जनावर जोडा",
+    "btn_add_first_customer": "➕ पहिला ग्राहक जोडा",
+    "btn_add_supplier": "➕ नवीन सप्लायर जोडा"
   },
   "rj": {
     "sec_today_tasks": "आज रा मुख्य काम",
@@ -7460,7 +7538,20 @@ const TRANSLATIONS = {
     "k_____80": "🥛 गाय अर भैंस रो डिफ़ॉल्ट भाव:",
     "k_ai_": "🧬 AI गर्भाधान",
     "k____24": "🧾 दूध पर्ची देखो",
-    "k_bolkar_entry": "बोल नै एंट्री"
+    "k_bolkar_entry": "बोल नै एंट्री",
+    "empty_cattle_title": "डेयरी मांय कोई पशु दर्ज कोनी",
+    "empty_cattle_sub": "दूध काढ़बा अर हिसाब राखबा खातर आपणी गाय या भैंस जोड़ो।",
+    "empty_delivery_title": "कोई दूध गाहक दर्ज कोनी",
+    "empty_delivery_sub": "घरां-घरां दूध पूगाबा अर आटो-हिसाब खातर गाहक जोड़ो।",
+    "empty_khata_title": "कोई गाहक खातो कोनी",
+    "empty_khata_sub": "महीना रो बिल, नागा अर पासबुक खातर गाहक जोड़ो।",
+    "empty_register_title": "पशु रजिस्टर खाली है",
+    "empty_register_sub": "डेयरी रा सगळा पशुवां नै अठै दर्ज करो।",
+    "empty_supplier_title": "कोई सप्लायर / किसान कोनी",
+    "empty_supplier_sub": "गांव रा किसान जोड़ो जिणां सूं आप दूध खरीदो हो।",
+    "btn_add_first_animal": "➕ पहलो पशु जोड़ो",
+    "btn_add_first_customer": "➕ पहलो गाहक जोड़ो",
+    "btn_add_supplier": "➕ नवो सप्लायर जोड़ो"
   },
   "bn": {
     "sec_today_tasks": "আজকের মূল কাজ",
@@ -8526,6 +8617,19 @@ const TRANSLATIONS = {
     "k_____80": "🥛 গরু ও মহিষের ডিফল্ট প্রমিত দর:",
     "k_ai_": "🧬 এআই প্রজনন",
     "k____24": "🧾 দুধের স্লিপ দেখুন",
-    "k_bolkar_entry": "ভয়েস এন্ট্রি"
+    "k_bolkar_entry": "ভয়েস এন্ট্রি",
+    "empty_cattle_title": "ডেয়ারিতে কোনো পশু নথিভুক্ত নেই",
+    "empty_cattle_sub": "দুধ দোহন এবং রেকর্ড রাখার জন্য আপনার গরু বা মহিষ যোগ করুন।",
+    "empty_delivery_title": "কোনো দুধ গ্রাহক নথিভুক্ত নেই",
+    "empty_delivery_sub": "ঘরে ঘরে দুধ সরবরাহ এবং হিসাবের জন্য গ্রাহক যোগ করুন।",
+    "empty_khata_title": "কোনো গ্রাহক অ্যাকাউন্ট নেই",
+    "empty_khata_sub": "মাসিক বিল, ছুটি ক্যালেন্ডার এবং পাসবুকের জন্য গ্রাহক যোগ করুন।",
+    "empty_register_title": "পশু রেজিস্টার খালি",
+    "empty_register_sub": "আপনার ডেইরি ফার্মের সমস্ত পশু এখানে নথিভুক্ত করুন।",
+    "empty_supplier_title": "কোনো সরবরাহকারী / কৃষক নেই",
+    "empty_supplier_sub": "গ্রামের কৃষক বা সরবরাহকারী যোগ করুন যাদের কাছ থেকে দুধ কেনেন।",
+    "btn_add_first_animal": "➕ প্রথম পশু যোগ করুন",
+    "btn_add_first_customer": "➕ প্রথম গ্রাহক যোগ করুন",
+    "btn_add_supplier": "➕ নতুন সরবরাহকারী যোগ করুন"
   }
 };

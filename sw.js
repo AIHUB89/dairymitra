@@ -1,5 +1,5 @@
 // DairyMitra Service Worker - Network First to always get latest updates
-const CACHE_NAME = 'dairymitra-cache-v14.2';
+const CACHE_NAME = 'dairymitra-cache-v14.6';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
